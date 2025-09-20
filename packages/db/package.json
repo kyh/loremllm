@@ -1,0 +1,53 @@
+{
+  "name": "@repo/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "supabase": "pnpm with-env supabase",
+    "drizzle-kit": "pnpm with-env drizzle-kit",
+    "seed": "pnpm with-env tsx src/seed/initial.ts",
+    "start": "pnpm with-env supabase status || supabase start",
+    "stop": "pnpm with-env supabase stop",
+    "reset": "pnpm with-env supabase db reset && pnpm push",
+    "status": "pnpm with-env supabase status",
+    "test": "pnpm with-env supabase db test",
+    "typegen": "pnpm with-env supabase gen types typescript --local > src/database.types.ts",
+    "push": "pnpm with-env drizzle-kit push",
+    "push-remote": "dotenv -e ../../.env.production.local -- drizzle-kit push",
+    "studio": "pnpm with-env drizzle-kit studio",
+    "with-env": "dotenv -e ../../.env --",
+    "generate-auth-schema": "pnpm with-env pnpx @better-auth/cli generate --config ../api/src/auth/auth.ts --output ./src/drizzle-schema-auth.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "drizzle-orm": "^0.44.5",
+    "next": "catalog:",
+    "postgres": "^3.4.7",
+    "react": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@kyh/eslint-config": "catalog:",
+    "@kyh/prettier-config": "catalog:",
+    "@kyh/tsconfig": "catalog:",
+    "@types/react": "catalog:",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "supabase": "^2.40.7",
+    "typescript": "catalog:"
+  },
+  "prettier": "@kyh/prettier-config"
+}

@@ -1,0 +1,52 @@
+{
+  "name": "@repo/nextjs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "fumadocs-mdx",
+    "build": "pnpm with-env next build",
+    "clean": "git clean -xdf .cache .next .turbo node_modules",
+    "dev": "pnpm with-env next dev",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint",
+    "start": "pnpm with-env next start",
+    "typecheck": "tsc --noEmit",
+    "with-env": "dotenv -e ../../.env --"
+  },
+  "prettier": "@kyh/prettier-config",
+  "dependencies": {
+    "@ai-sdk/react": "^2.0.47",
+    "@repo/api": "workspace:^",
+    "@repo/db": "workspace:^",
+    "@repo/ui": "workspace:^",
+    "@tanstack/react-query": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "@trpc/tanstack-react-query": "catalog:",
+    "ai": "^5.0.47",
+    "fumadocs-core": "^15.7.13",
+    "fumadocs-mdx": "^11.10.1",
+    "fumadocs-ui": "^15.7.13",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "superjson": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@kyh/eslint-config": "catalog:",
+    "@kyh/prettier-config": "catalog:",
+    "@kyh/tsconfig": "catalog:",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "postcss": "^8.5.6",
+    "prettier": "catalog:",
+    "tailwindcss": "^4.1.13",
+    "typescript": "catalog:"
+  }
+}
