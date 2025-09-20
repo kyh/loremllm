@@ -33,7 +33,7 @@ const Page = async (props: { params: Promise<{ slug?: string[] }> }) => {
   );
 };
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return source.generateParams();
 }
 
