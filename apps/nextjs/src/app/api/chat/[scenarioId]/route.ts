@@ -2,8 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 
 import {
   UI_MESSAGE_STREAM_HEADERS,
+  createUIMessageStream,
   createUIMessageStreamResponse,
-  simulateReadableStream,
 } from "ai";
 import { db } from "@repo/db/drizzle-client";
 import { z } from "zod";
@@ -288,25 +288,27 @@ export async function POST(request: Request, context: { params: unknown }) {
 
   const buildHeaders = () => new Headers(UI_MESSAGE_STREAM_HEADERS);
 
+  const buildStream = (execute: Parameters<typeof createUIMessageStream>[0]["execute"]) =>
+    createUIMessageStream({
+      execute,
+      originalMessages: body.messages,
+    });
+
   if (!matchedInteraction) {
-    const stream = simulateReadableStream({
-      chunks: [
-        { type: "start", messageId: randomUUID() },
-        { type: "text-start", id: "fallback" },
-        {
-          type: "text-delta",
-          id: "fallback",
-          delta: "No matching mock interaction found.",
+    const stream = buildStream(({ writer }) => {
+      const messageId = randomUUID();
+
+      writer.write({ type: "start", messageId });
+      writer.write({ type: "text-start", id: "fallback" });
+      writer.write({ type: "text-delta", id: "fallback", delta: "No matching mock interaction found." });
+      writer.write({ type: "text-end", id: "fallback" });
+      writer.write({
+        type: "finish",
+        messageMetadata: {
+          scenarioId: scenario.publicId,
+          matched: false,
         },
-        { type: "text-end", id: "fallback" },
-        {
-          type: "finish",
-          messageMetadata: {
-            scenarioId: scenario.publicId,
-            matched: false,
-          },
-        },
-      ],
+      });
     });
 
     return createUIMessageStreamResponse({
@@ -315,10 +317,11 @@ export async function POST(request: Request, context: { params: unknown }) {
     });
   }
 
-  const responseMessageId = randomUUID();
-  const chunks: Record<string, unknown>[] = [
-    { type: "start", messageId: responseMessageId },
-    {
+  const stream = buildStream(({ writer }) => {
+    const messageId = randomUUID();
+
+    writer.write({ type: "start", messageId });
+    writer.write({
       type: "data-matching",
       id: "matching",
       data: {
@@ -327,83 +330,77 @@ export async function POST(request: Request, context: { params: unknown }) {
         title: matchedInteraction.title,
         similarity,
       },
-    },
-  ];
+    });
 
-  for (const message of matchedInteraction.messages) {
-    if (message.role !== "assistant") {
-      continue;
-    }
-
-    for (const toolCall of message.toolCalls) {
-      chunks.push({
-        type: "tool-input-start",
-        toolCallId: toolCall.callId,
-        toolName: toolCall.toolName,
-      });
-
-      const argumentText =
-        typeof toolCall.arguments === "string"
-          ? toolCall.arguments
-          : toolCall.arguments !== undefined && toolCall.arguments !== null
-            ? JSON.stringify(toolCall.arguments)
-            : "";
-
-      if (argumentText.length) {
-        chunks.push({
-          type: "tool-input-delta",
-          toolCallId: toolCall.callId,
-          inputTextDelta: argumentText,
-        });
+    for (const message of matchedInteraction.messages) {
+      if (message.role !== "assistant") {
+        continue;
       }
 
-      chunks.push({
-        type: "tool-input-available",
-        toolCallId: toolCall.callId,
-        toolName: toolCall.toolName,
-        input: toolCall.arguments,
-      });
-
-      if (toolCall.result !== undefined && toolCall.result !== null) {
-        chunks.push({
-          type: "tool-output-available",
+      for (const toolCall of message.toolCalls) {
+        writer.write({
+          type: "tool-input-start",
           toolCallId: toolCall.callId,
-          output: toolCall.result,
+          toolName: toolCall.toolName,
         });
+
+        const argumentText =
+          typeof toolCall.arguments === "string"
+            ? toolCall.arguments
+            : toolCall.arguments !== undefined && toolCall.arguments !== null
+              ? JSON.stringify(toolCall.arguments)
+              : "";
+
+        if (argumentText.length) {
+          writer.write({
+            type: "tool-input-delta",
+            toolCallId: toolCall.callId,
+            inputTextDelta: argumentText,
+          });
+        }
+
+        writer.write({
+          type: "tool-input-available",
+          toolCallId: toolCall.callId,
+          toolName: toolCall.toolName,
+          input: toolCall.arguments,
+        });
+
+        if (toolCall.result !== undefined && toolCall.result !== null) {
+          writer.write({
+            type: "tool-output-available",
+            toolCallId: toolCall.callId,
+            output: toolCall.result,
+          });
+        }
       }
+
+      const text = flattenContentToText(message.content);
+
+      if (!text.length) {
+        continue;
+      }
+
+      const textId = `${matchedInteraction.id}-${message.id}`;
+
+      writer.write({ type: "text-start", id: textId });
+
+      for (const chunk of chunkText(text)) {
+        writer.write({ type: "text-delta", id: textId, delta: chunk });
+      }
+
+      writer.write({ type: "text-end", id: textId });
     }
 
-    const text = flattenContentToText(message.content);
-
-    if (!text.length) {
-      continue;
-    }
-
-    const textId = `${matchedInteraction.id}-${message.id}`;
-
-    chunks.push({ type: "text-start", id: textId });
-
-    for (const chunk of chunkText(text)) {
-      chunks.push({
-        type: "text-delta",
-        id: textId,
-        delta: chunk,
-      });
-    }
-
-    chunks.push({ type: "text-end", id: textId });
-  }
-
-  chunks.push({
-    type: "finish",
-    messageMetadata: {
-      scenarioId: scenario.publicId,
-      interactionId: matchedInteraction.id,
-      similarity,
-    },
+    writer.write({
+      type: "finish",
+      messageMetadata: {
+        scenarioId: scenario.publicId,
+        interactionId: matchedInteraction.id,
+        similarity,
+      },
+    });
   });
-
-  const stream = simulateReadableStream({ chunks });
 
   return createUIMessageStreamResponse({
     stream,
