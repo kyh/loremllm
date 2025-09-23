@@ -411,11 +411,10 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
           <div>
             <p className="font-semibold">API usage example</p>
             <pre className="mt-1 overflow-x-auto rounded bg-muted px-3 py-2 text-xs">
-{`await fetch("/api/chat", {
+{`await fetch("/api/chat/${scenario.publicId}", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    scenarioId: "${scenario.publicId}",
     messages: [
       { role: "user", content: "..." }
     ]

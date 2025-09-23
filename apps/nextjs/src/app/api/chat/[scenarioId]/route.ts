@@ -27,8 +27,11 @@ const messageSchema = z.object({
   toolCallId: z.string().optional(),
 });
 
-const requestSchema = z.object({
+const paramsSchema = z.object({
   scenarioId: z.string().uuid(),
+});
+
+const requestSchema = z.object({
   messages: z.array(messageSchema).min(1),
 });
 
@@ -172,7 +175,7 @@ const chunkText = (text: string) => {
 
 export const maxDuration = 30;
 
-export async function POST(request: Request) {
+export async function POST(request: Request, context: { params: unknown }) {
   let json: unknown;
   try {
     json = await request.json();
@@ -192,10 +195,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const paramResult = paramsSchema.safeParse(context.params);
+
+  if (!paramResult.success) {
+    return new Response(JSON.stringify({ error: "Invalid scenario" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   const body: IncomingRequest = parseResult.data;
+  const { scenarioId } = paramResult.data;
 
   const scenario = await db.query.mockScenarios.findFirst({
-    where: (scenario, { eq }) => eq(scenario.publicId, body.scenarioId),
+    where: (scenario, { eq }) => eq(scenario.publicId, scenarioId),
   });
 
   if (!scenario) {
