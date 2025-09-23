@@ -1,12 +1,17 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chat, useChat } from "@ai-sdk/react";
-import type { DataUIPart, UIMessage } from "ai";
-import { DefaultChatTransport } from "ai";
+import type { DataUIPart, ToolUIPart, UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  getToolOrDynamicToolName,
+  isToolOrDynamicToolUIPart,
+} from "ai";
 import { Button } from "@repo/ui/button";
+import { Badge } from "@repo/ui/badge";
 import {
   Card,
   CardContent,
@@ -24,9 +29,31 @@ import {
 } from "@repo/ui/drawer";
 import { Input } from "@repo/ui/input";
 import { Textarea } from "@repo/ui/textarea";
-import { Badge } from "@repo/ui/badge";
 import { toast } from "@repo/ui/toast";
 import { cn } from "@repo/ui/utils";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+  Message,
+  MessageAvatar,
+  MessageContent,
+  PromptInput,
+  PromptInputBody,
+  PromptInputButton,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+  Response,
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements";
+import { Square } from "lucide-react";
 import type { JsonValue } from "@repo/api/mock/mock-schema";
 import type { RouterOutputs } from "@repo/api";
 import { useTRPC } from "@/trpc/react";
@@ -55,15 +82,7 @@ type ToolCallDraft = {
 };
 
 type TextUIPart = { type: "text"; text: string };
-type ToolUIPart = {
-  type: `tool-${string}` | "dynamic-tool";
-  toolCallId: string;
-  toolName?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
-};
+type ToolLikeUIPart = Parameters<typeof getToolOrDynamicToolName>[0];
 
 type MatchingData = Record<string, unknown>;
 
@@ -211,18 +230,21 @@ export const MockDashboard = () => {
               <Input
                 placeholder="Scenario name"
                 value={scenarioForm.name}
-                onChange={(event) =>
-                  setScenarioForm((state) => ({ ...state, name: event.target.value }))
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setScenarioForm((state) => ({
+                    ...state,
+                    name: event.currentTarget.value,
+                  }))
                 }
                 required
               />
               <Textarea
                 placeholder="Optional description"
                 value={scenarioForm.description}
-                onChange={(event) =>
+                onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                   setScenarioForm((state) => ({
                     ...state,
-                    description: event.target.value,
+                    description: event.currentTarget.value,
                   }))
                 }
                 rows={3}
@@ -481,18 +503,21 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
             <Input
               placeholder="Interaction title"
               value={interactionForm.title}
-              onChange={(event) =>
-                setInteractionForm((state) => ({ ...state, title: event.target.value }))
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setInteractionForm((state) => ({
+                  ...state,
+                  title: event.currentTarget.value,
+                }))
               }
               required
             />
             <Textarea
               placeholder="Optional description"
               value={interactionForm.description}
-              onChange={(event) =>
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 setInteractionForm((state) => ({
                   ...state,
-                  description: event.target.value,
+                  description: event.currentTarget.value,
                 }))
               }
               rows={2}
@@ -500,10 +525,10 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
             <Textarea
               placeholder="User message"
               value={interactionForm.userMessage}
-              onChange={(event) =>
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 setInteractionForm((state) => ({
                   ...state,
-                  userMessage: event.target.value,
+                  userMessage: event.currentTarget.value,
                 }))
               }
               rows={4}
@@ -512,10 +537,10 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
             <Textarea
               placeholder="Assistant message"
               value={interactionForm.assistantMessage}
-              onChange={(event) =>
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 setInteractionForm((state) => ({
                   ...state,
-                  assistantMessage: event.target.value,
+                  assistantMessage: event.currentTarget.value,
                 }))
               }
               rows={4}
@@ -524,10 +549,10 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
             <Textarea
               placeholder='Optional tool calls JSON (e.g. [{"toolName":"search","arguments":{"query":"docs"},"result":{"items":[]}}])'
               value={interactionForm.toolCallsJson}
-              onChange={(event) =>
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 setInteractionForm((state) => ({
                   ...state,
-                  toolCallsJson: event.target.value,
+                  toolCallsJson: event.currentTarget.value,
                 }))
               }
               rows={5}
@@ -633,26 +658,9 @@ type MockChatDrawerContentProps = {
   scenario: NonNullable<ScenarioDetail>;
 };
 
-const roleLabel: Record<UIMessage["role"], string> = {
-  system: "System",
-  user: "You",
-  assistant: "Assistant",
-};
-
-const roleLabelColor: Record<UIMessage["role"], string> = {
-  system: "text-violet-200",
-  user: "text-sky-200",
-  assistant: "text-emerald-200",
-};
-
-const roleAccentBackground: Record<UIMessage["role"], string> = {
-  system: "border-violet-500/40 bg-violet-500/10",
-  user: "border-sky-500/40 bg-sky-500/10",
-  assistant: "border-emerald-500/40 bg-emerald-500/10",
-};
-
 const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
   const [input, setInput] = useState("");
+  const [inputVersion, setInputVersion] = useState(0);
   const [clientError, setClientError] = useState<string | null>(null);
   const [dataParts, setDataParts] = useState<Record<string, unknown>>({});
   const [messageMetadata, setMessageMetadata] = useState<MatchingData | null>(null);
@@ -713,6 +721,7 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
     setInput("");
     setClientError(null);
     clearError();
+    setInputVersion((value) => value + 1);
   }, [scenario.id, setMessages, clearError]);
 
   useEffect(() => {
@@ -722,11 +731,14 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
     }
   }, [status]);
 
-  const handleSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
+  const handlePromptSubmit = useCallback(
+    async (
+      message: { text?: string },
+      event: FormEvent<HTMLFormElement>,
+    ) => {
       event.preventDefault();
 
-      const trimmedInput = input.trim();
+      const trimmedInput = message.text?.trim() ?? "";
 
       if (!trimmedInput.length) {
         setClientError("Enter a message to start chatting.");
@@ -738,22 +750,26 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
       try {
         await sendMessage({ text: trimmedInput });
         setInput("");
+        setInputVersion((value) => value + 1);
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : "Unknown error";
-        setClientError(message);
+        const errorMessage =
+          cause instanceof Error ? cause.message : "Unknown error";
+        setClientError(errorMessage);
       }
     },
-    [input, sendMessage],
+    [sendMessage],
   );
 
   const handleReset = useCallback(() => {
+    void stop();
     setMessages([]);
     setDataParts({});
     setMessageMetadata(null);
     setClientError(null);
     setInput("");
     clearError();
-  }, [setMessages, clearError]);
+    setInputVersion((value) => value + 1);
+  }, [stop, setMessages, clearError]);
 
   const dismissError = useCallback(() => {
     clearError();
@@ -816,80 +832,82 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
             Reset chat
           </Button>
         </div>
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-          {messages.length ? (
-            messages.map((message) => {
-              const textContent = renderMessageText(message);
-              const rawParts: unknown = (message as { parts?: unknown }).parts;
-              const parts = Array.isArray(rawParts) ? rawParts : [];
-              const toolParts = parts.filter((part): part is ToolUIPart => isToolUIPart(part));
+        <div className="flex-1 overflow-hidden">
+          <Conversation>
+            <ConversationContent>
+              {messages.length ? (
+                messages.map((message) => {
+                  const textContent = renderMessageText(message);
+                  const rawParts: unknown = (message as { parts?: unknown }).parts;
+                  const parts = Array.isArray(rawParts) ? rawParts : [];
+                  const toolParts = parts.filter(
+                    (part): part is ToolLikeUIPart =>
+                      isToolOrDynamicToolUIPart(
+                        part as Parameters<typeof isToolOrDynamicToolUIPart>[0],
+                      ),
+                  );
 
-              return (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 shadow-sm",
-                    roleAccentBackground[message.role],
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "text-xs font-medium uppercase tracking-wide",
-                      roleLabelColor[message.role],
-                    )}
-                  >
-                    {roleLabel[message.role]}
-                  </div>
-                  {textContent ? (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90">
-                      {textContent}
-                    </p>
-                  ) : null}
-                  {toolParts.length ? (
-                    <div className="mt-2 space-y-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-50">
-                      <p className="font-semibold uppercase tracking-wide text-emerald-100">
-                        Tool calls
-                      </p>
-                      {toolParts.map((part) => {
-                        const toolIdentifier =
-                          part.type === "dynamic-tool"
-                            ? part.toolName ?? "dynamic tool"
-                            : part.type.slice("tool-".length);
+                  const avatarLabel =
+                    message.role === "user"
+                      ? "You"
+                      : message.role === "assistant"
+                        ? scenario.name || "Assistant"
+                        : message.role.charAt(0).toUpperCase() + message.role.slice(1);
 
-                        return (
-                          <div key={part.toolCallId} className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold">{toolIdentifier}</span>
-                              <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wide">
-                                {part.state ?? "pending"}
-                              </span>
-                            </div>
-                            {part.input !== undefined ? (
-                              <pre className="overflow-x-auto rounded-md bg-emerald-500/15 p-2">
-                                {JSON.stringify(part.input, null, 2)}
-                              </pre>
-                            ) : null}
-                            {part.output !== undefined ? (
-                              <pre className="overflow-x-auto rounded-md bg-emerald-500/15 p-2">
-                                {JSON.stringify(part.output, null, 2)}
-                              </pre>
-                            ) : null}
-                            {part.errorText ? (
-                              <p className="text-rose-200">{part.errorText}</p>
-                            ) : null}
+                  return (
+                    <Message key={message.id} from={message.role}>
+                      <MessageAvatar name={avatarLabel} src="" />
+                      <MessageContent>
+                        {textContent ? <Response>{textContent}</Response> : null}
+                        {toolParts.length ? (
+                          <div className="mt-3 space-y-3">
+                            {toolParts.map((part) => {
+                              const toolState = normalizeToolState(part.state);
+                              const toolName = getToolOrDynamicToolName(part);
+                              const toolType =
+                                part.type === "dynamic-tool"
+                                  ? `tool-${toolName}`
+                                  : part.type;
+
+                              return (
+                                <Tool
+                                  key={part.toolCallId}
+                                  defaultOpen={
+                                    toolState === "output-available" ||
+                                    toolState === "output-error"
+                                  }
+                                >
+                                  <ToolHeader
+                                    title={toolName}
+                                    type={toolType}
+                                    state={toolState}
+                                  />
+                                  <ToolContent>
+                                    {part.input !== undefined ? (
+                                      <ToolInput input={part.input} />
+                                    ) : null}
+                                    {part.output !== undefined || part.errorText ? (
+                                      <ToolOutput
+                                        output={part.output}
+                                        errorText={part.errorText}
+                                      />
+                                    ) : null}
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Send a message to test mocked responses for this scenario.
-            </p>
-          )}
+                        ) : null}
+                      </MessageContent>
+                    </Message>
+                  );
+                })
+              ) : (
+                <ConversationEmptyState description="Send a message to test mocked responses for this scenario." />
+              )}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
         </div>
         {activeMetadata ? (
           <div className="border-t bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
@@ -911,11 +929,6 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
             ) : null}
           </div>
         ) : null}
-        {clientError ? (
-          <div className="border-t border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive">
-            {clientError}
-          </div>
-        ) : null}
         {hasChatError ? (
           <div className="border-t border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive">
             <div className="flex items-center justify-between gap-2">
@@ -926,29 +939,56 @@ const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
             </div>
           </div>
         ) : null}
-        <form onSubmit={handleSubmit} className="border-t bg-background px-4 py-3">
-          <Textarea
-            placeholder="Ask the mock assistant..."
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            rows={4}
-            className="resize-none"
-          />
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => stop()}
-              disabled={status !== "streaming"}
-            >
-              Stop
-            </Button>
-            <Button type="submit" loading={isBusy} disabled={!input.trim().length}>
-              {isBusy ? "Sending" : "Send"}
-            </Button>
-          </div>
-        </form>
+        <div className="border-t bg-background px-4 py-3">
+          <PromptInput
+            key={inputVersion}
+            className="border-none px-0 shadow-none"
+            onError={(error) => {
+              const nextMessage =
+                typeof error === "object" &&
+                "message" in error &&
+                typeof (error as { message?: unknown }).message === "string"
+                  ? (error as { message: string }).message
+                  : "Unable to process attachments.";
+              setClientError(nextMessage);
+            }}
+            onSubmit={handlePromptSubmit}
+          >
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Ask the mock assistant..."
+                value={input}
+                onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                  setInput(event.currentTarget.value);
+                  setClientError(null);
+                }}
+              />
+            </PromptInputBody>
+            <PromptInputToolbar>
+              <PromptInputTools />
+              <div className="flex items-center gap-2">
+                {status === "streaming" ? (
+                  <PromptInputButton
+                    aria-label="Stop response"
+                    onClick={() => {
+                      void stop();
+                    }}
+                    variant="ghost"
+                  >
+                    <Square className="h-4 w-4" />
+                  </PromptInputButton>
+                ) : null}
+                <PromptInputSubmit
+                  disabled={isBusy || !input.trim().length}
+                  status={status}
+                />
+              </div>
+            </PromptInputToolbar>
+          </PromptInput>
+          {clientError ? (
+            <p className="mt-2 text-xs text-destructive">{clientError}</p>
+          ) : null}
+        </div>
       </div>
     </DrawerContent>
   );
@@ -978,9 +1018,13 @@ const renderMessageText = (message: UIMessage) => {
         return part.text;
       }
 
-      if (isToolUIPart(part)) {
-        return "";
-      }
+    if (
+      isToolOrDynamicToolUIPart(
+        part as Parameters<typeof isToolOrDynamicToolUIPart>[0],
+      )
+    ) {
+      return "";
+    }
 
       if (isRecord(part)) {
         const maybeText = (part as { text?: unknown }).text;
@@ -998,6 +1042,18 @@ const renderMessageText = (message: UIMessage) => {
 
 const formatSimilarity = (value: number) => `${(value * 100).toFixed(1)}%`;
 
+const normalizeToolState = (value: unknown): ToolUIPart["state"] => {
+  switch (value) {
+    case "input-streaming":
+    case "input-available":
+    case "output-available":
+    case "output-error":
+      return value;
+    default:
+      return "output-available";
+  }
+};
+
 const isTextUIPart = (part: unknown): part is TextUIPart => {
   if (!isRecord(part)) {
     return false;
@@ -1006,24 +1062,6 @@ const isTextUIPart = (part: unknown): part is TextUIPart => {
   const { type, text } = part as { type?: unknown; text?: unknown };
 
   return type === "text" && typeof text === "string";
-};
-
-const isToolUIPart = (part: unknown): part is ToolUIPart => {
-  if (!isRecord(part)) {
-    return false;
-  }
-
-  const { type, toolCallId, toolName } = part as {
-    type?: unknown;
-    toolCallId?: unknown;
-    toolName?: unknown;
-  };
-
-  if (type === "dynamic-tool") {
-    return typeof toolCallId === "string" && typeof toolName === "string";
-  }
-
-  return typeof type === "string" && type.startsWith("tool-") && typeof toolCallId === "string";
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
