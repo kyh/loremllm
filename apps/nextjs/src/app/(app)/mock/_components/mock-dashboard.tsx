@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
 import { Badge } from "@repo/ui/badge";
 import { toast } from "@repo/ui/toast";
@@ -25,35 +26,47 @@ type ScenarioFormState = {
   description: string;
 };
 
+type ToolCallFormState = {
+  id: string;
+  toolName: string;
+  callId: string;
+  arguments: string;
+  result: string;
+};
+
 type InteractionFormState = {
   title: string;
   description: string;
   userMessage: string;
-  assistantMessage: string;
-  toolCallsJson: string;
+  assistantResponse: string;
+  toolCalls: ToolCallFormState[];
 };
 
 type ScenarioList = RouterOutputs["mock"]["scenario"]["list"];
 type ScenarioDetail = RouterOutputs["mock"]["scenario"]["byId"];
 
-type ToolCallDraft = {
-  toolName: unknown;
-  callId?: unknown;
-  arguments?: unknown;
-  result?: unknown;
-};
-
 const emptyScenarioList: ScenarioList = [];
 
 const defaultScenarioForm: ScenarioFormState = { name: "", description: "" };
 
-const defaultInteractionForm: InteractionFormState = {
+const createToolCallFormState = (): ToolCallFormState => ({
+  id:
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2),
+  toolName: "",
+  callId: "",
+  arguments: "",
+  result: "",
+});
+
+const createDefaultInteractionForm = (): InteractionFormState => ({
   title: "",
   description: "",
   userMessage: "",
-  assistantMessage: "",
-  toolCallsJson: "",
-};
+  assistantResponse: "",
+  toolCalls: [],
+});
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
@@ -245,7 +258,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   const scenario = scenarioQuery.data ?? null;
   const { refetch: refetchScenario, isPending: isScenarioPending } = scenarioQuery;
   const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
-    defaultInteractionForm,
+    createDefaultInteractionForm,
   );
 
   const createInteraction = useMutation({
@@ -253,7 +266,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
     onSuccess: () => {
       void refetchScenario();
       toast.success("Mock interaction saved");
-      setInteractionForm(defaultInteractionForm);
+      setInteractionForm(createDefaultInteractionForm());
     },
     onError: () => {
       toast.error("Failed to save interaction");
@@ -281,67 +294,73 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
 
     const title = interactionForm.title.trim();
     const userMessage = interactionForm.userMessage.trim();
-    const assistantMessage = interactionForm.assistantMessage.trim();
+    const assistantResponse = interactionForm.assistantResponse.trim();
 
-    if (!title.length || !userMessage.length || !assistantMessage.length) {
-      toast.error("Title, user message, and assistant message are required");
+    if (!title.length || !userMessage.length || !assistantResponse.length) {
+      toast.error("Title, user input, and response are required");
       return;
     }
 
-    let toolCalls: {
+    const toolCalls: {
       toolName: string;
       callId?: string;
       arguments?: JsonValue | null;
       result?: JsonValue | null;
     }[] = [];
 
-    if (interactionForm.toolCallsJson.trim().length) {
+    for (let index = 0; index < interactionForm.toolCalls.length; index += 1) {
+      const draft = interactionForm.toolCalls[index];
+      const toolName = draft.toolName.trim();
+      const callId = draft.callId.trim();
+      const argumentsText = draft.arguments.trim();
+      const resultText = draft.result.trim();
+
+      const hasContent =
+        toolName.length || callId.length || argumentsText.length || resultText.length;
+
+      if (!hasContent) {
+        continue;
+      }
+
+      if (!toolName.length) {
+        toast.error(`Tool call ${index + 1} is missing a tool name`);
+        return;
+      }
+
+      const toolCall: {
+        toolName: string;
+        callId?: string;
+        arguments?: JsonValue | null;
+        result?: JsonValue | null;
+      } = {
+        toolName,
+      };
+
+      if (callId.length) {
+        toolCall.callId = callId;
+      }
+
       try {
-        const parsed = JSON.parse(interactionForm.toolCallsJson) as unknown;
-        if (!Array.isArray(parsed)) {
-          throw new Error("Tool calls must be an array");
+        if (argumentsText.length) {
+          const parsedArguments = parseToolCallValue(
+            argumentsText,
+            `tool call ${index + 1} arguments`,
+          );
+          toolCall.arguments = parsedArguments;
         }
 
-        toolCalls = parsed.map((item, index) => {
-          if (!isToolCallDraft(item)) {
-            throw new Error(`Invalid tool call at index ${index}`);
-          }
-
-          const rawName = typeof item.toolName === "string" ? item.toolName : String(item.toolName);
-          const toolName = rawName.trim();
-          if (!toolName.length) {
-            throw new Error(`Tool name missing at index ${index}`);
-          }
-
-          const toolCall: {
-            toolName: string;
-            callId?: string;
-            arguments?: JsonValue | null;
-            result?: JsonValue | null;
-          } = {
-            toolName,
-          };
-
-          if (typeof item.callId === "string" && item.callId.trim().length > 0) {
-            toolCall.callId = item.callId;
-          }
-
-          if ("arguments" in item) {
-            toolCall.arguments = normalizeJsonishClient(item.arguments);
-          }
-
-          if ("result" in item) {
-            toolCall.result = normalizeJsonishClient(item.result);
-          }
-
-          return toolCall;
-        });
+        if (resultText.length) {
+          const parsedResult = parseToolCallValue(resultText, `tool call ${index + 1} result`);
+          toolCall.result = parsedResult;
+        }
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Unable to parse tool calls JSON",
+          error instanceof Error ? error.message : "Unable to parse tool call payload",
         );
         return;
       }
+
+      toolCalls.push(toolCall);
     }
 
     createInteraction.mutate({
@@ -351,15 +370,39 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
       messages: [
         {
           role: "user",
-          content: userMessage,
+          content: [
+            {
+              type: "text",
+              text: userMessage,
+            },
+          ],
         },
         {
           role: "assistant",
-          content: assistantMessage,
+          content: [
+            {
+              type: "text",
+              text: assistantResponse,
+            },
+          ],
           toolCalls,
         },
       ],
     });
+  };
+
+  const handleAddToolCall = () => {
+    setInteractionForm((state) => ({
+      ...state,
+      toolCalls: [...state.toolCalls, createToolCallFormState()],
+    }));
+  };
+
+  const handleRemoveToolCall = (id: string) => {
+    setInteractionForm((state) => ({
+      ...state,
+      toolCalls: state.toolCalls.filter((toolCall) => toolCall.id !== id),
+    }));
   };
 
   const handleDeleteInteraction = (interactionId: string) => {
@@ -428,70 +471,194 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add interaction</CardTitle>
+          <CardTitle>Add mock response</CardTitle>
           <CardDescription>
-            Define an expected conversation transcript and optional tool call payloads.
+            Define how the assistant should reply when it receives a matching message.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-3" onSubmit={handleCreateInteraction}>
-            <Input
-              placeholder="Interaction title"
-              value={interactionForm.title}
-              onChange={(event) =>
-                setInteractionForm((state) => ({ ...state, title: event.target.value }))
-              }
-              required
-            />
-            <Textarea
-              placeholder="Optional description"
-              value={interactionForm.description}
-              onChange={(event) =>
-                setInteractionForm((state) => ({
-                  ...state,
-                  description: event.target.value,
-                }))
-              }
-              rows={2}
-            />
-            <Textarea
-              placeholder="User message"
-              value={interactionForm.userMessage}
-              onChange={(event) =>
-                setInteractionForm((state) => ({
-                  ...state,
-                  userMessage: event.target.value,
-                }))
-              }
-              rows={4}
-              required
-            />
-            <Textarea
-              placeholder="Assistant message"
-              value={interactionForm.assistantMessage}
-              onChange={(event) =>
-                setInteractionForm((state) => ({
-                  ...state,
-                  assistantMessage: event.target.value,
-                }))
-              }
-              rows={4}
-              required
-            />
-            <Textarea
-              placeholder='Optional tool calls JSON (e.g. [{"toolName":"search","arguments":{"query":"docs"},"result":{"items":[]}}])'
-              value={interactionForm.toolCallsJson}
-              onChange={(event) =>
-                setInteractionForm((state) => ({
-                  ...state,
-                  toolCallsJson: event.target.value,
-                }))
-              }
-              rows={5}
-            />
+          <form className="flex flex-col gap-4" onSubmit={handleCreateInteraction}>
+            <div className="grid gap-2">
+              <Label htmlFor="interaction-title">Mock name</Label>
+              <Input
+                id="interaction-title"
+                placeholder="Weather update"
+                value={interactionForm.title}
+                onChange={(event) =>
+                  setInteractionForm((state) => ({ ...state, title: event.target.value }))
+                }
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="interaction-description">Description (optional)</Label>
+              <Textarea
+                id="interaction-description"
+                placeholder="Short summary for your teammates"
+                value={interactionForm.description}
+                onChange={(event) =>
+                  setInteractionForm((state) => ({
+                    ...state,
+                    description: event.target.value,
+                  }))
+                }
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="interaction-user">If the user says&hellip;</Label>
+              <Textarea
+                id="interaction-user"
+                placeholder="What's the weather like in San Francisco?"
+                value={interactionForm.userMessage}
+                onChange={(event) =>
+                  setInteractionForm((state) => ({
+                    ...state,
+                    userMessage: event.target.value,
+                  }))
+                }
+                rows={4}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                We&apos;ll match incoming requests against this message.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="interaction-response">Respond with&hellip;</Label>
+              <Textarea
+                id="interaction-response"
+                placeholder="It&apos;s 72°F and sunny along the bay."
+                value={interactionForm.assistantResponse}
+                onChange={(event) =>
+                  setInteractionForm((state) => ({
+                    ...state,
+                    assistantResponse: event.target.value,
+                  }))
+                }
+                rows={4}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                We&apos;ll convert this to a UI message payload for you.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Tool calls (optional)</p>
+                <p className="text-sm text-muted-foreground">
+                  Provide any tool activity that should happen before the assistant reply.
+                </p>
+              </div>
+              {interactionForm.toolCalls.map((toolCall, index) => (
+                <div
+                  key={toolCall.id}
+                  className="space-y-3 rounded-md border border-dashed border-border/70 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">Tool call {index + 1}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveToolCall(toolCall.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`tool-${toolCall.id}-name`}>Tool name</Label>
+                      <Input
+                        id={`tool-${toolCall.id}-name`}
+                        placeholder="search"
+                        value={toolCall.toolName}
+                        onChange={(event) =>
+                          setInteractionForm((state) => ({
+                            ...state,
+                            toolCalls: state.toolCalls.map((item) =>
+                              item.id === toolCall.id
+                                ? { ...item, toolName: event.target.value }
+                                : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`tool-${toolCall.id}-call-id`}>Call ID (optional)</Label>
+                      <Input
+                        id={`tool-${toolCall.id}-call-id`}
+                        placeholder="call_123"
+                        value={toolCall.callId}
+                        onChange={(event) =>
+                          setInteractionForm((state) => ({
+                            ...state,
+                            toolCalls: state.toolCalls.map((item) =>
+                              item.id === toolCall.id
+                                ? { ...item, callId: event.target.value }
+                                : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`tool-${toolCall.id}-arguments`}>
+                      Arguments JSON (optional)
+                    </Label>
+                    <Textarea
+                      id={`tool-${toolCall.id}-arguments`}
+                      placeholder='{"query":"docs"}'
+                      value={toolCall.arguments}
+                      onChange={(event) =>
+                        setInteractionForm((state) => ({
+                          ...state,
+                          toolCalls: state.toolCalls.map((item) =>
+                            item.id === toolCall.id
+                              ? { ...item, arguments: event.target.value }
+                              : item,
+                          ),
+                        }))
+                      }
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`tool-${toolCall.id}-result`}>
+                      Result JSON (optional)
+                    </Label>
+                    <Textarea
+                      id={`tool-${toolCall.id}-result`}
+                      placeholder='{"items":[]}'
+                      value={toolCall.result}
+                      onChange={(event) =>
+                        setInteractionForm((state) => ({
+                          ...state,
+                          toolCalls: state.toolCalls.map((item) =>
+                            item.id === toolCall.id
+                              ? { ...item, result: event.target.value }
+                              : item,
+                          ),
+                        }))
+                      }
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Strings should be wrapped in quotes to be valid JSON.
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={handleAddToolCall}>
+                Add tool call
+              </Button>
+            </div>
             <div className="flex justify-end">
               <Button type="submit" loading={createInteraction.isPending}>
-                Save interaction
+                Save mock response
               </Button>
             </div>
           </form>
@@ -589,9 +756,6 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const isToolCallDraft = (value: unknown): value is ToolCallDraft =>
-  isRecord(value) && "toolName" in value;
-
 const renderContent = (content: unknown) => {
   if (typeof content === "string") {
     return <p className="whitespace-pre-wrap">{content}</p>;
@@ -641,39 +805,21 @@ const renderContent = (content: unknown) => {
   return null;
 };
 
-const normalizeJsonishClient = (value: unknown): JsonValue | null => {
-  if (value === undefined || value === null) {
+const parseToolCallValue = (input: string, context: string): JsonValue | null => {
+  const trimmed = input.trim();
+
+  if (!trimmed.length) {
     return null;
   }
 
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed.length) {
-      return null;
+  try {
+    return JSON.parse(trimmed) as JsonValue;
+  } catch {
+    const firstCharacter = trimmed[0];
+    if (firstCharacter === "{" || firstCharacter === "[" || firstCharacter === '"') {
+      throw new Error(`${context} must be valid JSON`);
     }
 
-    try {
-      return JSON.parse(trimmed) as JsonValue;
-    } catch {
-      return trimmed;
-    }
+    return trimmed;
   }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => normalizeJsonishClient(entry) ?? null);
-  }
-
-  if (isRecord(value)) {
-    const record: Record<string, JsonValue> = {};
-    for (const [key, entry] of Object.entries(value)) {
-      record[key] = normalizeJsonishClient(entry) ?? null;
-    }
-    return record;
-  }
-
-  return null;
 };
