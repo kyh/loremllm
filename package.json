@@ -1,7 +1,7 @@
 {
   "name": "loremllm",
   "private": true,
-  "packageManager": "pnpm@10.17.0",
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
@@ -34,6 +34,7 @@
   "prettier": "@kyh/prettier-config",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
       "esbuild",
       "sharp",
       "supabase"
