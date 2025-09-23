@@ -1,8 +1,11 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Chat, useChat } from "@ai-sdk/react";
+import type { DataUIPart, UIMessage } from "ai";
+import { DefaultChatTransport } from "ai";
 import { Button } from "@repo/ui/button";
 import {
   Card,
@@ -11,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@repo/ui/drawer";
 import { Input } from "@repo/ui/input";
 import { Textarea } from "@repo/ui/textarea";
 import { Badge } from "@repo/ui/badge";
@@ -42,6 +53,19 @@ type ToolCallDraft = {
   arguments?: unknown;
   result?: unknown;
 };
+
+type TextUIPart = { type: "text"; text: string };
+type ToolUIPart = {
+  type: `tool-${string}` | "dynamic-tool";
+  toolCallId: string;
+  toolName?: string;
+  state?: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+};
+
+type MatchingData = Record<string, unknown>;
 
 const emptyScenarioList: ScenarioList = [];
 
@@ -247,6 +271,11 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
     defaultInteractionForm,
   );
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  useEffect(() => {
+    setIsChatOpen(false);
+  }, [props.scenarioId]);
 
   const createInteraction = useMutation({
     ...trpc.mock.interaction.create.mutationOptions(),
@@ -392,11 +421,25 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>{scenario.name}</CardTitle>
-          <CardDescription>
-            Use this scenario ID with your LLM client to retrieve deterministic responses.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <CardTitle>{scenario.name}</CardTitle>
+            <CardDescription>
+              Use this scenario ID with your LLM client to retrieve deterministic responses.
+            </CardDescription>
+          </div>
+          <Drawer
+            open={isChatOpen}
+            onOpenChange={setIsChatOpen}
+            direction="right"
+          >
+            <DrawerTrigger asChild>
+              <Button size="sm" variant="secondary">
+                Chat with mock
+              </Button>
+            </DrawerTrigger>
+            <MockChatDrawerContent scenario={scenario} />
+          </Drawer>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
           <div>
@@ -584,6 +627,403 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
       </div>
     </div>
   );
+};
+
+type MockChatDrawerContentProps = {
+  scenario: NonNullable<ScenarioDetail>;
+};
+
+const roleLabel: Record<UIMessage["role"], string> = {
+  system: "System",
+  user: "You",
+  assistant: "Assistant",
+};
+
+const roleLabelColor: Record<UIMessage["role"], string> = {
+  system: "text-violet-200",
+  user: "text-sky-200",
+  assistant: "text-emerald-200",
+};
+
+const roleAccentBackground: Record<UIMessage["role"], string> = {
+  system: "border-violet-500/40 bg-violet-500/10",
+  user: "border-sky-500/40 bg-sky-500/10",
+  assistant: "border-emerald-500/40 bg-emerald-500/10",
+};
+
+const MockChatDrawerContent = ({ scenario }: MockChatDrawerContentProps) => {
+  const [input, setInput] = useState("");
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [dataParts, setDataParts] = useState<Record<string, unknown>>({});
+  const [messageMetadata, setMessageMetadata] = useState<MatchingData | null>(null);
+
+  const handleData = useCallback((part: DataUIPart<Record<string, unknown>>) => {
+    const key = part.type.startsWith("data-")
+      ? part.type.slice("data-".length)
+      : part.type;
+
+    setDataParts((previous) => ({
+      ...previous,
+      [part.id ? `${key}#${part.id}` : key]: part.data,
+    }));
+  }, []);
+
+  const handleFinish = useCallback((event: { message: UIMessage }) => {
+    const metadata = event.message.metadata;
+
+    if (metadata && typeof metadata === "object") {
+      setMessageMetadata(metadata as MatchingData);
+    } else {
+      setMessageMetadata(null);
+    }
+  }, []);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest: ({ body }) => ({
+          body: {
+            ...(body ?? {}),
+            scenarioId: scenario.publicId,
+          },
+        }),
+      }),
+    [scenario.publicId],
+  );
+
+  const chat = useMemo(
+    () =>
+      new Chat({
+        transport,
+        onData: handleData,
+        onFinish: (event) => handleFinish({ message: event.message }),
+      }),
+    [transport, handleData, handleFinish],
+  );
+
+  const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat({
+    chat,
+  });
+
+  useEffect(() => {
+    setMessages([]);
+    setDataParts({});
+    setMessageMetadata(null);
+    setInput("");
+    setClientError(null);
+    clearError();
+  }, [scenario.id, setMessages, clearError]);
+
+  useEffect(() => {
+    if (status === "submitted") {
+      setDataParts({});
+      setMessageMetadata(null);
+    }
+  }, [status]);
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const trimmedInput = input.trim();
+
+      if (!trimmedInput.length) {
+        setClientError("Enter a message to start chatting.");
+        return;
+      }
+
+      setClientError(null);
+
+      try {
+        await sendMessage({ text: trimmedInput });
+        setInput("");
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Unknown error";
+        setClientError(message);
+      }
+    },
+    [input, sendMessage],
+  );
+
+  const handleReset = useCallback(() => {
+    setMessages([]);
+    setDataParts({});
+    setMessageMetadata(null);
+    setClientError(null);
+    setInput("");
+    clearError();
+  }, [setMessages, clearError]);
+
+  const dismissError = useCallback(() => {
+    clearError();
+    setClientError(null);
+  }, [clearError]);
+
+  const isBusy = status === "submitted" || status === "streaming";
+
+  const matching = useMemo(
+    () =>
+      Object.entries(dataParts).reduce<MatchingData | null>((acc, [key, value]) => {
+        if (!key.startsWith("matching")) {
+          return acc;
+        }
+
+        const next = { ...(acc ?? {}) };
+
+        if (isRecord(value)) {
+          Object.assign(next, value);
+        } else {
+          next[key] = value;
+        }
+
+        return next;
+      }, null),
+    [dataParts],
+  );
+
+  const activeMetadata = messageMetadata ?? matching;
+  const similarityValue =
+    typeof activeMetadata?.similarity === "number" ? activeMetadata.similarity : null;
+  const matchedTitle =
+    typeof activeMetadata?.title === "string" ? activeMetadata.title : null;
+  const matchedScenarioName =
+    typeof activeMetadata?.scenario === "string" ? activeMetadata.scenario : null;
+  const matchedInteractionId =
+    typeof activeMetadata?.interactionId === "string"
+      ? activeMetadata.interactionId
+      : typeof activeMetadata?.interactionID === "string"
+        ? activeMetadata.interactionID
+        : null;
+
+  const chatErrorMessage = error instanceof Error ? error.message : null;
+  const hasChatError = Boolean(error);
+
+  return (
+    <DrawerContent className="flex h-full w-full flex-col bg-background/95 sm:max-w-xl">
+      <DrawerHeader className="border-b bg-background/80">
+        <DrawerTitle>Chat with {scenario.name}</DrawerTitle>
+        <DrawerDescription>
+          Send prompts to preview responses returned by your saved interactions.
+        </DrawerDescription>
+      </DrawerHeader>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
+          <span className="font-mono text-[11px] tracking-wide">
+            Scenario ID: {scenario.publicId}
+          </span>
+          <Button onClick={handleReset} size="sm" variant="ghost">
+            Reset chat
+          </Button>
+        </div>
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          {messages.length ? (
+            messages.map((message) => {
+              const textContent = renderMessageText(message);
+              const rawParts: unknown = (message as { parts?: unknown }).parts;
+              const parts = Array.isArray(rawParts) ? rawParts : [];
+              const toolParts = parts.filter((part): part is ToolUIPart => isToolUIPart(part));
+
+              return (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 shadow-sm",
+                    roleAccentBackground[message.role],
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "text-xs font-medium uppercase tracking-wide",
+                      roleLabelColor[message.role],
+                    )}
+                  >
+                    {roleLabel[message.role]}
+                  </div>
+                  {textContent ? (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90">
+                      {textContent}
+                    </p>
+                  ) : null}
+                  {toolParts.length ? (
+                    <div className="mt-2 space-y-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-50">
+                      <p className="font-semibold uppercase tracking-wide text-emerald-100">
+                        Tool calls
+                      </p>
+                      {toolParts.map((part) => {
+                        const toolIdentifier =
+                          part.type === "dynamic-tool"
+                            ? part.toolName ?? "dynamic tool"
+                            : part.type.slice("tool-".length);
+
+                        return (
+                          <div key={part.toolCallId} className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold">{toolIdentifier}</span>
+                              <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wide">
+                                {part.state ?? "pending"}
+                              </span>
+                            </div>
+                            {part.input !== undefined ? (
+                              <pre className="overflow-x-auto rounded-md bg-emerald-500/15 p-2">
+                                {JSON.stringify(part.input, null, 2)}
+                              </pre>
+                            ) : null}
+                            {part.output !== undefined ? (
+                              <pre className="overflow-x-auto rounded-md bg-emerald-500/15 p-2">
+                                {JSON.stringify(part.output, null, 2)}
+                              </pre>
+                            ) : null}
+                            {part.errorText ? (
+                              <p className="text-rose-200">{part.errorText}</p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Send a message to test mocked responses for this scenario.
+            </p>
+          )}
+        </div>
+        {activeMetadata ? (
+          <div className="border-t bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                Matched {matchedTitle ? `"${matchedTitle}"` : "mock interaction"}
+                {matchedScenarioName ? ` in ${matchedScenarioName}` : null}
+              </div>
+              {similarityValue !== null ? (
+                <span className="font-semibold text-foreground">
+                  {formatSimilarity(similarityValue)}
+                </span>
+              ) : null}
+            </div>
+            {matchedInteractionId ? (
+              <div className="font-mono text-[11px]">
+                Interaction ID: {matchedInteractionId}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {clientError ? (
+          <div className="border-t border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+            {clientError}
+          </div>
+        ) : null}
+        {hasChatError ? (
+          <div className="border-t border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive">
+            <div className="flex items-center justify-between gap-2">
+              <span>{chatErrorMessage ?? "An unexpected error occurred."}</span>
+              <Button onClick={dismissError} size="sm" variant="ghost">
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        <form onSubmit={handleSubmit} className="border-t bg-background px-4 py-3">
+          <Textarea
+            placeholder="Ask the mock assistant..."
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            rows={4}
+            className="resize-none"
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => stop()}
+              disabled={status !== "streaming"}
+            >
+              Stop
+            </Button>
+            <Button type="submit" loading={isBusy} disabled={!input.trim().length}>
+              {isBusy ? "Sending" : "Send"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </DrawerContent>
+  );
+};
+
+const renderMessageText = (message: UIMessage) => {
+  const rawParts: unknown = (message as { parts?: unknown }).parts;
+  const parts = Array.isArray(rawParts) ? rawParts : [];
+
+  const textParts = parts
+    .filter(isTextUIPart)
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+
+  if (textParts.length) {
+    return textParts;
+  }
+
+  return parts
+    .map((part) => {
+      if (typeof part === "string") {
+        return part;
+      }
+
+      if (isTextUIPart(part)) {
+        return part.text;
+      }
+
+      if (isToolUIPart(part)) {
+        return "";
+      }
+
+      if (isRecord(part)) {
+        const maybeText = (part as { text?: unknown }).text;
+        if (typeof maybeText === "string") {
+          return maybeText;
+        }
+      }
+
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+};
+
+const formatSimilarity = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+const isTextUIPart = (part: unknown): part is TextUIPart => {
+  if (!isRecord(part)) {
+    return false;
+  }
+
+  const { type, text } = part as { type?: unknown; text?: unknown };
+
+  return type === "text" && typeof text === "string";
+};
+
+const isToolUIPart = (part: unknown): part is ToolUIPart => {
+  if (!isRecord(part)) {
+    return false;
+  }
+
+  const { type, toolCallId, toolName } = part as {
+    type?: unknown;
+    toolCallId?: unknown;
+    toolName?: unknown;
+  };
+
+  if (type === "dynamic-tool") {
+    return typeof toolCallId === "string" && typeof toolName === "string";
+  }
+
+  return typeof type === "string" && type.startsWith("tool-") && typeof toolCallId === "string";
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
