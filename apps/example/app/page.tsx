@@ -107,26 +107,29 @@ const ExampleChatPage = () => {
     }
   }, []);
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: apiUrl,
-        headers: apiKey ? { "x-api-key": apiKey } : undefined,
-        prepareSendMessagesRequest: ({ body }) => ({
-          body: {
-            ...(body ?? {}),
-            scenarioId: scenarioId.trim(),
-          },
-        }),
-        prepareReconnectToStreamRequest: ({ body }) => ({
-          body: {
-            ...(body ?? {}),
-            scenarioId: scenarioId.trim(),
-          },
-        }),
-      }),
-    [apiUrl, apiKey, scenarioId],
-  );
+  const transport = useMemo(() => {
+    const trimmedApiUrl = apiUrl.trim();
+    const trimmedScenarioId = scenarioId.trim();
+
+    const [withoutFragment, fragment = ""] = trimmedApiUrl.split("#", 2);
+    const [path, search = ""] = withoutFragment.split("?", 2);
+    const normalizedPath = path.replace(/\/+$/, "");
+    const basePath = trimmedScenarioId.length > 0 ? normalizedPath : path;
+    const pathWithScenario =
+      trimmedScenarioId.length > 0
+        ? `${basePath}${basePath ? "/" : ""}${trimmedScenarioId}`
+        : basePath;
+
+    const endpoint =
+      pathWithScenario +
+      (search ? `?${search}` : "") +
+      (fragment ? `#${fragment}` : "");
+
+    return new DefaultChatTransport({
+      api: endpoint,
+      headers: apiKey ? { "x-api-key": apiKey } : undefined,
+    });
+  }, [apiUrl, apiKey, scenarioId]);
 
   const chat = useMemo(
     () =>
@@ -242,8 +245,8 @@ const ExampleChatPage = () => {
           <div>
             <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 600 }}>Mock Chat Playground</h1>
             <p style={{ margin: "8px 0 0", color: "rgba(226, 232, 240, 0.75)", lineHeight: 1.6 }}>
-              Point this UI at the mock <code>/api/chat</code> endpoint to iterate on your chat experiences without
-              hitting real LLMs. Configure the scenario ID, optional API key, and stream responses powered by the
+              Point this UI at the mock <code>/api/chat</code> endpoint and it will append the selected scenario ID to
+              each request. Iterate on your chat experiences without hitting real LLMs and stream responses powered by the
               AI SDK&apos;s React helpers.
             </p>
           </div>
