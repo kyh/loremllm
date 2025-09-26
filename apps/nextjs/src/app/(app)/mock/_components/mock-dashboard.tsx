@@ -20,6 +20,7 @@ import { cn } from "@repo/ui/utils";
 import type { JsonValue } from "@repo/api/mock/mock-schema";
 import type { RouterOutputs } from "@repo/api";
 import { useTRPC } from "@/trpc/react";
+import { ScenarioChatDrawer } from "./scenario-chat-drawer";
 
 type ScenarioFormState = {
   name: string;
@@ -435,11 +436,14 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>{scenario.name}</CardTitle>
-          <CardDescription>
-            Use this scenario ID with your LLM client to retrieve deterministic responses.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <CardTitle>{scenario.name}</CardTitle>
+            <CardDescription>
+              Use this scenario ID with your LLM client to retrieve deterministic responses.
+            </CardDescription>
+          </div>
+          <ScenarioChatDrawer scenarioId={scenario.publicId} scenarioName={scenario.name} />
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
           <div>
