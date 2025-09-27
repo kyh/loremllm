@@ -26,7 +26,7 @@
     "@trpc/tanstack-react-query": "catalog:",
     "ai": "^5.0.56",
     "fumadocs-core": "^15.8.1",
-    "fumadocs-mdx": "^11.10.1",
+    "fumadocs-mdx": "^12.0.1",
     "fumadocs-ui": "^15.8.1",
     "next": "catalog:",
     "react": "catalog:",

@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
 import {
   Card,
@@ -14,11 +14,12 @@ import {
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
-import { Badge } from "@repo/ui/badge";
 import { toast } from "@repo/ui/toast";
 import { cn } from "@repo/ui/utils";
-import type { JsonValue } from "@repo/api/mock/mock-schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
+
 import type { RouterOutputs } from "@repo/api";
+import type { JsonValue } from "@repo/api/mock/mock-schema";
 import { useTRPC } from "@/trpc/react";
 import { ScenarioChatDrawer } from "./scenario-chat-drawer";
 
@@ -75,9 +76,13 @@ export const MockDashboard = () => {
     trpc.mock.scenario.list.queryOptions(undefined),
   );
   const scenarios = scenarioListQuery.data ?? emptyScenarioList;
-  const { refetch: refetchScenarios, isPending: isFetchingScenarios } = scenarioListQuery;
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-  const [scenarioForm, setScenarioForm] = useState<ScenarioFormState>(defaultScenarioForm);
+  const { refetch: refetchScenarios, isPending: isFetchingScenarios } =
+    scenarioListQuery;
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(
+    null,
+  );
+  const [scenarioForm, setScenarioForm] =
+    useState<ScenarioFormState>(defaultScenarioForm);
 
   useEffect(() => {
     if (!selectedScenarioId && scenarios.length > 0) {
@@ -141,7 +146,9 @@ export const MockDashboard = () => {
   const selectedScenario = useMemo<ScenarioList[number] | null>(
     () =>
       selectedScenarioId
-        ? scenarios.find((scenarioItem) => scenarioItem.id === selectedScenarioId) ?? null
+        ? (scenarios.find(
+            (scenarioItem) => scenarioItem.id === selectedScenarioId,
+          ) ?? null)
         : null,
     [scenarios, selectedScenarioId],
   );
@@ -171,17 +178,19 @@ export const MockDashboard = () => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{scenario.name}</span>
-                    <Badge variant="secondary">{scenario.interactionCount} mocks</Badge>
+                    <Badge variant="secondary">
+                      {scenario.interactionCount} mocks
+                    </Badge>
                   </div>
                   {scenario.description ? (
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="text-muted-foreground mt-1 text-sm">
                       {scenario.description}
                     </p>
                   ) : null}
                 </button>
               ))}
               {!isFetchingScenarios && !scenarios.length ? (
-                <p className="rounded border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                <p className="border-border text-muted-foreground rounded border border-dashed px-3 py-4 text-sm">
                   Create a scenario to start mocking responses.
                 </p>
               ) : null}
@@ -189,20 +198,26 @@ export const MockDashboard = () => {
             {selectedScenario ? (
               <Button
                 variant="ghost"
-                className="justify-start text-sm text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive justify-start text-sm"
                 disabled={deleteScenario.isPending}
                 onClick={() => handleDeleteScenario(selectedScenario.id)}
               >
                 Delete selected
               </Button>
             ) : null}
-            <form className="flex flex-col gap-2" onSubmit={handleCreateScenario}>
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={handleCreateScenario}
+            >
               <h3 className="font-semibold">New scenario</h3>
               <Input
                 placeholder="Scenario name"
                 value={scenarioForm.name}
                 onChange={(event) =>
-                  setScenarioForm((state) => ({ ...state, name: event.target.value }))
+                  setScenarioForm((state) => ({
+                    ...state,
+                    name: event.target.value,
+                  }))
                 }
                 required
               />
@@ -225,7 +240,10 @@ export const MockDashboard = () => {
         </Card>
         <div className="flex-1">
           {selectedScenarioId ? (
-            <ScenarioDetail key={selectedScenarioId} scenarioId={selectedScenarioId} />
+            <ScenarioDetail
+              key={selectedScenarioId}
+              scenarioId={selectedScenarioId}
+            />
           ) : (
             <Card>
               <CardHeader>
@@ -257,7 +275,8 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
     ),
   );
   const scenario = scenarioQuery.data ?? null;
-  const { refetch: refetchScenario, isPending: isScenarioPending } = scenarioQuery;
+  const { refetch: refetchScenario, isPending: isScenarioPending } =
+    scenarioQuery;
   const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
     createDefaultInteractionForm,
   );
@@ -311,13 +330,21 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
 
     for (let index = 0; index < interactionForm.toolCalls.length; index += 1) {
       const draft = interactionForm.toolCalls[index];
+
+      if (!draft) {
+        continue;
+      }
+
       const toolName = draft.toolName.trim();
       const callId = draft.callId.trim();
       const argumentsText = draft.arguments.trim();
       const resultText = draft.result.trim();
 
       const hasContent =
-        toolName.length || callId.length || argumentsText.length || resultText.length;
+        toolName.length ||
+        callId.length ||
+        argumentsText.length ||
+        resultText.length;
 
       if (!hasContent) {
         continue;
@@ -351,12 +378,17 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
         }
 
         if (resultText.length) {
-          const parsedResult = parseToolCallValue(resultText, `tool call ${index + 1} result`);
+          const parsedResult = parseToolCallValue(
+            resultText,
+            `tool call ${index + 1} result`,
+          );
           toolCall.result = parsedResult;
         }
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Unable to parse tool call payload",
+          error instanceof Error
+            ? error.message
+            : "Unable to parse tool call payload",
         );
         return;
       }
@@ -440,15 +472,19 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
           <div className="space-y-2">
             <CardTitle>{scenario.name}</CardTitle>
             <CardDescription>
-              Use this scenario ID with your LLM client to retrieve deterministic responses.
+              Use this scenario ID with your LLM client to retrieve
+              deterministic responses.
             </CardDescription>
           </div>
-          <ScenarioChatDrawer scenarioId={scenario.publicId} scenarioName={scenario.name} />
+          <ScenarioChatDrawer
+            scenarioId={scenario.publicId}
+            scenarioName={scenario.name}
+          />
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
           <div>
             <span className="font-semibold">Scenario ID:</span>
-            <code className="ml-2 rounded bg-muted px-2 py-1 text-xs">
+            <code className="bg-muted ml-2 rounded px-2 py-1 text-xs">
               {scenario.publicId}
             </code>
           </div>
@@ -457,8 +493,8 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
           ) : null}
           <div>
             <p className="font-semibold">API usage example</p>
-            <pre className="mt-1 overflow-x-auto rounded bg-muted px-3 py-2 text-xs">
-{`import { Chat } from "@ai-sdk/react";
+            <pre className="bg-muted mt-1 overflow-x-auto rounded px-3 py-2 text-xs">
+              {`import { Chat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 
 const transport = new DefaultChatTransport({
@@ -483,11 +519,15 @@ await chat.sendMessage({ text: "..." });`}
         <CardHeader>
           <CardTitle>Add mock response</CardTitle>
           <CardDescription>
-            Define how the assistant should reply when it receives a matching message.
+            Define how the assistant should reply when it receives a matching
+            message.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleCreateInteraction}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={handleCreateInteraction}
+          >
             <div className="grid gap-2">
               <Label htmlFor="interaction-title">Mock name</Label>
               <Input
@@ -495,13 +535,18 @@ await chat.sendMessage({ text: "..." });`}
                 placeholder="Weather update"
                 value={interactionForm.title}
                 onChange={(event) =>
-                  setInteractionForm((state) => ({ ...state, title: event.target.value }))
+                  setInteractionForm((state) => ({
+                    ...state,
+                    title: event.target.value,
+                  }))
                 }
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="interaction-description">Description (optional)</Label>
+              <Label htmlFor="interaction-description">
+                Description (optional)
+              </Label>
               <Textarea
                 id="interaction-description"
                 placeholder="Short summary for your teammates"
@@ -530,7 +575,7 @@ await chat.sendMessage({ text: "..." });`}
                 rows={4}
                 required
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 We&apos;ll match incoming requests against this message.
               </p>
             </div>
@@ -538,7 +583,7 @@ await chat.sendMessage({ text: "..." });`}
               <Label htmlFor="interaction-response">Respond with&hellip;</Label>
               <Textarea
                 id="interaction-response"
-                placeholder="It&apos;s 72°F and sunny along the bay."
+                placeholder="It's 72°F and sunny along the bay."
                 value={interactionForm.assistantResponse}
                 onChange={(event) =>
                   setInteractionForm((state) => ({
@@ -549,21 +594,22 @@ await chat.sendMessage({ text: "..." });`}
                 rows={4}
                 required
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 We&apos;ll convert this to a UI message payload for you.
               </p>
             </div>
             <div className="space-y-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Tool calls (optional)</p>
-                <p className="text-sm text-muted-foreground">
-                  Provide any tool activity that should happen before the assistant reply.
+                <p className="text-muted-foreground text-sm">
+                  Provide any tool activity that should happen before the
+                  assistant reply.
                 </p>
               </div>
               {interactionForm.toolCalls.map((toolCall, index) => (
                 <div
                   key={toolCall.id}
-                  className="space-y-3 rounded-md border border-dashed border-border/70 p-3"
+                  className="border-border/70 space-y-3 rounded-md border border-dashed p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium">Tool call {index + 1}</p>
@@ -579,7 +625,9 @@ await chat.sendMessage({ text: "..." });`}
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="grid gap-1.5">
-                      <Label htmlFor={`tool-${toolCall.id}-name`}>Tool name</Label>
+                      <Label htmlFor={`tool-${toolCall.id}-name`}>
+                        Tool name
+                      </Label>
                       <Input
                         id={`tool-${toolCall.id}-name`}
                         placeholder="search"
@@ -597,7 +645,9 @@ await chat.sendMessage({ text: "..." });`}
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor={`tool-${toolCall.id}-call-id`}>Call ID (optional)</Label>
+                      <Label htmlFor={`tool-${toolCall.id}-call-id`}>
+                        Call ID (optional)
+                      </Label>
                       <Input
                         id={`tool-${toolCall.id}-call-id`}
                         placeholder="call_123"
@@ -656,13 +706,17 @@ await chat.sendMessage({ text: "..." });`}
                       }
                       rows={3}
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       Strings should be wrapped in quotes to be valid JSON.
                     </p>
                   </div>
                 </div>
               ))}
-              <Button type="button" variant="outline" onClick={handleAddToolCall}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddToolCall}
+              >
                 Add tool call
               </Button>
             </div>
@@ -681,7 +735,9 @@ await chat.sendMessage({ text: "..." });`}
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <CardTitle className="text-base">{interaction.title}</CardTitle>
+                  <CardTitle className="text-base">
+                    {interaction.title}
+                  </CardTitle>
                   {interaction.description ? (
                     <CardDescription>{interaction.description}</CardDescription>
                   ) : null}
@@ -696,18 +752,23 @@ await chat.sendMessage({ text: "..." });`}
                   Remove
                 </Button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                 <span>Matching sample:</span>
-                <span className="rounded bg-muted px-2 py-1">{interaction.matchingInput}</span>
+                <span className="bg-muted rounded px-2 py-1">
+                  {interaction.matchingInput}
+                </span>
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-3">
               {interaction.messages.map((message) => (
-                <div key={message.id} className="rounded border border-border p-3 text-sm">
+                <div
+                  key={message.id}
+                  className="border-border rounded border p-3 text-sm"
+                >
                   <div className="mb-1 flex items-center justify-between">
                     <Badge variant="outline">{message.role}</Badge>
                     {message.toolCalls.length ? (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {message.toolCalls.length} tool call(s)
                       </span>
                     ) : null}
@@ -718,26 +779,30 @@ await chat.sendMessage({ text: "..." });`}
                       {message.toolCalls.map((toolCall) => (
                         <div
                           key={toolCall.id}
-                          className="rounded bg-muted/60 p-2 text-xs text-muted-foreground"
+                          className="bg-muted/60 text-muted-foreground rounded p-2 text-xs"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-medium">{toolCall.toolName}</span>
-                            <code className="rounded bg-background px-1 py-0.5">
+                            <span className="font-medium">
+                              {toolCall.toolName}
+                            </span>
+                            <code className="bg-background rounded px-1 py-0.5">
                               {toolCall.callId}
                             </code>
                           </div>
-                          {toolCall.arguments !== null && toolCall.arguments !== undefined ? (
+                          {toolCall.arguments !== null &&
+                          toolCall.arguments !== undefined ? (
                             <div className="mt-1">
                               <span className="font-semibold">Args:</span>
-                              <pre className="mt-1 max-h-32 overflow-auto rounded bg-background px-2 py-1">
+                              <pre className="bg-background mt-1 max-h-32 overflow-auto rounded px-2 py-1">
                                 {JSON.stringify(toolCall.arguments, null, 2)}
                               </pre>
                             </div>
                           ) : null}
-                          {toolCall.result !== null && toolCall.result !== undefined ? (
+                          {toolCall.result !== null &&
+                          toolCall.result !== undefined ? (
                             <div className="mt-1">
                               <span className="font-semibold">Result:</span>
-                              <pre className="mt-1 max-h-32 overflow-auto rounded bg-background px-2 py-1">
+                              <pre className="bg-background mt-1 max-h-32 overflow-auto rounded px-2 py-1">
                                 {JSON.stringify(toolCall.result, null, 2)}
                               </pre>
                             </div>
@@ -753,8 +818,9 @@ await chat.sendMessage({ text: "..." });`}
         ))}
         {!scenario.interactions.length ? (
           <Card className="md:col-span-2">
-            <CardContent className="py-10 text-center text-muted-foreground">
-              No interactions yet. Create one to start streaming mocked responses.
+            <CardContent className="text-muted-foreground py-10 text-center">
+              No interactions yet. Create one to start streaming mocked
+              responses.
             </CardContent>
           </Card>
         ) : null}
@@ -806,7 +872,7 @@ const renderContent = (content: unknown) => {
 
   if (isRecord(content)) {
     return (
-      <pre className="max-h-48 overflow-auto rounded bg-muted px-2 py-1 text-xs">
+      <pre className="bg-muted max-h-48 overflow-auto rounded px-2 py-1 text-xs">
         {JSON.stringify(content, null, 2)}
       </pre>
     );
@@ -815,7 +881,10 @@ const renderContent = (content: unknown) => {
   return null;
 };
 
-const parseToolCallValue = (input: string, context: string): JsonValue | null => {
+const parseToolCallValue = (
+  input: string,
+  context: string,
+): JsonValue | null => {
   const trimmed = input.trim();
 
   if (!trimmed.length) {
@@ -826,7 +895,11 @@ const parseToolCallValue = (input: string, context: string): JsonValue | null =>
     return JSON.parse(trimmed) as JsonValue;
   } catch {
     const firstCharacter = trimmed[0];
-    if (firstCharacter === "{" || firstCharacter === "[" || firstCharacter === '"') {
+    if (
+      firstCharacter === "{" ||
+      firstCharacter === "[" ||
+      firstCharacter === '"'
+    ) {
       throw new Error(`${context} must be valid JSON`);
     }
 
