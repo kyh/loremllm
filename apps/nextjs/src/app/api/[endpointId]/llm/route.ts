@@ -5,6 +5,7 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
 } from "ai";
+import type { UIMessage } from "ai";
 import { db } from "@repo/db/drizzle-client";
 import { z } from "zod";
 
@@ -28,7 +29,7 @@ const messageSchema = z.object({
 });
 
 const paramsSchema = z.object({
-  scenarioId: z.string().uuid(),
+  endpointId: z.string().uuid(),
 });
 
 const requestSchema = z.object({
@@ -198,21 +199,21 @@ export async function POST(request: Request, context: { params: unknown }) {
   const paramResult = paramsSchema.safeParse(context.params);
 
   if (!paramResult.success) {
-    return new Response(JSON.stringify({ error: "Invalid scenario" }), {
+    return new Response(JSON.stringify({ error: "Invalid endpoint" }), {
       status: 400,
       headers: { "content-type": "application/json" },
     });
   }
 
   const body: IncomingRequest = parseResult.data;
-  const { scenarioId } = paramResult.data;
+  const { endpointId } = paramResult.data;
 
-  const scenario = await db.query.mockScenarios.findFirst({
-    where: (scenario, { eq }) => eq(scenario.publicId, scenarioId),
+  const endpoint = await db.query.mockEndpoints.findFirst({
+    where: (endpoint, { eq }) => eq(endpoint.publicId, endpointId),
   });
 
-  if (!scenario) {
-    return new Response(JSON.stringify({ error: "Scenario not found" }), {
+  if (!endpoint) {
+    return new Response(JSON.stringify({ error: "Endpoint not found" }), {
       status: 404,
       headers: { "content-type": "application/json" },
     });
@@ -232,7 +233,7 @@ export async function POST(request: Request, context: { params: unknown }) {
   const exactInteraction = await db.query.mockInteractions.findFirst({
     where: (interaction, { and, eq }) =>
       and(
-        eq(interaction.scenarioId, scenario.id),
+        eq(interaction.endpointId, endpoint.id),
         eq(interaction.matchingSignature, matchingSignature),
       ),
     with: {
@@ -252,7 +253,7 @@ export async function POST(request: Request, context: { params: unknown }) {
 
   if (!matchedInteraction) {
     const interactions = await db.query.mockInteractions.findMany({
-      where: (interaction, { eq }) => eq(interaction.scenarioId, scenario.id),
+      where: (interaction, { eq }) => eq(interaction.endpointId, endpoint.id),
       columns: {
         id: true,
         matchingInput: true,
@@ -291,7 +292,7 @@ export async function POST(request: Request, context: { params: unknown }) {
   const buildStream = (execute: Parameters<typeof createUIMessageStream>[0]["execute"]) =>
     createUIMessageStream({
       execute,
-      originalMessages: body.messages,
+      originalMessages: body.messages as unknown as UIMessage[],
     });
 
   if (!matchedInteraction) {
@@ -305,7 +306,7 @@ export async function POST(request: Request, context: { params: unknown }) {
       writer.write({
         type: "finish",
         messageMetadata: {
-          scenarioId: scenario.publicId,
+          endpointId: endpoint.publicId,
           matched: false,
         },
       });
@@ -325,7 +326,7 @@ export async function POST(request: Request, context: { params: unknown }) {
       type: "data-matching",
       id: "matching",
       data: {
-        scenario: scenario.name,
+        endpoint: endpoint.name,
         interactionId: matchedInteraction.id,
         title: matchedInteraction.title,
         similarity,
@@ -375,7 +376,7 @@ export async function POST(request: Request, context: { params: unknown }) {
         }
       }
 
-      const text = flattenContentToText(message.content);
+      const text = flattenContentToText(message.content as IncomingMessage["content"]);
 
       if (!text.length) {
         continue;
@@ -395,7 +396,7 @@ export async function POST(request: Request, context: { params: unknown }) {
     writer.write({
       type: "finish",
       messageMetadata: {
-        scenarioId: scenario.publicId,
+        endpointId: endpoint.publicId,
         interactionId: matchedInteraction.id,
         similarity,
       },

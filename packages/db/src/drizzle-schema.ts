@@ -6,7 +6,7 @@ import { pgTable } from "drizzle-orm/pg-core";
 
 import { organization, user } from "./drizzle-schema-auth";
 
-export const mockScenarios = pgTable("mock_scenarios", (t) => ({
+export const mockEndpoints = pgTable("mock_endpoints", (t) => ({
   id: t.uuid().primaryKey().defaultRandom(),
   publicId: t
     .text()
@@ -31,10 +31,10 @@ export const mockScenarios = pgTable("mock_scenarios", (t) => ({
 
 export const mockInteractions = pgTable("mock_interactions", (t) => ({
   id: t.uuid().primaryKey().defaultRandom(),
-  scenarioId: t
+  endpointId: t
     .uuid()
     .notNull()
-    .references(() => mockScenarios.id, { onDelete: "cascade" }),
+    .references(() => mockEndpoints.id, { onDelete: "cascade" }),
   title: t.text().notNull(),
   description: t.text(),
   matchingInput: t.text().notNull(),
@@ -87,16 +87,16 @@ export const mockToolCalls = pgTable("mock_tool_calls", (t) => ({
     .notNull(),
 }));
 
-export const mockScenariosRelations = relations(mockScenarios, ({ many }) => ({
+export const mockEndpointsRelations = relations(mockEndpoints, ({ many }) => ({
   interactions: many(mockInteractions),
 }));
 
 export const mockInteractionsRelations = relations(
   mockInteractions,
   ({ many, one }) => ({
-    scenario: one(mockScenarios, {
-      fields: [mockInteractions.scenarioId],
-      references: [mockScenarios.id],
+    endpoint: one(mockEndpoints, {
+      fields: [mockInteractions.endpointId],
+      references: [mockEndpoints.id],
     }),
     messages: many(mockMessages),
   }),

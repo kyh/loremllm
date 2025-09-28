@@ -3,19 +3,19 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   mockInteractions,
   mockMessages,
-  mockScenarios,
+  mockEndpoints,
   mockToolCalls,
 } from "@repo/db/drizzle-schema";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import {
   createInteractionInput,
-  createScenarioInput,
+  createEndpointInput,
   deleteInteractionInput,
-  deleteScenarioInput,
-  scenarioByIdInput,
-  updateScenarioInput,
+  deleteEndpointInput,
+  endpointByIdInput,
+  updateEndpointInput,
 } from "./mock-schema";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import type { AuthenticatedSession, TRPCContext } from "../trpc";
@@ -191,13 +191,13 @@ const normalizeMessageContent = (content: MessageInput["content"]) => {
 };
 
 export const mockRouter = createTRPCRouter({
-  scenario: createTRPCRouter({
+  endpoint: createTRPCRouter({
     list: protectedProcedure.query(async ({ ctx }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const scenarios = await ctx.db.query.mockScenarios.findMany({
-        where: (scenario, { eq }) => eq(scenario.organizationId, organizationId),
-        orderBy: (scenario, { desc }) => [desc(scenario.updatedAt)],
+      const endpoints = await ctx.db.query.mockEndpoints.findMany({
+        where: (endpoint, { eq }) => eq(endpoint.organizationId, organizationId),
+        orderBy: (endpoint, { desc }) => [desc(endpoint.updatedAt)],
         with: {
           interactions: {
             columns: { id: true },
@@ -205,24 +205,24 @@ export const mockRouter = createTRPCRouter({
         },
       });
 
-      return scenarios.map((scenario) => ({
-        id: scenario.id,
-        publicId: scenario.publicId,
-        name: scenario.name,
-        description: scenario.description,
-        metadata: scenario.metadata,
-        createdAt: scenario.createdAt,
-        updatedAt: scenario.updatedAt,
-        interactionCount: scenario.interactions.length,
+      return endpoints.map((endpoint) => ({
+        id: endpoint.id,
+        publicId: endpoint.publicId,
+        name: endpoint.name,
+        description: endpoint.description,
+        metadata: endpoint.metadata,
+        createdAt: endpoint.createdAt,
+        updatedAt: endpoint.updatedAt,
+        interactionCount: endpoint.interactions.length,
       }));
     }),
 
-    byId: protectedProcedure.input(scenarioByIdInput).query(async ({ ctx, input }) => {
+    byId: protectedProcedure.input(endpointByIdInput).query(async ({ ctx, input }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const scenario = await ctx.db.query.mockScenarios.findFirst({
-        where: (scenario, { and, eq }) =>
-          and(eq(scenario.id, input.scenarioId), eq(scenario.organizationId, organizationId)),
+      const endpoint = await ctx.db.query.mockEndpoints.findFirst({
+        where: (endpoint, { and, eq }) =>
+          and(eq(endpoint.id, input.endpointId), eq(endpoint.organizationId, organizationId)),
         with: {
           interactions: {
             orderBy: (interaction, { desc }) => [desc(interaction.updatedAt)],
@@ -240,19 +240,19 @@ export const mockRouter = createTRPCRouter({
         },
       });
 
-      if (!scenario) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Scenario not found" });
+      if (!endpoint) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
       }
 
       return {
-        id: scenario.id,
-        publicId: scenario.publicId,
-        name: scenario.name,
-        description: scenario.description,
-        metadata: scenario.metadata,
-        createdAt: scenario.createdAt,
-        updatedAt: scenario.updatedAt,
-        interactions: scenario.interactions.map((interaction) => ({
+        id: endpoint.id,
+        publicId: endpoint.publicId,
+        name: endpoint.name,
+        description: endpoint.description,
+        metadata: endpoint.metadata,
+        createdAt: endpoint.createdAt,
+        updatedAt: endpoint.updatedAt,
+        interactions: endpoint.interactions.map((interaction) => ({
           id: interaction.id,
           title: interaction.title,
           description: interaction.description,
@@ -279,11 +279,11 @@ export const mockRouter = createTRPCRouter({
       };
     }),
 
-    create: protectedProcedure.input(createScenarioInput).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(createEndpointInput).mutation(async ({ ctx, input }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const [scenario] = await ctx.db
-        .insert(mockScenarios)
+      const [endpoint] = await ctx.db
+        .insert(mockEndpoints)
         .values({
           organizationId,
           publicId: randomUUID(),
@@ -293,79 +293,79 @@ export const mockRouter = createTRPCRouter({
         })
         .returning();
 
-      if (!scenario) {
+      if (!endpoint) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create scenario",
+          message: "Failed to create endpoint",
         });
       }
 
       return {
-        id: scenario.id,
-        publicId: scenario.publicId,
-        name: scenario.name,
-        description: scenario.description,
-        metadata: scenario.metadata,
-        createdAt: scenario.createdAt,
-        updatedAt: scenario.updatedAt,
+        id: endpoint.id,
+        publicId: endpoint.publicId,
+        name: endpoint.name,
+        description: endpoint.description,
+        metadata: endpoint.metadata,
+        createdAt: endpoint.createdAt,
+        updatedAt: endpoint.updatedAt,
         interactionCount: 0,
       };
     }),
 
-    update: protectedProcedure.input(updateScenarioInput).mutation(async ({ ctx, input }) => {
+    update: protectedProcedure.input(updateEndpointInput).mutation(async ({ ctx, input }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const scenario = await ctx.db.query.mockScenarios.findFirst({
-        where: (scenario, { and, eq }) =>
-          and(eq(scenario.id, input.scenarioId), eq(scenario.organizationId, organizationId)),
+      const endpoint = await ctx.db.query.mockEndpoints.findFirst({
+        where: (endpoint, { and, eq }) =>
+          and(eq(endpoint.id, input.endpointId), eq(endpoint.organizationId, organizationId)),
       });
 
-      if (!scenario) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Scenario not found" });
+      if (!endpoint) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
       }
 
-      const [updatedScenario] = await ctx.db
-        .update(mockScenarios)
-          .set({
-            name: input.name ?? scenario.name,
-            description: input.description ?? scenario.description,
-            metadata: input.metadata ?? scenario.metadata,
-            updatedAt: new Date(),
-          })
-        .where(eq(mockScenarios.id, scenario.id))
+      const [updatedEndpoint] = await ctx.db
+        .update(mockEndpoints)
+        .set({
+          name: input.name ?? endpoint.name,
+          description: input.description ?? endpoint.description,
+          metadata: input.metadata ?? endpoint.metadata,
+          updatedAt: new Date(),
+        })
+        .where(eq(mockEndpoints.id, endpoint.id))
         .returning();
 
-      if (!updatedScenario) {
+      if (!updatedEndpoint) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to update scenario",
+          message: "Failed to update endpoint",
         });
       }
 
       return {
-        id: updatedScenario.id,
-        publicId: updatedScenario.publicId,
-        name: updatedScenario.name,
-        description: updatedScenario.description,
-        metadata: updatedScenario.metadata,
-        createdAt: updatedScenario.createdAt,
-        updatedAt: updatedScenario.updatedAt,
+        id: updatedEndpoint.id,
+        publicId: updatedEndpoint.publicId,
+        name: updatedEndpoint.name,
+        description: updatedEndpoint.description,
+        metadata: updatedEndpoint.metadata,
+        createdAt: updatedEndpoint.createdAt,
+        updatedAt: updatedEndpoint.updatedAt,
       };
     }),
 
-    delete: protectedProcedure.input(deleteScenarioInput).mutation(async ({ ctx, input }) => {
+    delete: protectedProcedure.input(deleteEndpointInput).mutation(async ({ ctx, input }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const scenario = await ctx.db.query.mockScenarios.findFirst({
-        where: (scenario, { and, eq }) =>
-          and(eq(scenario.id, input.scenarioId), eq(scenario.organizationId, organizationId)),
+      const endpoint = await ctx.db.query.mockEndpoints.findFirst({
+        where: (endpoint, { and, eq }) =>
+          and(eq(endpoint.id, input.endpointId), eq(endpoint.organizationId, organizationId)),
       });
 
-      if (!scenario) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Scenario not found" });
+      if (!endpoint) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
       }
 
-      await ctx.db.delete(mockScenarios).where(eq(mockScenarios.id, scenario.id));
+      await ctx.db.delete(mockEndpoints).where(eq(mockEndpoints.id, endpoint.id));
 
       return { success: true } as const;
     }),
@@ -375,13 +375,13 @@ export const mockRouter = createTRPCRouter({
     create: protectedProcedure.input(createInteractionInput).mutation(async ({ ctx, input }) => {
       const organizationId = requireActiveOrganizationId(ctx);
 
-      const scenario = await ctx.db.query.mockScenarios.findFirst({
-        where: (scenario, { and, eq }) =>
-          and(eq(scenario.id, input.scenarioId), eq(scenario.organizationId, organizationId)),
+      const endpoint = await ctx.db.query.mockEndpoints.findFirst({
+        where: (endpoint, { and, eq }) =>
+          and(eq(endpoint.id, input.endpointId), eq(endpoint.organizationId, organizationId)),
       });
 
-      if (!scenario) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Scenario not found" });
+      if (!endpoint) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
       }
 
       const matchingInput = buildMatchingInput(input.messages);
@@ -401,7 +401,7 @@ export const mockRouter = createTRPCRouter({
         const [interaction] = await tx
           .insert(mockInteractions)
           .values({
-            scenarioId: scenario.id,
+            endpointId: endpoint.id,
             title: input.title,
             description: input.description ?? null,
             matchingInput,
@@ -444,16 +444,16 @@ export const mockRouter = createTRPCRouter({
         }
 
         await tx
-          .update(mockScenarios)
+          .update(mockEndpoints)
           .set({ updatedAt: now })
-          .where(eq(mockScenarios.id, scenario.id));
+          .where(eq(mockEndpoints.id, endpoint.id));
 
         return interaction;
       });
 
       return {
         id: result.id,
-        scenarioId: result.scenarioId,
+        endpointId: result.endpointId,
         title: result.title,
         description: result.description,
         matchingInput: result.matchingInput,
@@ -469,11 +469,11 @@ export const mockRouter = createTRPCRouter({
       const interaction = await ctx.db.query.mockInteractions.findFirst({
         where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
         with: {
-          scenario: true,
+          endpoint: true,
         },
       });
 
-      if (!interaction || interaction.scenario.organizationId !== organizationId) {
+      if (!interaction || interaction.endpoint.organizationId !== organizationId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Interaction not found" });
       }
 

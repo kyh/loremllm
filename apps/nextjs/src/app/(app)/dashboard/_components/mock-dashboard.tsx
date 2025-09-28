@@ -21,9 +21,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type { RouterOutputs } from "@repo/api";
 import type { JsonValue } from "@repo/api/mock/mock-schema";
 import { useTRPC } from "@/trpc/react";
-import { ScenarioChatDrawer } from "./scenario-chat-drawer";
+import { EndpointChatDrawer } from "./endpoint-chat-drawer";
 
-type ScenarioFormState = {
+type EndpointFormState = {
   name: string;
   description: string;
 };
@@ -44,12 +44,12 @@ type InteractionFormState = {
   toolCalls: ToolCallFormState[];
 };
 
-type ScenarioList = RouterOutputs["mock"]["scenario"]["list"];
-type ScenarioDetail = RouterOutputs["mock"]["scenario"]["byId"];
+type EndpointList = RouterOutputs["mock"]["endpoint"]["list"];
+type EndpointDetail = RouterOutputs["mock"]["endpoint"]["byId"];
 
-const emptyScenarioList: ScenarioList = [];
+const emptyEndpointList: EndpointList = [];
 
-const defaultScenarioForm: ScenarioFormState = { name: "", description: "" };
+const defaultEndpointForm: EndpointFormState = { name: "", description: "" };
 
 const createToolCallFormState = (): ToolCallFormState => ({
   id:
@@ -72,85 +72,81 @@ const createDefaultInteractionForm = (): InteractionFormState => ({
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
-  const scenarioListQuery = useQuery(
-    trpc.mock.scenario.list.queryOptions(undefined),
+  const endpointListQuery = useQuery(
+    trpc.mock.endpoint.list.queryOptions(undefined),
   );
-  const scenarios = scenarioListQuery.data ?? emptyScenarioList;
-  const { refetch: refetchScenarios, isPending: isFetchingScenarios } =
-    scenarioListQuery;
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(
+  const endpoints = endpointListQuery.data ?? emptyEndpointList;
+  const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(
     null,
   );
-  const [scenarioForm, setScenarioForm] =
-    useState<ScenarioFormState>(defaultScenarioForm);
+  const [endpointForm, setEndpointForm] =
+    useState<EndpointFormState>(defaultEndpointForm);
 
   useEffect(() => {
-    if (!selectedScenarioId && scenarios.length > 0) {
-      setSelectedScenarioId(scenarios[0]?.id ?? null);
+    if (!selectedEndpointId && endpoints.length > 0) {
+      setSelectedEndpointId(endpoints[0]?.id ?? null);
     }
-  }, [scenarios, selectedScenarioId]);
+  }, [endpoints, selectedEndpointId]);
 
-  const createScenario = useMutation({
-    ...trpc.mock.scenario.create.mutationOptions(),
+  const createEndpoint = useMutation({
+    ...trpc.mock.endpoint.create.mutationOptions(),
     onSuccess: (data) => {
-      void refetchScenarios();
-      setScenarioForm(defaultScenarioForm);
-      setSelectedScenarioId(data.id);
-      toast.success("Scenario created");
+      setEndpointForm(defaultEndpointForm);
+      setSelectedEndpointId(data.id);
+      toast.success("Endpoint created");
     },
     onError: () => {
-      toast.error("Failed to create scenario");
+      toast.error("Failed to create endpoint");
     },
   });
 
-  const deleteScenario = useMutation({
-    ...trpc.mock.scenario.delete.mutationOptions(),
+  const deleteEndpoint = useMutation({
+    ...trpc.mock.endpoint.delete.mutationOptions(),
     onSuccess: () => {
-      void refetchScenarios();
-      toast.success("Scenario deleted");
-      setSelectedScenarioId(null);
+      toast.success("Endpoint deleted");
+      setSelectedEndpointId(null);
     },
     onError: () => {
-      toast.error("Failed to delete scenario");
+      toast.error("Failed to delete endpoint");
     },
   });
 
-  const handleCreateScenario = (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateEndpoint = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const name = scenarioForm.name.trim();
+    const name = endpointForm.name.trim();
 
     if (!name.length) {
-      toast.error("Scenario name is required");
+      toast.error("Endpoint name is required");
       return;
     }
 
-    createScenario.mutate({
+    createEndpoint.mutate({
       name,
-      description: scenarioForm.description.trim() || undefined,
+      description: endpointForm.description.trim() || undefined,
     });
   };
 
-  const handleDeleteScenario = (id: string) => {
-    const scenarioToDelete = scenarios.find((item) => item.id === id);
+  const handleDeleteEndpoint = (id: string) => {
+    const endpointToDelete = endpoints.find((item) => item.id === id);
     const confirmed = window.confirm(
-      `Delete scenario "${scenarioToDelete?.name ?? ""}"? This cannot be undone.`,
+      `Delete endpoint "${endpointToDelete?.name ?? ""}"? This cannot be undone.`,
     );
 
     if (!confirmed) {
       return;
     }
 
-    deleteScenario.mutate({ scenarioId: id });
+    deleteEndpoint.mutate({ endpointId: id });
   };
 
-  const selectedScenario = useMemo<ScenarioList[number] | null>(
+  const selectedEndpoint = useMemo<EndpointList[number] | null>(
     () =>
-      selectedScenarioId
-        ? (scenarios.find(
-            (scenarioItem) => scenarioItem.id === selectedScenarioId,
+      selectedEndpointId
+        ? (endpoints.find(
+            (endpointItem) => endpointItem.id === selectedEndpointId,
           ) ?? null)
         : null,
-    [scenarios, selectedScenarioId],
+    [endpoints, selectedEndpointId],
   );
 
   return (
@@ -158,63 +154,63 @@ export const MockDashboard = () => {
       <div className="flex flex-col gap-4 md:flex-row">
         <Card className="w-full md:w-80">
           <CardHeader>
-            <CardTitle>Scenarios</CardTitle>
+            <CardTitle>Endpoints</CardTitle>
             <CardDescription>
               Manage datasets that power your fake LLM endpoint.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              {scenarios.map((scenario) => (
+              {endpoints.map((endpoint) => (
                 <button
-                  key={scenario.id}
+                  key={endpoint.id}
                   className={cn(
                     "rounded border px-3 py-2 text-left transition",
-                    selectedScenarioId === scenario.id
+                    selectedEndpointId === endpoint.id
                       ? "border-primary bg-primary/10"
                       : "border-border hover:bg-muted",
                   )}
-                  onClick={() => setSelectedScenarioId(scenario.id)}
+                  onClick={() => setSelectedEndpointId(endpoint.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{scenario.name}</span>
+                    <span className="font-medium">{endpoint.name}</span>
                     <Badge variant="secondary">
-                      {scenario.interactionCount} mocks
+                      {endpoint.interactionCount} mocks
                     </Badge>
                   </div>
-                  {scenario.description ? (
+                  {endpoint.description ? (
                     <p className="text-muted-foreground mt-1 text-sm">
-                      {scenario.description}
+                      {endpoint.description}
                     </p>
                   ) : null}
                 </button>
               ))}
-              {!isFetchingScenarios && !scenarios.length ? (
+              {!endpoints.length ? (
                 <p className="border-border text-muted-foreground rounded border border-dashed px-3 py-4 text-sm">
-                  Create a scenario to start mocking responses.
+                  Create an endpoint to start mocking responses.
                 </p>
               ) : null}
             </div>
-            {selectedScenario ? (
+            {selectedEndpoint ? (
               <Button
                 variant="ghost"
                 className="text-destructive hover:text-destructive justify-start text-sm"
-                disabled={deleteScenario.isPending}
-                onClick={() => handleDeleteScenario(selectedScenario.id)}
+                disabled={deleteEndpoint.isPending}
+                onClick={() => handleDeleteEndpoint(selectedEndpoint.id)}
               >
                 Delete selected
               </Button>
             ) : null}
             <form
               className="flex flex-col gap-2"
-              onSubmit={handleCreateScenario}
+              onSubmit={handleCreateEndpoint}
             >
-              <h3 className="font-semibold">New scenario</h3>
+              <h3 className="font-semibold">New endpoint</h3>
               <Input
-                placeholder="Scenario name"
-                value={scenarioForm.name}
+                placeholder="Endpoint name"
+                value={endpointForm.name}
                 onChange={(event) =>
-                  setScenarioForm((state) => ({
+                  setEndpointForm((state) => ({
                     ...state,
                     name: event.target.value,
                   }))
@@ -223,33 +219,33 @@ export const MockDashboard = () => {
               />
               <Textarea
                 placeholder="Optional description"
-                value={scenarioForm.description}
+                value={endpointForm.description}
                 onChange={(event) =>
-                  setScenarioForm((state) => ({
+                  setEndpointForm((state) => ({
                     ...state,
                     description: event.target.value,
                   }))
                 }
                 rows={3}
               />
-              <Button type="submit" loading={createScenario.isPending}>
-                Create scenario
+              <Button type="submit" loading={createEndpoint.isPending}>
+                Create endpoint
               </Button>
             </form>
           </CardContent>
         </Card>
         <div className="flex-1">
-          {selectedScenarioId ? (
-            <ScenarioDetail
-              key={selectedScenarioId}
-              scenarioId={selectedScenarioId}
+          {selectedEndpointId ? (
+            <EndpointDetail
+              key={selectedEndpointId}
+              endpointId={selectedEndpointId}
             />
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Select a scenario</CardTitle>
+                <CardTitle>Select an endpoint</CardTitle>
                 <CardDescription>
-                  Choose a scenario on the left or create a new one to begin.
+                  Choose an endpoint on the left or create a new one to begin.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -260,23 +256,23 @@ export const MockDashboard = () => {
   );
 };
 
-type ScenarioDetailProps = {
-  scenarioId: string;
+type EndpointDetailProps = {
+  endpointId: string;
 };
 
-const ScenarioDetail = (props: ScenarioDetailProps) => {
+const EndpointDetail = (props: EndpointDetailProps) => {
   const trpc = useTRPC();
-  const scenarioQuery = useQuery(
-    trpc.mock.scenario.byId.queryOptions(
-      { scenarioId: props.scenarioId },
+  const endpointQuery = useQuery(
+    trpc.mock.endpoint.byId.queryOptions(
+      { endpointId: props.endpointId },
       {
-        enabled: Boolean(props.scenarioId),
+        enabled: Boolean(props.endpointId),
       },
     ),
   );
-  const scenario = scenarioQuery.data ?? null;
-  const { refetch: refetchScenario, isPending: isScenarioPending } =
-    scenarioQuery;
+  const endpoint = endpointQuery.data ?? null;
+  const { refetch: refetchEndpoint, isPending: isEndpointPending } =
+    endpointQuery;
   const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
     createDefaultInteractionForm,
   );
@@ -284,7 +280,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   const createInteraction = useMutation({
     ...trpc.mock.interaction.create.mutationOptions(),
     onSuccess: () => {
-      void refetchScenario();
+      void refetchEndpoint();
       toast.success("Mock interaction saved");
       setInteractionForm(createDefaultInteractionForm());
     },
@@ -296,7 +292,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   const deleteInteraction = useMutation({
     ...trpc.mock.interaction.delete.mutationOptions(),
     onSuccess: () => {
-      void refetchScenario();
+      void refetchEndpoint();
       toast.success("Interaction deleted");
     },
     onError: () => {
@@ -307,8 +303,8 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
   const handleCreateInteraction = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!scenario) {
-      toast.error("Scenario not ready");
+    if (!endpoint) {
+      toast.error("Endpoint not ready");
       return;
     }
 
@@ -397,7 +393,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
     }
 
     createInteraction.mutate({
-      scenarioId: scenario.id,
+      endpointId: endpoint.id,
       title,
       description: interactionForm.description.trim() || undefined,
       messages: [
@@ -442,23 +438,23 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
     deleteInteraction.mutate({ interactionId });
   };
 
-  if (isScenarioPending) {
+  if (isEndpointPending) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Loading scenario…</CardTitle>
+          <CardTitle>Loading endpoint…</CardTitle>
         </CardHeader>
       </Card>
     );
   }
 
-  if (!scenario) {
+  if (!endpoint) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Scenario unavailable</CardTitle>
+          <CardTitle>Endpoint unavailable</CardTitle>
           <CardDescription>
-            Something went wrong while fetching the scenario. Try again later.
+            Something went wrong while fetching the endpoint. Try again later.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -470,26 +466,26 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
       <Card>
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
-            <CardTitle>{scenario.name}</CardTitle>
+            <CardTitle>{endpoint.name}</CardTitle>
             <CardDescription>
-              Use this scenario ID with your LLM client to retrieve
+              Use this endpoint ID with your LLM client to retrieve
               deterministic responses.
             </CardDescription>
           </div>
-          <ScenarioChatDrawer
-            scenarioId={scenario.publicId}
-            scenarioName={scenario.name}
+          <EndpointChatDrawer
+            endpointId={endpoint.publicId}
+            endpointName={endpoint.name}
           />
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
           <div>
-            <span className="font-semibold">Scenario ID:</span>
+            <span className="font-semibold">Endpoint ID:</span>
             <code className="bg-muted ml-2 rounded px-2 py-1 text-xs">
-              {scenario.publicId}
+              {endpoint.publicId}
             </code>
           </div>
-          {scenario.description ? (
-            <p className="text-muted-foreground">{scenario.description}</p>
+          {endpoint.description ? (
+            <p className="text-muted-foreground">{endpoint.description}</p>
           ) : null}
           <div>
             <p className="font-semibold">API usage example</p>
@@ -498,13 +494,7 @@ const ScenarioDetail = (props: ScenarioDetailProps) => {
 import { DefaultChatTransport } from "ai";
 
 const transport = new DefaultChatTransport({
-  api: "/api/chat",
-  prepareSendMessagesRequest: ({ body }) => ({
-    body: {
-      ...body,
-      scenarioId: "${scenario.publicId}",
-    },
-  }),
+  api: "/api/${endpoint.publicId}/llm",
 });
 
 const chat = new Chat({ transport });
@@ -730,7 +720,7 @@ await chat.sendMessage({ text: "..." });`}
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {scenario.interactions.map((interaction) => (
+        {endpoint.interactions.map((interaction) => (
           <Card key={interaction.id} className="flex flex-col">
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -816,7 +806,7 @@ await chat.sendMessage({ text: "..." });`}
             </CardContent>
           </Card>
         ))}
-        {!scenario.interactions.length ? (
+        {!endpoint.interactions.length ? (
           <Card className="md:col-span-2">
             <CardContent className="text-muted-foreground py-10 text-center">
               No interactions yet. Create one to start streaming mocked

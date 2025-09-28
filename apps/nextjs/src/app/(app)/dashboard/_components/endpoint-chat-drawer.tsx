@@ -62,14 +62,14 @@ const roleLabel: Record<UIMessage["role"], string> = {
   assistant: "Assistant",
 };
 
-type ScenarioChatDrawerProps = {
-  scenarioId: string;
-  scenarioName: string;
+type EndpointChatDrawerProps = {
+  endpointId: string;
+  endpointName: string;
 };
 
 type MatchingMetadata = Record<string, unknown>;
 
-type ChatPanelProps = ScenarioChatDrawerProps & {
+type ChatPanelProps = EndpointChatDrawerProps & {
   open: boolean;
 };
 
@@ -95,7 +95,7 @@ const mergeMetadata = (
 };
 
 const ChatPanel = (props: ChatPanelProps) => {
-  const { scenarioId, scenarioName, open } = props;
+  const { endpointId, endpointName, open } = props;
   const [input, setInput] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
   const [matchingParts, setMatchingParts] = useState<MatchingMetadata | null>(null);
@@ -129,9 +129,9 @@ const ChatPanel = (props: ChatPanelProps) => {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: `/api/chat/${scenarioId}`,
+        api: `/api/${endpointId}/llm`,
       }),
-    [scenarioId],
+    [endpointId],
   );
 
   const chat = useMemo(
@@ -166,7 +166,7 @@ const ChatPanel = (props: ChatPanelProps) => {
     setInput("");
     setClientError(null);
     clearError();
-  }, [scenarioId, setMessages, clearError]);
+  }, [endpointId, setMessages, clearError]);
 
   useEffect(() => {
     if (status === "submitted") {
@@ -245,11 +245,11 @@ const ChatPanel = (props: ChatPanelProps) => {
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="rounded-md border border-dashed border-border/60 bg-muted/40 p-4 text-xs text-muted-foreground">
         <div className="flex flex-col gap-1 text-foreground">
-          <span className="font-medium">Scenario ID</span>
-          <code className="w-fit rounded bg-background/70 px-2 py-1 text-xs">{scenarioId}</code>
+          <span className="font-medium">Endpoint ID</span>
+          <code className="w-fit rounded bg-background/70 px-2 py-1 text-xs">{endpointId}</code>
         </div>
         <p className="mt-3 text-muted-foreground">
-          Send a message to preview how <span className="font-medium">{scenarioName}</span> responds.
+          Send a message to preview how <span className="font-medium">{endpointName}</span> responds.
           Messages are matched against your saved mock interactions.
         </p>
       </div>
@@ -281,9 +281,9 @@ const ChatPanel = (props: ChatPanelProps) => {
             </p>
           ) : (
             messages.map((message) => {
-              const textParts = message.parts.filter(isTextPart);
+              const textParts = message.parts.filter(isTextPart) as TextPart[];
               const text = textParts.map((part) => part.text).join("").trim();
-              const toolParts = message.parts.filter(isToolPart);
+              const toolParts = message.parts.filter(isToolPart) as ToolPart[];
 
               return (
                 <article
@@ -375,8 +375,8 @@ const ChatPanel = (props: ChatPanelProps) => {
   );
 };
 
-export const ScenarioChatDrawer = (props: ScenarioChatDrawerProps) => {
-  const { scenarioId, scenarioName } = props;
+export const EndpointChatDrawer = (props: EndpointChatDrawerProps) => {
+  const { endpointId, endpointName } = props;
   const [open, setOpen] = useState(false);
 
   return (
@@ -386,13 +386,13 @@ export const ScenarioChatDrawer = (props: ScenarioChatDrawerProps) => {
       </DrawerTrigger>
       <DrawerContent className="w-full sm:max-w-xl">
         <DrawerHeader className="border-b border-border/60 pb-4">
-          <DrawerTitle>Chat with {scenarioName}</DrawerTitle>
+          <DrawerTitle>Chat with {endpointName}</DrawerTitle>
           <DrawerDescription>
             Preview mocked responses without leaving the dashboard.
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-6 pt-4">
-          <ChatPanel scenarioId={scenarioId} scenarioName={scenarioName} open={open} />
+          <ChatPanel endpointId={endpointId} endpointName={endpointName} open={open} />
         </div>
       </DrawerContent>
     </Drawer>

@@ -26,29 +26,29 @@ export const messageInput = z.object({
   toolCalls: z.array(toolCallInput).optional(),
 });
 
-export const createScenarioInput = z.object({
+export const createEndpointInput = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const updateScenarioInput = z.object({
-  scenarioId: z.string().uuid(),
+export const updateEndpointInput = z.object({
+  endpointId: z.string().uuid(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const scenarioByIdInput = z.object({
-  scenarioId: z.string().uuid(),
+export const endpointByIdInput = z.object({
+  endpointId: z.string().uuid(),
 });
 
-export const deleteScenarioInput = z.object({
-  scenarioId: z.string().uuid(),
+export const deleteEndpointInput = z.object({
+  endpointId: z.string().uuid(),
 });
 
 export const createInteractionInput = z.object({
-  scenarioId: z.string().uuid(),
+  endpointId: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().optional(),
   messages: z.array(messageInput).min(1),
