@@ -226,14 +226,14 @@ async function main() {
     let existingInteractions: Array<{ input: string; id: string }> = [];
 
     // Try to find existing collection by publicId
-    const allCollections = await caller.mock.collection.list();
+    const allCollections = await caller.collection.list();
     const existingCollection = allCollections.find(
       (col) => col.publicId === "demo",
     );
 
     if (existingCollection) {
       // Get full collection with interactions
-      const fullCollection = await caller.mock.collection.byId({
+      const fullCollection = await caller.collection.byId({
         collectionId: existingCollection.id,
       });
       collection = fullCollection;
@@ -245,7 +245,7 @@ async function main() {
       console.log(`   Existing interactions: ${existingInteractions.length}\n`);
     } else {
       // Collection doesn't exist, create it
-      collection = await caller.mock.collection.create({
+      collection = await caller.collection.create({
         publicId: "demo",
         name: "Demo",
         description:
@@ -295,7 +295,7 @@ async function main() {
         // Load output from markdown file
         const output = await loadInteractionOutput(config.outputFile);
 
-        const interaction = await caller.mock.interaction.create({
+        const interaction = await caller.interaction.create({
           collectionId: collection.id,
           title: config.title,
           description: config.description,

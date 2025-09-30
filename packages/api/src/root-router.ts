@@ -1,12 +1,14 @@
+import { collectionRouter } from "./collection/collection-router";
+import { interactionRouter } from "./interaction/interaction-router";
 import { organizationRouter } from "./organization/organization-router";
 import { createTRPCRouter } from "./trpc";
 import { waitlistRouter } from "./waitlist/waitlist-router";
-import { mockRouter } from "./mock/mock-router";
 
 export const appRouter = createTRPCRouter({
   waitlist: waitlistRouter,
   organization: organizationRouter,
-  mock: mockRouter,
+  collection: collectionRouter,
+  interaction: interactionRouter,
 });
 
 // export type definition of API

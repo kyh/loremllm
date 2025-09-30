@@ -33,7 +33,7 @@ type InteractionFormState = {
   output: string;
 };
 
-type CollectionList = RouterOutputs["mock"]["collection"]["list"];
+type CollectionList = RouterOutputs["collection"]["list"];
 
 const emptyCollectionList: CollectionList = [];
 
@@ -52,7 +52,7 @@ const createDefaultInteractionForm = (): InteractionFormState => ({
 export const MockDashboard = () => {
   const trpc = useTRPC();
   const collectionListQuery = useQuery(
-    trpc.mock.collection.list.queryOptions(undefined),
+    trpc.collection.list.queryOptions(undefined),
   );
   const collections = collectionListQuery.data ?? emptyCollectionList;
   const [selectedCollectionId, setSelectedCollectionId] = useState<
@@ -69,7 +69,7 @@ export const MockDashboard = () => {
   }, [collections, selectedCollectionId]);
 
   const createCollection = useMutation({
-    ...trpc.mock.collection.create.mutationOptions(),
+    ...trpc.collection.create.mutationOptions(),
     onSuccess: (data) => {
       setCollectionForm(defaultCollectionForm);
       setSelectedCollectionId(data.id);
@@ -81,7 +81,7 @@ export const MockDashboard = () => {
   });
 
   const updateCollection = useMutation({
-    ...trpc.mock.collection.update.mutationOptions(),
+    ...trpc.collection.update.mutationOptions(),
     onSuccess: () => {
       toast.success("Collection updated");
     },
@@ -91,7 +91,7 @@ export const MockDashboard = () => {
   });
 
   const deleteCollection = useMutation({
-    ...trpc.mock.collection.delete.mutationOptions(),
+    ...trpc.collection.delete.mutationOptions(),
     onSuccess: () => {
       toast.success("Collection deleted");
       setSelectedCollectionId(null);
@@ -102,7 +102,7 @@ export const MockDashboard = () => {
   });
 
   const selectedCollectionQuery = useQuery(
-    trpc.mock.collection.byId.queryOptions(
+    trpc.collection.byId.queryOptions(
       selectedCollectionId ? { collectionId: selectedCollectionId } : skipToken,
     ),
   );
@@ -160,7 +160,7 @@ export const MockDashboard = () => {
   );
 
   const createInteraction = useMutation({
-    ...trpc.mock.interaction.create.mutationOptions(),
+    ...trpc.interaction.create.mutationOptions(),
     onSuccess: () => {
       void refetchCollection();
       toast.success("Mock interaction saved");
@@ -172,7 +172,7 @@ export const MockDashboard = () => {
   });
 
   const deleteInteraction = useMutation({
-    ...trpc.mock.interaction.delete.mutationOptions(),
+    ...trpc.interaction.delete.mutationOptions(),
     onSuccess: () => {
       void refetchCollection();
       toast.success("Mock interaction deleted");

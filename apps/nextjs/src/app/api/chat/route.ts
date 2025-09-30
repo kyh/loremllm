@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
   try {
     // Query the "demo" collection for the best matching interaction
-    const queryResult = await caller.mock.query({
+    const queryResult = await caller.interaction.query({
       publicId: "demo",
       query: userQuery,
       limit: 1,
@@ -73,23 +73,19 @@ export async function POST(request: Request) {
 }
 
 const extractUserQuery = (messages: UIMessage[]): string => {
-  const lastMessage = messages[messages.length - 1];
-  const textParts = lastMessage?.parts.filter(isTextPart) ?? [];
+  const lastUserMessage = messages
+    .reverse()
+    .find((message) => message.role === "user");
+  const textParts =
+    lastUserMessage?.parts.filter(
+      (part) =>
+        typeof part === "object" && "type" in part && part.type === "text",
+    ) ?? [];
+
   return textParts
     .map((part) => part.text)
     .join("")
     .trim();
-};
-
-type TextPart = { type: "text"; text: string };
-
-const isTextPart = (part: unknown): part is TextPart => {
-  return (
-    typeof part === "object" &&
-    part !== null &&
-    "type" in part &&
-    part.type === "text"
-  );
 };
 
 /**
