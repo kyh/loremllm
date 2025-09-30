@@ -32,7 +32,7 @@ import {
 
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
-const ChatBotDemo = () => {
+export const ChatBotDemo = () => {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat();
 
@@ -128,5 +128,3 @@ const ChatBotDemo = () => {
     </div>
   );
 };
-
-export default ChatBotDemo;
