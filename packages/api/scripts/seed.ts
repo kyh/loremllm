@@ -220,33 +220,78 @@ async function main() {
     // @ts-expect-error - Script context doesn't need full better-auth session structure
     const caller = callerFactory(createCallerContext);
 
-    // Step 4: Create the Demo collection
-    console.log("\n📦 Creating 'Demo' collection...");
-    const collection = await caller.mock.collection.create({
-      publicId: "demo",
-      name: "Demo",
-      description:
-        "Demo collection showcasing LoremLLM capabilities with common questions and answers about the platform",
-      isPublic: true,
-      metadata: {
-        category: "demo",
-        tags: ["faq", "getting-started", "pricing", "features"],
-        createdBy: "seed script",
-      },
-    });
+    // Step 4: Create or get the Demo collection
+    console.log("\n📦 Creating/finding 'Demo' collection...");
+    let collection;
+    let existingInteractions: Array<{ input: string; id: string }> = [];
 
-    console.log(`✅ Collection created successfully!`);
-    console.log(`   ID: ${collection.id}`);
-    console.log(`   Public ID: ${collection.publicId}`);
-    console.log(`   Name: ${collection.name}\n`);
+    // Try to find existing collection by publicId
+    const allCollections = await caller.mock.collection.list();
+    const existingCollection = allCollections.find(
+      (col) => col.publicId === "demo",
+    );
 
-    // Step 5: Load and create interactions
-    console.log("💬 Creating interactions...\n");
+    if (existingCollection) {
+      // Get full collection with interactions
+      const fullCollection = await caller.mock.collection.byId({
+        collectionId: existingCollection.id,
+      });
+      collection = fullCollection;
+      existingInteractions = fullCollection.interactions;
+
+      console.log(`   ✅ Collection already exists: ${collection.name}`);
+      console.log(`   ID: ${collection.id}`);
+      console.log(`   Public ID: ${collection.publicId}`);
+      console.log(`   Existing interactions: ${existingInteractions.length}\n`);
+    } else {
+      // Collection doesn't exist, create it
+      collection = await caller.mock.collection.create({
+        publicId: "demo",
+        name: "Demo",
+        description:
+          "Demo collection showcasing LoremLLM capabilities with common questions and answers about the platform",
+        isPublic: true,
+        metadata: {
+          category: "demo",
+          tags: ["faq", "getting-started", "pricing", "features"],
+          createdBy: "seed script",
+        },
+      });
+
+      console.log(`   ✅ Collection created successfully!`);
+      console.log(`   ID: ${collection.id}`);
+      console.log(`   Public ID: ${collection.publicId}`);
+      console.log(`   Name: ${collection.name}\n`);
+    }
+
+    // Step 5: Load and create interactions (idempotent)
+    console.log("💬 Creating/updating interactions...\n");
+
+    // Create a map of existing interactions by input
+    const existingInteractionMap = new Map(
+      existingInteractions.map((interaction) => [
+        interaction.input,
+        interaction,
+      ]),
+    );
+
     let successCount = 0;
+    let skippedCount = 0;
     let errorCount = 0;
 
     for (const [index, config] of DEMO_INTERACTION_CONFIGS.entries()) {
       try {
+        // Check if interaction with this input already exists
+        const existingInteraction = existingInteractionMap.get(config.input);
+
+        if (existingInteraction) {
+          skippedCount++;
+          console.log(
+            `   ⏭️  [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] ${config.title} (already exists)`,
+          );
+          continue;
+        }
+
         // Load output from markdown file
         const output = await loadInteractionOutput(config.outputFile);
 
@@ -280,6 +325,9 @@ async function main() {
     console.log(`👤 User: ${USER_EMAIL}`);
     console.log(`🏢 Organization: ${ORGANIZATION_NAME} (${organizationId})`);
     console.log(`✅ Successfully created: ${successCount} interactions`);
+    if (skippedCount > 0) {
+      console.log(`⏭️  Skipped (already exist): ${skippedCount} interactions`);
+    }
     if (errorCount > 0) {
       console.log(`❌ Failed: ${errorCount} interactions`);
     }
