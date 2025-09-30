@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { Chat, useChat } from "@ai-sdk/react";
 import type { DataUIPart, UIMessage } from "ai";
-import { DefaultChatTransport } from "ai";
-
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Chat, useChat } from "@ai-sdk/react";
 import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
 import {
@@ -17,6 +15,7 @@ import {
   DrawerTrigger,
 } from "@repo/ui/drawer";
 import { Input } from "@repo/ui/input";
+import { DefaultChatTransport } from "ai";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -62,14 +61,14 @@ const roleLabel: Record<UIMessage["role"], string> = {
   assistant: "Assistant",
 };
 
-type EndpointChatDrawerProps = {
-  endpointId: string;
-  endpointName: string;
+type CollectionChatDrawerProps = {
+  collectionId: string;
+  collectionName: string;
 };
 
 type MatchingMetadata = Record<string, unknown>;
 
-type ChatPanelProps = EndpointChatDrawerProps & {
+type ChatPanelProps = CollectionChatDrawerProps & {
   open: boolean;
 };
 
@@ -95,10 +94,12 @@ const mergeMetadata = (
 };
 
 const ChatPanel = (props: ChatPanelProps) => {
-  const { endpointId, endpointName, open } = props;
+  const { collectionId, collectionName, open } = props;
   const [input, setInput] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
-  const [matchingParts, setMatchingParts] = useState<MatchingMetadata | null>(null);
+  const [matchingParts, setMatchingParts] = useState<MatchingMetadata | null>(
+    null,
+  );
 
   const handleData = useCallback((part: DataUIPart<MatchingMetadata>) => {
     if (!part.type.startsWith("data-matching")) {
@@ -129,9 +130,16 @@ const ChatPanel = (props: ChatPanelProps) => {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: `/api/${endpointId}/llm`,
+        api: "/api/llm",
+        prepareSendMessagesRequest: ({ body, headers }) => ({
+          body: body ?? {},
+          headers: {
+            ...headers,
+            "x-collection-id": collectionId,
+          },
+        }),
       }),
-    [endpointId],
+    [collectionId],
   );
 
   const chat = useMemo(
@@ -166,7 +174,7 @@ const ChatPanel = (props: ChatPanelProps) => {
     setInput("");
     setClientError(null);
     clearError();
-  }, [endpointId, setMessages, clearError]);
+  }, [collectionId, setMessages, clearError]);
 
   useEffect(() => {
     if (status === "submitted") {
@@ -198,7 +206,8 @@ const ChatPanel = (props: ChatPanelProps) => {
         await sendMessage({ text: trimmedInput });
         setInput("");
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : "Unknown error";
+        const message =
+          cause instanceof Error ? cause.message : "Unknown error";
         setClientError(message);
       }
     },
@@ -217,7 +226,10 @@ const ChatPanel = (props: ChatPanelProps) => {
     () =>
       [...messages]
         .reverse()
-        .find((message) => message.role === "assistant" && isRecord(message.metadata)),
+        .find(
+          (message) =>
+            message.role === "assistant" && isRecord(message.metadata),
+        ),
     [messages],
   );
 
@@ -233,32 +245,39 @@ const ChatPanel = (props: ChatPanelProps) => {
   );
 
   const similarity =
-    typeof combinedMetadata?.similarity === "number" ? combinedMetadata.similarity : null;
+    typeof combinedMetadata?.similarity === "number"
+      ? combinedMetadata.similarity
+      : null;
   const matchedTitle =
     typeof combinedMetadata?.title === "string" ? combinedMetadata.title : null;
   const matchedInteractionId =
-    typeof combinedMetadata?.interactionId === "string" ? combinedMetadata.interactionId : null;
+    typeof combinedMetadata?.interactionId === "string"
+      ? combinedMetadata.interactionId
+      : null;
 
   const isStreaming = status === "submitted" || status === "streaming";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="rounded-md border border-dashed border-border/60 bg-muted/40 p-4 text-xs text-muted-foreground">
-        <div className="flex flex-col gap-1 text-foreground">
-          <span className="font-medium">Endpoint ID</span>
-          <code className="w-fit rounded bg-background/70 px-2 py-1 text-xs">{endpointId}</code>
+      <div className="border-border/60 bg-muted/40 text-muted-foreground rounded-md border border-dashed p-4 text-xs">
+        <div className="text-foreground flex flex-col gap-1">
+          <span className="font-medium">Collection ID</span>
+          <code className="bg-background/70 w-fit rounded px-2 py-1 text-xs">
+            {collectionId}
+          </code>
         </div>
-        <p className="mt-3 text-muted-foreground">
-          Send a message to preview how <span className="font-medium">{endpointName}</span> responds.
+        <p className="text-muted-foreground mt-3">
+          Send a message to preview how{" "}
+          <span className="font-medium">{collectionName}</span> responds.
           Messages are matched against your saved mock interactions.
         </p>
       </div>
       {combinedMetadata ? (
-        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-primary">
+        <div className="border-primary/30 bg-primary/5 text-primary rounded-md border p-3 text-xs">
           <div className="flex flex-col gap-1">
             <span className="font-semibold">Matched interaction</span>
             {matchedTitle ? <span>{matchedTitle}</span> : null}
-            <div className="flex flex-wrap items-center gap-2 text-primary/80">
+            <div className="text-primary/80 flex flex-wrap items-center gap-2">
               {similarity !== null ? (
                 <span>
                   Similarity: <strong>{(similarity * 100).toFixed(1)}%</strong>
@@ -274,32 +293,35 @@ const ChatPanel = (props: ChatPanelProps) => {
         </div>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex-1 space-y-3 overflow-y-auto rounded-md border border-border/60 bg-background/70 p-3">
+        <div className="border-border/60 bg-background/70 flex-1 space-y-3 overflow-y-auto rounded-md border p-3">
           {messages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No messages yet. Ask a question to see the mocked assistant reply.
             </p>
           ) : (
             messages.map((message) => {
               const textParts = message.parts.filter(isTextPart) as TextPart[];
-              const text = textParts.map((part) => part.text).join("").trim();
+              const text = textParts
+                .map((part) => part.text)
+                .join("")
+                .trim();
               const toolParts = message.parts.filter(isToolPart) as ToolPart[];
 
               return (
                 <article
                   key={message.id}
-                  className="space-y-2 rounded-md border border-border/70 bg-background p-3 text-sm shadow-sm"
+                  className="border-border/70 bg-background space-y-2 rounded-md border p-3 text-sm shadow-sm"
                 >
                   <header className="flex items-center justify-between">
                     <Badge variant="outline">{roleLabel[message.role]}</Badge>
                     {isRecord(message.metadata) ? (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         metadata: {JSON.stringify(message.metadata)}
                       </span>
                     ) : null}
                   </header>
                   {text ? (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                    <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
                       {text}
                     </p>
                   ) : null}
@@ -308,29 +330,35 @@ const ChatPanel = (props: ChatPanelProps) => {
                       {toolParts.map((part, index) => (
                         <div
                           key={`${part.toolCallId}-${index}`}
-                          className="rounded-md border border-border/70 bg-muted/40 p-2 text-xs text-muted-foreground"
+                          className="border-border/70 bg-muted/40 text-muted-foreground rounded-md border p-2 text-xs"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-foreground">{part.toolName ?? "Tool"}</span>
-                            <code className="rounded bg-background px-1 py-0.5 text-[10px]">
+                            <span className="text-foreground font-medium">
+                              {part.toolName ?? "Tool"}
+                            </span>
+                            <code className="bg-background rounded px-1 py-0.5 text-[10px]">
                               {part.toolCallId}
                             </code>
                           </div>
                           {part.state ? (
-                            <p className="mt-1 text-xs text-muted-foreground">State: {part.state}</p>
+                            <p className="text-muted-foreground mt-1 text-xs">
+                              State: {part.state}
+                            </p>
                           ) : null}
                           {part.input !== undefined ? (
-                            <pre className="mt-2 max-h-40 overflow-auto rounded bg-background px-2 py-1 text-xs text-foreground/90">
+                            <pre className="bg-background text-foreground/90 mt-2 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
                               {JSON.stringify(part.input, null, 2)}
                             </pre>
                           ) : null}
                           {part.output !== undefined ? (
-                            <pre className="mt-2 max-h-40 overflow-auto rounded bg-background px-2 py-1 text-xs text-foreground/90">
+                            <pre className="bg-background text-foreground/90 mt-2 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
                               {JSON.stringify(part.output, null, 2)}
                             </pre>
                           ) : null}
                           {part.errorText ? (
-                            <p className="mt-1 text-xs text-destructive">{part.errorText}</p>
+                            <p className="text-destructive mt-1 text-xs">
+                              {part.errorText}
+                            </p>
                           ) : null}
                         </div>
                       ))}
@@ -343,7 +371,7 @@ const ChatPanel = (props: ChatPanelProps) => {
         </div>
       </div>
       {clientError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border p-3 text-xs">
           {clientError}
         </div>
       ) : null}
@@ -354,7 +382,11 @@ const ChatPanel = (props: ChatPanelProps) => {
           placeholder="Ask the mock assistant a question"
           disabled={isStreaming}
         />
-        <Button type="submit" loading={isStreaming} disabled={isStreaming && !input.trim()}>
+        <Button
+          type="submit"
+          loading={isStreaming}
+          disabled={isStreaming && !input.trim()}
+        >
           Send
         </Button>
         {isStreaming ? (
@@ -363,7 +395,7 @@ const ChatPanel = (props: ChatPanelProps) => {
           </Button>
         ) : null}
       </form>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex items-center justify-between text-xs">
         <span>
           {messages.length} message{messages.length === 1 ? "" : "s"}
         </span>
@@ -375,8 +407,8 @@ const ChatPanel = (props: ChatPanelProps) => {
   );
 };
 
-export const EndpointChatDrawer = (props: EndpointChatDrawerProps) => {
-  const { endpointId, endpointName } = props;
+export const CollectionChatDrawer = (props: CollectionChatDrawerProps) => {
+  const { collectionId, collectionName } = props;
   const [open, setOpen] = useState(false);
 
   return (
@@ -385,14 +417,18 @@ export const EndpointChatDrawer = (props: EndpointChatDrawerProps) => {
         <Button variant="outline">Open chat</Button>
       </DrawerTrigger>
       <DrawerContent className="w-full sm:max-w-xl">
-        <DrawerHeader className="border-b border-border/60 pb-4">
-          <DrawerTitle>Chat with {endpointName}</DrawerTitle>
+        <DrawerHeader className="border-border/60 border-b pb-4">
+          <DrawerTitle>Chat with {collectionName}</DrawerTitle>
           <DrawerDescription>
             Preview mocked responses without leaving the dashboard.
           </DrawerDescription>
         </DrawerHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-6 pt-4">
-          <ChatPanel endpointId={endpointId} endpointName={endpointName} open={open} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-4 pb-6">
+          <ChatPanel
+            collectionId={collectionId}
+            collectionName={collectionName}
+            open={open}
+          />
         </div>
       </DrawerContent>
     </Drawer>

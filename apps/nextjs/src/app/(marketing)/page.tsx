@@ -1,3 +1,4 @@
+import ChatBotDemo from "./_components/chatbot-demo";
 import { WaitlistForm } from "./_components/waitlist-form";
 
 const Page = () => {
@@ -24,6 +25,18 @@ const Page = () => {
         generators, or AI-powered features – LoremLLM provides reliable mock
         responses for development and testing.
       </p>
+      <section className="mt-10 flex flex-col gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">See it in action</h2>
+          <p className="text-sm text-muted-foreground">
+            Chat with our lorem ipsum assistant powered by the public
+            <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">/api/llm</code>
+            endpoint. Every message you send here is served through the same API
+            your apps can use.
+          </p>
+        </div>
+        <ChatBotDemo />
+      </section>
     </main>
   );
 };

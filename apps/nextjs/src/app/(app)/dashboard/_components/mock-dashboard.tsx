@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
 import {
@@ -15,264 +15,146 @@ import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
 import { toast } from "@repo/ui/toast";
-import { cn } from "@repo/ui/utils";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";
-import type { JsonValue } from "@repo/api/mock/mock-schema";
 import { useTRPC } from "@/trpc/react";
-import { EndpointChatDrawer } from "./endpoint-chat-drawer";
+import { CollectionChatDrawer } from "./collection-chat-drawer";
 
-type EndpointFormState = {
+type CollectionFormState = {
   name: string;
   description: string;
-};
-
-type ToolCallFormState = {
-  id: string;
-  toolName: string;
-  callId: string;
-  arguments: string;
-  result: string;
 };
 
 type InteractionFormState = {
   title: string;
   description: string;
-  userMessage: string;
-  assistantResponse: string;
-  toolCalls: ToolCallFormState[];
+  input: string;
+  output: string;
 };
 
-type EndpointList = RouterOutputs["mock"]["endpoint"]["list"];
-type EndpointDetail = RouterOutputs["mock"]["endpoint"]["byId"];
+type CollectionList = RouterOutputs["mock"]["collection"]["list"];
 
-const emptyEndpointList: EndpointList = [];
+const emptyCollectionList: CollectionList = [];
 
-const defaultEndpointForm: EndpointFormState = { name: "", description: "" };
-
-const createToolCallFormState = (): ToolCallFormState => ({
-  id:
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2),
-  toolName: "",
-  callId: "",
-  arguments: "",
-  result: "",
-});
+const defaultCollectionForm: CollectionFormState = {
+  name: "",
+  description: "",
+};
 
 const createDefaultInteractionForm = (): InteractionFormState => ({
   title: "",
   description: "",
-  userMessage: "",
-  assistantResponse: "",
-  toolCalls: [],
+  input: "",
+  output: "",
 });
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
-  const endpointListQuery = useQuery(
-    trpc.mock.endpoint.list.queryOptions(undefined),
+  const collectionListQuery = useQuery(
+    trpc.mock.collection.list.queryOptions(undefined),
   );
-  const endpoints = endpointListQuery.data ?? emptyEndpointList;
-  const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(
-    null,
+  const collections = collectionListQuery.data ?? emptyCollectionList;
+  const [selectedCollectionId, setSelectedCollectionId] = useState<
+    string | null
+  >(null);
+  const [collectionForm, setCollectionForm] = useState<CollectionFormState>(
+    defaultCollectionForm,
   );
-  const [endpointForm, setEndpointForm] =
-    useState<EndpointFormState>(defaultEndpointForm);
 
   useEffect(() => {
-    if (!selectedEndpointId && endpoints.length > 0) {
-      setSelectedEndpointId(endpoints[0]?.id ?? null);
+    if (!selectedCollectionId && collections.length > 0) {
+      setSelectedCollectionId(collections[0]?.id ?? null);
     }
-  }, [endpoints, selectedEndpointId]);
+  }, [collections, selectedCollectionId]);
 
-  const createEndpoint = useMutation({
-    ...trpc.mock.endpoint.create.mutationOptions(),
+  const createCollection = useMutation({
+    ...trpc.mock.collection.create.mutationOptions(),
     onSuccess: (data) => {
-      setEndpointForm(defaultEndpointForm);
-      setSelectedEndpointId(data.id);
-      toast.success("Endpoint created");
+      setCollectionForm(defaultCollectionForm);
+      setSelectedCollectionId(data.id);
+      toast.success("Collection created");
     },
     onError: () => {
-      toast.error("Failed to create endpoint");
+      toast.error("Failed to create collection");
     },
   });
 
-  const deleteEndpoint = useMutation({
-    ...trpc.mock.endpoint.delete.mutationOptions(),
+  const updateCollection = useMutation({
+    ...trpc.mock.collection.update.mutationOptions(),
     onSuccess: () => {
-      toast.success("Endpoint deleted");
-      setSelectedEndpointId(null);
+      toast.success("Collection updated");
     },
     onError: () => {
-      toast.error("Failed to delete endpoint");
+      toast.error("Failed to update collection");
     },
   });
 
-  const handleCreateEndpoint = (event: FormEvent<HTMLFormElement>) => {
+  const deleteCollection = useMutation({
+    ...trpc.mock.collection.delete.mutationOptions(),
+    onSuccess: () => {
+      toast.success("Collection deleted");
+      setSelectedCollectionId(null);
+    },
+    onError: () => {
+      toast.error("Failed to delete collection");
+    },
+  });
+
+  const selectedCollectionQuery = useQuery(
+    trpc.mock.collection.byId.queryOptions(
+      selectedCollectionId ? { collectionId: selectedCollectionId } : skipToken,
+    ),
+  );
+  const collection = selectedCollectionQuery.data;
+  const isCollectionPending = selectedCollectionQuery.isPending;
+  const refetchCollection = selectedCollectionQuery.refetch;
+
+  useEffect(() => {
+    if (collection) {
+      setCollectionForm({
+        name: collection.name ?? "",
+        description: collection.description ?? "",
+      });
+    }
+  }, [collection]);
+
+  const handleCreateCollection = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const name = endpointForm.name.trim();
+    const name = collectionForm.name.trim();
 
     if (!name.length) {
-      toast.error("Endpoint name is required");
+      toast.error("Collection name is required");
       return;
     }
 
-    createEndpoint.mutate({
+    createCollection.mutate({
       name,
-      description: endpointForm.description.trim() || undefined,
+      description: collectionForm.description.trim() || undefined,
     });
   };
 
-  const handleDeleteEndpoint = (id: string) => {
-    const endpointToDelete = endpoints.find((item) => item.id === id);
-    const confirmed = window.confirm(
-      `Delete endpoint "${endpointToDelete?.name ?? ""}"? This cannot be undone.`,
-    );
-
-    if (!confirmed) {
+  const handleUpdateCollection = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!collection) {
+      toast.error("Collection not ready");
       return;
     }
 
-    deleteEndpoint.mutate({ endpointId: id });
+    const name = collectionForm.name.trim();
+
+    if (!name.length) {
+      toast.error("Collection name is required");
+      return;
+    }
+
+    updateCollection.mutate({
+      collectionId: collection.id,
+      name,
+      description: collectionForm.description.trim() || undefined,
+    });
   };
 
-  const selectedEndpoint = useMemo<EndpointList[number] | null>(
-    () =>
-      selectedEndpointId
-        ? (endpoints.find(
-            (endpointItem) => endpointItem.id === selectedEndpointId,
-          ) ?? null)
-        : null,
-    [endpoints, selectedEndpointId],
-  );
-
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 py-8">
-      <div className="flex flex-col gap-4 md:flex-row">
-        <Card className="w-full md:w-80">
-          <CardHeader>
-            <CardTitle>Endpoints</CardTitle>
-            <CardDescription>
-              Manage datasets that power your fake LLM endpoint.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              {endpoints.map((endpoint) => (
-                <button
-                  key={endpoint.id}
-                  className={cn(
-                    "rounded border px-3 py-2 text-left transition",
-                    selectedEndpointId === endpoint.id
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:bg-muted",
-                  )}
-                  onClick={() => setSelectedEndpointId(endpoint.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{endpoint.name}</span>
-                    <Badge variant="secondary">
-                      {endpoint.interactionCount} mocks
-                    </Badge>
-                  </div>
-                  {endpoint.description ? (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {endpoint.description}
-                    </p>
-                  ) : null}
-                </button>
-              ))}
-              {!endpoints.length ? (
-                <p className="border-border text-muted-foreground rounded border border-dashed px-3 py-4 text-sm">
-                  Create an endpoint to start mocking responses.
-                </p>
-              ) : null}
-            </div>
-            {selectedEndpoint ? (
-              <Button
-                variant="ghost"
-                className="text-destructive hover:text-destructive justify-start text-sm"
-                disabled={deleteEndpoint.isPending}
-                onClick={() => handleDeleteEndpoint(selectedEndpoint.id)}
-              >
-                Delete selected
-              </Button>
-            ) : null}
-            <form
-              className="flex flex-col gap-2"
-              onSubmit={handleCreateEndpoint}
-            >
-              <h3 className="font-semibold">New endpoint</h3>
-              <Input
-                placeholder="Endpoint name"
-                value={endpointForm.name}
-                onChange={(event) =>
-                  setEndpointForm((state) => ({
-                    ...state,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-              <Textarea
-                placeholder="Optional description"
-                value={endpointForm.description}
-                onChange={(event) =>
-                  setEndpointForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-              <Button type="submit" loading={createEndpoint.isPending}>
-                Create endpoint
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-        <div className="flex-1">
-          {selectedEndpointId ? (
-            <EndpointDetail
-              key={selectedEndpointId}
-              endpointId={selectedEndpointId}
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Select an endpoint</CardTitle>
-                <CardDescription>
-                  Choose an endpoint on the left or create a new one to begin.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-type EndpointDetailProps = {
-  endpointId: string;
-};
-
-const EndpointDetail = (props: EndpointDetailProps) => {
-  const trpc = useTRPC();
-  const endpointQuery = useQuery(
-    trpc.mock.endpoint.byId.queryOptions(
-      { endpointId: props.endpointId },
-      {
-        enabled: Boolean(props.endpointId),
-      },
-    ),
-  );
-  const endpoint = endpointQuery.data ?? null;
-  const { refetch: refetchEndpoint, isPending: isEndpointPending } =
-    endpointQuery;
   const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
     createDefaultInteractionForm,
   );
@@ -280,7 +162,7 @@ const EndpointDetail = (props: EndpointDetailProps) => {
   const createInteraction = useMutation({
     ...trpc.mock.interaction.create.mutationOptions(),
     onSuccess: () => {
-      void refetchEndpoint();
+      void refetchCollection();
       toast.success("Mock interaction saved");
       setInteractionForm(createDefaultInteractionForm());
     },
@@ -292,8 +174,8 @@ const EndpointDetail = (props: EndpointDetailProps) => {
   const deleteInteraction = useMutation({
     ...trpc.mock.interaction.delete.mutationOptions(),
     onSuccess: () => {
-      void refetchEndpoint();
-      toast.success("Interaction deleted");
+      void refetchCollection();
+      toast.success("Mock interaction deleted");
     },
     onError: () => {
       toast.error("Failed to delete interaction");
@@ -303,226 +185,192 @@ const EndpointDetail = (props: EndpointDetailProps) => {
   const handleCreateInteraction = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!endpoint) {
-      toast.error("Endpoint not ready");
+    if (!collection) {
+      toast.error("Collection not ready");
       return;
     }
 
     const title = interactionForm.title.trim();
-    const userMessage = interactionForm.userMessage.trim();
-    const assistantResponse = interactionForm.assistantResponse.trim();
+    const input = interactionForm.input.trim();
+    const output = interactionForm.output.trim();
 
-    if (!title.length || !userMessage.length || !assistantResponse.length) {
-      toast.error("Title, user input, and response are required");
+    if (!title.length || !input.length || !output.length) {
+      toast.error("Title, input, and output are required");
       return;
     }
 
-    const toolCalls: {
-      toolName: string;
-      callId?: string;
-      arguments?: JsonValue | null;
-      result?: JsonValue | null;
-    }[] = [];
-
-    for (let index = 0; index < interactionForm.toolCalls.length; index += 1) {
-      const draft = interactionForm.toolCalls[index];
-
-      if (!draft) {
-        continue;
-      }
-
-      const toolName = draft.toolName.trim();
-      const callId = draft.callId.trim();
-      const argumentsText = draft.arguments.trim();
-      const resultText = draft.result.trim();
-
-      const hasContent =
-        toolName.length ||
-        callId.length ||
-        argumentsText.length ||
-        resultText.length;
-
-      if (!hasContent) {
-        continue;
-      }
-
-      if (!toolName.length) {
-        toast.error(`Tool call ${index + 1} is missing a tool name`);
-        return;
-      }
-
-      const toolCall: {
-        toolName: string;
-        callId?: string;
-        arguments?: JsonValue | null;
-        result?: JsonValue | null;
-      } = {
-        toolName,
-      };
-
-      if (callId.length) {
-        toolCall.callId = callId;
-      }
-
-      try {
-        if (argumentsText.length) {
-          const parsedArguments = parseToolCallValue(
-            argumentsText,
-            `tool call ${index + 1} arguments`,
-          );
-          toolCall.arguments = parsedArguments;
-        }
-
-        if (resultText.length) {
-          const parsedResult = parseToolCallValue(
-            resultText,
-            `tool call ${index + 1} result`,
-          );
-          toolCall.result = parsedResult;
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to parse tool call payload",
-        );
-        return;
-      }
-
-      toolCalls.push(toolCall);
-    }
-
     createInteraction.mutate({
-      endpointId: endpoint.id,
+      collectionId: collection.id,
       title,
       description: interactionForm.description.trim() || undefined,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: userMessage,
-            },
-          ],
-        },
-        {
-          role: "assistant",
-          content: [
-            {
-              type: "text",
-              text: assistantResponse,
-            },
-          ],
-          toolCalls,
-        },
-      ],
+      input,
+      output,
     });
-  };
-
-  const handleAddToolCall = () => {
-    setInteractionForm((state) => ({
-      ...state,
-      toolCalls: [...state.toolCalls, createToolCallFormState()],
-    }));
-  };
-
-  const handleRemoveToolCall = (id: string) => {
-    setInteractionForm((state) => ({
-      ...state,
-      toolCalls: state.toolCalls.filter((toolCall) => toolCall.id !== id),
-    }));
   };
 
   const handleDeleteInteraction = (interactionId: string) => {
     deleteInteraction.mutate({ interactionId });
   };
 
-  if (isEndpointPending) {
+  if (isCollectionPending) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Loading endpoint…</CardTitle>
+          <CardTitle>Loading collection…</CardTitle>
         </CardHeader>
       </Card>
     );
   }
 
-  if (!endpoint) {
+  if (!collection) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Endpoint unavailable</CardTitle>
+          <CardTitle>No collection selected</CardTitle>
           <CardDescription>
-            Something went wrong while fetching the endpoint. Try again later.
+            Create a new collection or select an existing one.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateCollection} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="collection-name">Collection name</Label>
+              <Input
+                id="collection-name"
+                placeholder="My new collection"
+                value={collectionForm.name}
+                onChange={(event) =>
+                  setCollectionForm((state) => ({
+                    ...state,
+                    name: event.target.value,
+                  }))
+                }
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="collection-description">
+                Description (optional)
+              </Label>
+              <Textarea
+                id="collection-description"
+                placeholder="A brief description of what this collection does."
+                value={collectionForm.description}
+                onChange={(event) =>
+                  setCollectionForm((state) => ({
+                    ...state,
+                    description: event.target.value,
+                  }))
+                }
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" loading={createCollection.isPending}>
+                Create collection
+              </Button>
+            </div>
+          </form>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4">
       <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2">
-            <CardTitle>{endpoint.name}</CardTitle>
-            <CardDescription>
-              Use this endpoint ID with your LLM client to retrieve
-              deterministic responses.
-            </CardDescription>
+        <CardHeader className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="grid gap-1">
+              <CardTitle className="text-base">
+                Collection: {collection.name}
+              </CardTitle>
+              {collection.description ? (
+                <CardDescription>{collection.description}</CardDescription>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <CollectionChatDrawer
+                collectionId={collection.publicId}
+                collectionName={collection.name ?? "Untitled Collection"}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() =>
+                  deleteCollection.mutate({ collectionId: collection.id })
+                }
+                loading={deleteCollection.isPending}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
-          <EndpointChatDrawer
-            endpointId={endpoint.publicId}
-            endpointName={endpoint.name}
-          />
+          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+            <span>Public ID:</span>
+            <span className="bg-muted rounded px-2 py-1">
+              {collection.publicId}
+            </span>
+          </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <div>
-            <span className="font-semibold">Endpoint ID:</span>
-            <code className="bg-muted ml-2 rounded px-2 py-1 text-xs">
-              {endpoint.publicId}
-            </code>
-          </div>
-          {endpoint.description ? (
-            <p className="text-muted-foreground">{endpoint.description}</p>
-          ) : null}
-          <div>
-            <p className="font-semibold">API usage example</p>
-            <pre className="bg-muted mt-1 overflow-x-auto rounded px-3 py-2 text-xs">
-              {`import { Chat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-
-const transport = new DefaultChatTransport({
-  api: "/api/${endpoint.publicId}/llm",
-});
-
-const chat = new Chat({ transport });
-
-await chat.sendMessage({ text: "..." });`}
-            </pre>
-          </div>
+        <CardContent>
+          <form onSubmit={handleUpdateCollection} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="collection-name">Collection name</Label>
+              <Input
+                id="collection-name"
+                placeholder="My new collection"
+                value={collectionForm.name}
+                onChange={(event) =>
+                  setCollectionForm((state) => ({
+                    ...state,
+                    name: event.target.value,
+                  }))
+                }
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="collection-description">
+                Description (optional)
+              </Label>
+              <Textarea
+                id="collection-description"
+                placeholder="A brief description of what this collection does."
+                value={collectionForm.description}
+                onChange={(event) =>
+                  setCollectionForm((state) => ({
+                    ...state,
+                    description: event.target.value,
+                  }))
+                }
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" loading={updateCollection.isPending}>
+                Update collection
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Add mock response</CardTitle>
+          <CardTitle className="text-base">Add new mock response</CardTitle>
           <CardDescription>
-            Define how the assistant should reply when it receives a matching
-            message.
+            Create a new mock interaction for this collection.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={handleCreateInteraction}
-          >
+          <form onSubmit={handleCreateInteraction} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="interaction-title">Mock name</Label>
+              <Label htmlFor="interaction-title">Title</Label>
               <Input
                 id="interaction-title"
-                placeholder="Weather update"
+                placeholder="Weather in San Francisco"
                 value={interactionForm.title}
                 onChange={(event) =>
                   setInteractionForm((state) => ({
@@ -539,7 +387,7 @@ await chat.sendMessage({ text: "..." });`}
               </Label>
               <Textarea
                 id="interaction-description"
-                placeholder="Short summary for your teammates"
+                placeholder="A brief description of this mock interaction."
                 value={interactionForm.description}
                 onChange={(event) =>
                   setInteractionForm((state) => ({
@@ -551,164 +399,42 @@ await chat.sendMessage({ text: "..." });`}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="interaction-user">If the user says&hellip;</Label>
+              <Label htmlFor="interaction-input">Input (User Query)</Label>
               <Textarea
-                id="interaction-user"
+                id="interaction-input"
                 placeholder="What's the weather like in San Francisco?"
-                value={interactionForm.userMessage}
+                value={interactionForm.input}
                 onChange={(event) =>
                   setInteractionForm((state) => ({
                     ...state,
-                    userMessage: event.target.value,
+                    input: event.target.value,
                   }))
                 }
                 rows={4}
                 required
               />
               <p className="text-muted-foreground text-xs">
-                We&apos;ll match incoming requests against this message.
+                The user input that will be matched using semantic search.
               </p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="interaction-response">Respond with&hellip;</Label>
+              <Label htmlFor="interaction-output">Output (Response)</Label>
               <Textarea
-                id="interaction-response"
+                id="interaction-output"
                 placeholder="It's 72°F and sunny along the bay."
-                value={interactionForm.assistantResponse}
+                value={interactionForm.output}
                 onChange={(event) =>
                   setInteractionForm((state) => ({
                     ...state,
-                    assistantResponse: event.target.value,
+                    output: event.target.value,
                   }))
                 }
-                rows={4}
+                rows={6}
                 required
               />
               <p className="text-muted-foreground text-xs">
-                We&apos;ll convert this to a UI message payload for you.
+                The response content. Supports markdown formatting.
               </p>
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Tool calls (optional)</p>
-                <p className="text-muted-foreground text-sm">
-                  Provide any tool activity that should happen before the
-                  assistant reply.
-                </p>
-              </div>
-              {interactionForm.toolCalls.map((toolCall, index) => (
-                <div
-                  key={toolCall.id}
-                  className="border-border/70 space-y-3 rounded-md border border-dashed p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">Tool call {index + 1}</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleRemoveToolCall(toolCall.id)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor={`tool-${toolCall.id}-name`}>
-                        Tool name
-                      </Label>
-                      <Input
-                        id={`tool-${toolCall.id}-name`}
-                        placeholder="search"
-                        value={toolCall.toolName}
-                        onChange={(event) =>
-                          setInteractionForm((state) => ({
-                            ...state,
-                            toolCalls: state.toolCalls.map((item) =>
-                              item.id === toolCall.id
-                                ? { ...item, toolName: event.target.value }
-                                : item,
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor={`tool-${toolCall.id}-call-id`}>
-                        Call ID (optional)
-                      </Label>
-                      <Input
-                        id={`tool-${toolCall.id}-call-id`}
-                        placeholder="call_123"
-                        value={toolCall.callId}
-                        onChange={(event) =>
-                          setInteractionForm((state) => ({
-                            ...state,
-                            toolCalls: state.toolCalls.map((item) =>
-                              item.id === toolCall.id
-                                ? { ...item, callId: event.target.value }
-                                : item,
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`tool-${toolCall.id}-arguments`}>
-                      Arguments JSON (optional)
-                    </Label>
-                    <Textarea
-                      id={`tool-${toolCall.id}-arguments`}
-                      placeholder='{"query":"docs"}'
-                      value={toolCall.arguments}
-                      onChange={(event) =>
-                        setInteractionForm((state) => ({
-                          ...state,
-                          toolCalls: state.toolCalls.map((item) =>
-                            item.id === toolCall.id
-                              ? { ...item, arguments: event.target.value }
-                              : item,
-                          ),
-                        }))
-                      }
-                      rows={3}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`tool-${toolCall.id}-result`}>
-                      Result JSON (optional)
-                    </Label>
-                    <Textarea
-                      id={`tool-${toolCall.id}-result`}
-                      placeholder='{"items":[]}'
-                      value={toolCall.result}
-                      onChange={(event) =>
-                        setInteractionForm((state) => ({
-                          ...state,
-                          toolCalls: state.toolCalls.map((item) =>
-                            item.id === toolCall.id
-                              ? { ...item, result: event.target.value }
-                              : item,
-                          ),
-                        }))
-                      }
-                      rows={3}
-                    />
-                    <p className="text-muted-foreground text-xs">
-                      Strings should be wrapped in quotes to be valid JSON.
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddToolCall}
-              >
-                Add tool call
-              </Button>
             </div>
             <div className="flex justify-end">
               <Button type="submit" loading={createInteraction.isPending}>
@@ -720,7 +446,7 @@ await chat.sendMessage({ text: "..." });`}
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {endpoint.interactions.map((interaction) => (
+        {collection.interactions.map((interaction) => (
           <Card key={interaction.id} className="flex flex-col">
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -743,70 +469,65 @@ await chat.sendMessage({ text: "..." });`}
                 </Button>
               </div>
               <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                <span>Matching sample:</span>
+                <span>Input:</span>
                 <span className="bg-muted rounded px-2 py-1">
-                  {interaction.matchingInput}
+                  {interaction.input}
                 </span>
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-3">
-              {interaction.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className="border-border rounded border p-3 text-sm"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <Badge variant="outline">{message.role}</Badge>
-                    {message.toolCalls.length ? (
-                      <span className="text-muted-foreground text-xs">
-                        {message.toolCalls.length} tool call(s)
-                      </span>
-                    ) : null}
-                  </div>
-                  {renderContent(message.content)}
-                  {message.toolCalls.length ? (
-                    <div className="mt-2 space-y-2">
-                      {message.toolCalls.map((toolCall) => (
-                        <div
-                          key={toolCall.id}
-                          className="bg-muted/60 text-muted-foreground rounded p-2 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">
-                              {toolCall.toolName}
-                            </span>
-                            <code className="bg-background rounded px-1 py-0.5">
-                              {toolCall.callId}
-                            </code>
-                          </div>
-                          {toolCall.arguments !== null &&
-                          toolCall.arguments !== undefined ? (
-                            <div className="mt-1">
-                              <span className="font-semibold">Args:</span>
-                              <pre className="bg-background mt-1 max-h-32 overflow-auto rounded px-2 py-1">
-                                {JSON.stringify(toolCall.arguments, null, 2)}
-                              </pre>
-                            </div>
-                          ) : null}
-                          {toolCall.result !== null &&
-                          toolCall.result !== undefined ? (
-                            <div className="mt-1">
-                              <span className="font-semibold">Result:</span>
-                              <pre className="bg-background mt-1 max-h-32 overflow-auto rounded px-2 py-1">
-                                {JSON.stringify(toolCall.result, null, 2)}
-                              </pre>
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
+              <div className="border-border rounded border p-3 text-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <Badge variant="outline">Response</Badge>
+                  <span className="text-muted-foreground text-xs">
+                    {interaction.responseSchema}
+                  </span>
                 </div>
-              ))}
+                <div className="prose prose-sm max-w-none">
+                  {typeof interaction.output === "string" ? (
+                    <div
+                      className="text-sm whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{
+                        __html: interaction.output
+                          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                          .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                          .replace(
+                            /`(.*?)`/g,
+                            '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
+                          )
+                          .replace(
+                            /^# (.*$)/gm,
+                            '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>',
+                          )
+                          .replace(
+                            /^## (.*$)/gm,
+                            '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
+                          )
+                          .replace(
+                            /^### (.*$)/gm,
+                            '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
+                          )
+                          .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
+                          .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
+                          .replace(/\n\n/g, '</p><p class="mb-2">')
+                          .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
+                          .replace(
+                            /(<li.*<\/li>)/gs,
+                            '<ul class="list-disc ml-4 mb-2">$1</ul>',
+                          ),
+                      }}
+                    />
+                  ) : (
+                    <pre className="text-sm whitespace-pre-wrap">
+                      {JSON.stringify(interaction.output, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
-        {!endpoint.interactions.length ? (
+        {!collection.interactions.length ? (
           <Card className="md:col-span-2">
             <CardContent className="text-muted-foreground py-10 text-center">
               No interactions yet. Create one to start streaming mocked
@@ -817,82 +538,4 @@ await chat.sendMessage({ text: "..." });`}
       </div>
     </div>
   );
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const renderContent = (content: unknown) => {
-  if (typeof content === "string") {
-    return <p className="whitespace-pre-wrap">{content}</p>;
-  }
-
-  if (Array.isArray(content)) {
-    return (
-      <div className="space-y-1">
-        {content.map((part, index) => {
-          if (typeof part === "string") {
-            return (
-              <p key={index} className="whitespace-pre-wrap">
-                {part}
-              </p>
-            );
-          }
-
-          if (isRecord(part)) {
-            const text = part.text;
-            if (typeof text === "string") {
-              return (
-                <p key={index} className="whitespace-pre-wrap">
-                  {text}
-                </p>
-              );
-            }
-          }
-
-          return (
-            <p key={index} className="whitespace-pre-wrap">
-              {JSON.stringify(part)}
-            </p>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (isRecord(content)) {
-    return (
-      <pre className="bg-muted max-h-48 overflow-auto rounded px-2 py-1 text-xs">
-        {JSON.stringify(content, null, 2)}
-      </pre>
-    );
-  }
-
-  return null;
-};
-
-const parseToolCallValue = (
-  input: string,
-  context: string,
-): JsonValue | null => {
-  const trimmed = input.trim();
-
-  if (!trimmed.length) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(trimmed) as JsonValue;
-  } catch {
-    const firstCharacter = trimmed[0];
-    if (
-      firstCharacter === "{" ||
-      firstCharacter === "[" ||
-      firstCharacter === '"'
-    ) {
-      throw new Error(`${context} must be valid JSON`);
-    }
-
-    return trimmed;
-  }
 };

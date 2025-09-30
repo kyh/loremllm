@@ -2,23 +2,31 @@
  * Application schema
  */
 import { relations } from "drizzle-orm";
-import { pgTable } from "drizzle-orm/pg-core";
+import { pgTable, vector } from "drizzle-orm/pg-core";
 
 import { organization, user } from "./drizzle-schema-auth";
 
-export const mockEndpoints = pgTable("mock_endpoints", (t) => ({
+/**
+ * Mock Collection
+ * A collection of mock interactions. Typically used to mock a specific feature.
+ *
+ * @example
+ * name: "Website Chatbot"
+ *
+ * @example
+ * name: "API Documentation Chatbot"
+ */
+export const mockCollection = pgTable("mock_collection", (t) => ({
   id: t.uuid().primaryKey().defaultRandom(),
-  publicId: t
-    .text()
-    .notNull()
-    .unique(),
+  publicId: t.text().notNull().unique(),
   organizationId: t
     .text()
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
-  name: t.text().notNull(),
+  name: t.text(),
   description: t.text(),
-  metadata: t.jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  isPublic: t.boolean().notNull().default(false),
+  metadata: t.jsonb().$type<Record<string, unknown>>().default({}),
   createdAt: t
     .timestamp({ mode: "date", withTimezone: true })
     .defaultNow()
@@ -29,16 +37,27 @@ export const mockEndpoints = pgTable("mock_endpoints", (t) => ({
     .notNull(),
 }));
 
-export const mockInteractions = pgTable("mock_interactions", (t) => ({
+/**
+ * Mock Interaction
+ * An interaction in a mock collection.
+ *
+ * @example
+ * title: "Generic Response"
+ * input: "What is the weather in San Francisco?"
+ * output: "The weather in San Francisco is sunny and 60 degrees."
+ * responseSchema: "LanguageModelV2StreamPart"
+ */
+export const mockInteraction = pgTable("mock_interaction", (t) => ({
   id: t.uuid().primaryKey().defaultRandom(),
-  endpointId: t
+  collectionId: t
     .uuid()
-    .notNull()
-    .references(() => mockEndpoints.id, { onDelete: "cascade" }),
+    .references(() => mockCollection.id, { onDelete: "cascade" }), // Nullable for demo interactions
   title: t.text().notNull(),
   description: t.text(),
-  matchingInput: t.text().notNull(),
-  matchingSignature: t.text().notNull(),
+  input: t.text().notNull(), // will be matched against the user input
+  embedding: vector("embedding", { dimensions: 384 }), // embedding of input for semantic search, 384 dimensions for all-MiniLM-L6-v2
+  output: t.text().notNull(), // Markdown response string
+  responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
   metadata: t.jsonb().$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: t
     .timestamp({ mode: "date", withTimezone: true })
@@ -50,72 +69,22 @@ export const mockInteractions = pgTable("mock_interactions", (t) => ({
     .notNull(),
 }));
 
-export const mockMessages = pgTable("mock_messages", (t) => ({
-  id: t.uuid().primaryKey().defaultRandom(),
-  interactionId: t
-    .uuid()
-    .notNull()
-    .references(() => mockInteractions.id, { onDelete: "cascade" }),
-  role: t.text().notNull(),
-  name: t.text(),
-  content: t
-    .jsonb()
-    .$type<unknown>()
-    .notNull(),
-  position: t.integer().notNull(),
-  metadata: t.jsonb().$type<Record<string, unknown>>().default({}).notNull(),
-  createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
-    .notNull(),
-}));
-
-export const mockToolCalls = pgTable("mock_tool_calls", (t) => ({
-  id: t.uuid().primaryKey().defaultRandom(),
-  messageId: t
-    .uuid()
-    .notNull()
-    .references(() => mockMessages.id, { onDelete: "cascade" }),
-  callId: t.text().notNull(),
-  toolName: t.text().notNull(),
-  callIndex: t.integer().notNull(),
-  arguments: t.jsonb().$type<unknown>().default(null),
-  result: t.jsonb().$type<unknown>().default(null),
-  createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
-    .notNull(),
-}));
-
-export const mockEndpointsRelations = relations(mockEndpoints, ({ many }) => ({
-  interactions: many(mockInteractions),
-}));
-
-export const mockInteractionsRelations = relations(
-  mockInteractions,
-  ({ many, one }) => ({
-    endpoint: one(mockEndpoints, {
-      fields: [mockInteractions.endpointId],
-      references: [mockEndpoints.id],
-    }),
-    messages: many(mockMessages),
+export const mockCollectionRelations = relations(
+  mockCollection,
+  ({ many }) => ({
+    interactions: many(mockInteraction),
   }),
 );
 
-export const mockMessagesRelations = relations(mockMessages, ({ many, one }) => ({
-  interaction: one(mockInteractions, {
-    fields: [mockMessages.interactionId],
-    references: [mockInteractions.id],
+export const mockInteractionRelations = relations(
+  mockInteraction,
+  ({ one }) => ({
+    collection: one(mockCollection, {
+      fields: [mockInteraction.collectionId],
+      references: [mockCollection.id],
+    }),
   }),
-  toolCalls: many(mockToolCalls),
-}));
-
-export const mockToolCallsRelations = relations(mockToolCalls, ({ one }) => ({
-  message: one(mockMessages, {
-    fields: [mockToolCalls.messageId],
-    references: [mockMessages.id],
-  }),
-}));
+);
 
 export const waitlist = pgTable("waitlist", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
