@@ -5,6 +5,7 @@ import { z } from "zod";
 // ============================================================================
 
 export const createCollectionInput = z.object({
+  publicId: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
   isPublic: z.boolean().optional(),
@@ -49,4 +50,10 @@ export const deleteInteractionInput = z.object({
 
 export const publicCollectionByPublicIdInput = z.object({
   publicId: z.string(),
+});
+
+export const queryInteractionInput = z.object({
+  publicId: z.string(),
+  query: z.string(),
+  limit: z.number().min(1).max(10).optional().default(1),
 });

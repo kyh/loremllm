@@ -130,7 +130,6 @@ const ChatPanel = (props: ChatPanelProps) => {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/llm",
         prepareSendMessagesRequest: ({ body, headers }) => ({
           body: body ?? {},
           headers: {
@@ -300,7 +299,7 @@ const ChatPanel = (props: ChatPanelProps) => {
             </p>
           ) : (
             messages.map((message) => {
-              const textParts = message.parts.filter(isTextPart) as TextPart[];
+              const textParts = message.parts.filter(isTextPart);
               const text = textParts
                 .map((part) => part.text)
                 .join("")

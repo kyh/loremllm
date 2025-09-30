@@ -29,17 +29,12 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@repo/ui/ai-elements/sources";
-import { DefaultChatTransport } from "ai";
 
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
 const ChatBotDemo = () => {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/llm",
-    }),
-  });
+  const { messages, sendMessage, status } = useChat();
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text?.trim();

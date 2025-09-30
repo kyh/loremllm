@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, sql } from "drizzle-orm";
 
 import type { AuthenticatedSession, TRPCContext } from "../trpc";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { generateEmbedding } from "./embedding-service";
 import {
   collectionByIdInput,
@@ -12,6 +12,7 @@ import {
   createInteractionInput,
   deleteCollectionInput,
   deleteInteractionInput,
+  queryInteractionInput,
   updateCollectionInput,
 } from "./mock-schema";
 
@@ -123,7 +124,7 @@ export const mockRouter = createTRPCRouter({
           .insert(mockCollection)
           .values({
             organizationId,
-            publicId: randomUUID(),
+            publicId: input.publicId ?? randomUUID(),
             name: input.name,
             description: input.description ?? null,
             isPublic: input.isPublic ?? false,
@@ -344,4 +345,90 @@ export const mockRouter = createTRPCRouter({
         return { success: true } as const;
       }),
   }),
+
+  /**
+   * Public query endpoint for searching interactions in a public collection
+   * Uses vector similarity search to find the best matching interaction
+   */
+  query: publicProcedure
+    .input(queryInteractionInput)
+    .query(async ({ ctx, input }) => {
+      // Find the collection by publicId
+      const collection = await ctx.db.query.mockCollection.findFirst({
+        where: (collection, { eq }) => eq(collection.publicId, input.publicId),
+      });
+
+      if (!collection) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Collection not found",
+        });
+      }
+
+      // Check if the collection is public
+      if (!collection.isPublic) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This collection is not public",
+        });
+      }
+
+      // Generate embedding for the query
+      let queryEmbedding: number[];
+      try {
+        queryEmbedding = await generateEmbedding(input.query);
+      } catch (error) {
+        console.error("Failed to generate query embedding:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to generate embedding for query",
+        });
+      }
+
+      // Use pgvector's cosine distance operator to find similar interactions
+      // The <=> operator returns distance (lower is better), so we order by ascending
+      const results = await ctx.db.execute<{
+        id: string;
+        title: string | null;
+        description: string | null;
+        input: string;
+        output: string;
+        response_schema: string;
+        distance: number;
+      }>(sql`
+        SELECT 
+          id,
+          title,
+          description,
+          input,
+          output,
+          response_schema,
+          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
+        FROM mock_interaction
+        WHERE collection_id = ${collection.id}
+        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        LIMIT ${input.limit ?? 1}
+      `);
+
+      if (results.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No interactions found in this collection",
+        });
+      }
+
+      return {
+        collectionId: collection.id,
+        collectionName: collection.name,
+        matches: results.map((result) => ({
+          id: result.id,
+          title: result.title,
+          description: result.description,
+          input: result.input,
+          output: result.output,
+          responseSchema: result.response_schema,
+          similarity: result.distance,
+        })),
+      };
+    }),
 });

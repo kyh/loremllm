@@ -11,11 +11,16 @@
 import { randomUUID } from "crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { db } from "@repo/db/drizzle-client";
 
 import { auth } from "../src/auth/auth";
 import { appRouter } from "../src/root-router";
 import { createCallerFactory } from "../src/trpc";
+
+// ESM compatibility: derive __dirname from import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // User configuration
 const USER_EMAIL = "im.kaiyu@gmail.com";
@@ -218,6 +223,7 @@ async function main() {
     // Step 4: Create the Demo collection
     console.log("\n📦 Creating 'Demo' collection...");
     const collection = await caller.mock.collection.create({
+      publicId: "demo",
       name: "Demo",
       description:
         "Demo collection showcasing LoremLLM capabilities with common questions and answers about the platform",
@@ -280,16 +286,6 @@ async function main() {
     console.log(`📦 Collection ID: ${collection.id}`);
     console.log(`🔗 Public ID: ${collection.publicId}`);
     console.log("\n🎉 Demo collection seed complete!");
-    console.log("\n💡 Next steps:");
-    console.log(`   1. Login as: ${USER_EMAIL}`);
-    console.log(`   2. Visit your dashboard to view the collection`);
-    console.log(
-      `   3. Use the public ID to make API calls: ${collection.publicId}`,
-    );
-    console.log(`   4. Test the endpoint with different queries`);
-    console.log(
-      `   5. This collection is PUBLIC - anyone can query it without authentication!`,
-    );
   } catch (error) {
     console.error("\n❌ Fatal Error:", error);
     if (error instanceof Error) {
