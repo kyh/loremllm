@@ -1,7 +1,5 @@
 import type { UIMessage } from "ai";
-import type { VariantProps } from "class-variance-authority";
 import type { ComponentProps, HTMLAttributes } from "react";
-import { cva } from "class-variance-authority";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { cn } from "../utils";
@@ -10,55 +8,47 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
 };
 
-export const Message = ({ className, from, ...props }: MessageProps) => (
-  <div
-    className={cn(
-      "group flex w-full items-end justify-end gap-2 py-4",
-      from === "user" ? "is-user" : "is-assistant flex-row-reverse justify-end",
-      className,
-    )}
-    {...props}
-  />
-);
-
-const messageContentVariants = cva(
-  "is-user:dark flex flex-col gap-2 overflow-hidden rounded-lg text-sm",
-  {
-    variants: {
-      variant: {
-        contained: [
-          "max-w-[80%] px-4 py-3",
-          "group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground",
-          "group-[.is-assistant]:bg-secondary group-[.is-assistant]:text-foreground",
-        ],
-        flat: [
-          "group-[.is-user]:bg-secondary group-[.is-user]:text-foreground group-[.is-user]:max-w-[80%] group-[.is-user]:px-4 group-[.is-user]:py-3",
-          "group-[.is-assistant]:text-foreground",
-        ],
-      },
-    },
-    defaultVariants: {
-      variant: "contained",
-    },
-  },
-);
-
-export type MessageContentProps = HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof messageContentVariants>;
-
-export const MessageContent = ({
-  children,
+export const Message = ({
   className,
-  variant,
+  from,
+  children,
   ...props
-}: MessageContentProps) => (
-  <div
-    className={cn(messageContentVariants({ variant, className }))}
-    {...props}
-  >
-    {children}
-  </div>
-);
+}: MessageProps) =>
+  from === "user" ? (
+    <div
+      className={cn(
+        "mb-[calc(var(--font-size)*var(--theme-line-height-base))] flex items-start justify-between",
+        className,
+      )}
+      {...props}
+    >
+      <div className="w-full min-w-[10%] text-right">
+        <div className="inline-block bg-[var(--theme-focused-foreground)] px-[1ch] py-[calc(8px*var(--theme-line-height-base))]">
+          {children}
+        </div>
+      </div>
+      <div className="flex flex-shrink-0 items-end self-stretch">
+        <figure className="mb-[calc((var(--font-size)*var(--theme-line-height-base))/2)] inline-block h-0 w-0 border-t-[calc((var(--font-size)*var(--theme-line-height-base))/2)] border-b-[calc((var(--font-size)*var(--theme-line-height-base))/2)] border-l-[1ch] border-t-transparent border-b-transparent border-l-[var(--theme-focused-foreground)]" />
+      </div>
+    </div>
+  ) : (
+    <div
+      className={cn(
+        "mb-[calc(var(--font-size)*var(--theme-line-height-base))] flex items-start justify-between last:mb-0",
+        className,
+      )}
+      {...props}
+    >
+      <div className="relative flex flex-shrink-0 items-end self-stretch">
+        <figure className="mb-[calc((var(--font-size)*var(--theme-line-height-base))/2)] inline-block h-0 w-0 border-t-[calc((var(--font-size)*var(--theme-line-height-base))/2)] border-r-[1ch] border-b-[calc((var(--font-size)*var(--theme-line-height-base))/2)] border-t-transparent border-r-[var(--theme-border)] border-b-transparent" />
+      </div>
+      <div className="w-full min-w-[10%] text-left">
+        <div className="inline-block bg-[var(--theme-border)] px-[1ch] py-[calc(8px*var(--theme-line-height-base))] shadow-[1ch_1ch_0_0_var(--theme-border-subdued)]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 
 export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
   src: string;

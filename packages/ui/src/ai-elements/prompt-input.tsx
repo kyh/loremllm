@@ -3,6 +3,7 @@
 import type { ChatStatus, FileUIPart } from "ai";
 import type {
   ChangeEventHandler,
+  ClipboardEventHandler,
   ComponentProps,
   FormEvent,
   FormEventHandler,
@@ -12,7 +13,6 @@ import type {
 } from "react";
 import {
   Children,
-  ClipboardEventHandler,
   createContext,
   Fragment,
   useCallback,
@@ -79,11 +79,11 @@ export type PromptInputAttachmentProps = HTMLAttributes<HTMLDivElement> & {
   className?: string;
 };
 
-export function PromptInputAttachment({
+export const PromptInputAttachment = ({
   data,
   className,
   ...props
-}: PromptInputAttachmentProps) {
+}: PromptInputAttachmentProps) => {
   const attachments = usePromptInputAttachments();
 
   return (
@@ -117,7 +117,7 @@ export function PromptInputAttachment({
       </Button>
     </div>
   );
-}
+};
 
 export type PromptInputAttachmentsProps = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -126,11 +126,11 @@ export type PromptInputAttachmentsProps = Omit<
   children: (attachment: FileUIPart & { id: string }) => React.ReactNode;
 };
 
-export function PromptInputAttachments({
+export const PromptInputAttachments = ({
   className,
   children,
   ...props
-}: PromptInputAttachmentsProps) {
+}: PromptInputAttachmentsProps) => {
   const attachments = usePromptInputAttachments();
   const [height, setHeight] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -165,7 +165,7 @@ export function PromptInputAttachments({
       </div>
     </div>
   );
-}
+};
 
 export type PromptInputActionAddAttachmentsProps = ComponentProps<
   typeof DropdownMenuItem
@@ -437,10 +437,7 @@ export const PromptInput = ({
         type="file"
       />
       <form
-        className={cn(
-          "bg-background w-full divide-y overflow-hidden rounded-xl border shadow-sm",
-          className,
-        )}
+        className={cn("w-full overflow-hidden", className)}
         onSubmit={handleSubmit}
         {...props}
       />
@@ -574,12 +571,7 @@ export const PromptInputButton = ({
 
   return (
     <Button
-      className={cn(
-        "shrink-0 gap-1.5 rounded-lg",
-        variant === "ghost" && "text-muted-foreground",
-        newSize === "default" && "px-3",
-        className,
-      )}
+      className={className}
       size={newSize}
       type="button"
       variant={variant}
