@@ -622,8 +622,8 @@ const Page = () => {
                         <CardContent>
                           Cards use shadcn's composition pattern with
                           CardHeader, CardTitle, CardContent, and CardFooter
-                          subcomponents, all styled with sacred's distinctive
-                          border patterns.
+                          subcomponents, all styled with distinctive border
+                          patterns.
                         </CardContent>
                       </Card>
                     </CardContent>
@@ -648,7 +648,7 @@ const Page = () => {
             <AccordionTrigger>CODE BLOCKS</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
               Code blocks display code examples with syntax highlighting
-              (requires CodeBlock component from sacred).
+              (requires CodeBlock component from the UI library).
               <br />
               <br />
               <Card>
@@ -745,8 +745,7 @@ int main() {
           <AccordionItem value="chessboard">
             <AccordionTrigger>CHESSBOARD</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Minimal 8×8 chessboard component with Unicode pieces (requires
-              Chessboard component from sacred).
+              Minimal 8×8 chessboard component with Unicode pieces.
               <br />
               <br />
               <Card>
@@ -779,8 +778,8 @@ int main() {
           <AccordionItem value="checkbox">
             <AccordionTrigger>CHECKBOX</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Checkboxes using Radix UI primitives with sacred's ╳ indicator
-              character.
+              Checkboxes using Radix UI primitives with ╳ indicator character
+              styling.
               <br />
               <br />
               <Card>
@@ -829,7 +828,7 @@ int main() {
           <AccordionItem value="dialog">
             <AccordionTrigger>DIALOG</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Dialogs overlay main content using Radix UI Dialog with sacred
+              Dialogs overlay main content using Radix UI Dialog with terminal
               styling.
               <br />
               <br />
@@ -850,8 +849,8 @@ int main() {
                       <DialogDescription>
                         This dialog uses Radix UI's Dialog primitive for
                         accessibility and keyboard navigation, styled with
-                        sacred's terminal aesthetic including the distinctive
-                        shadow effect.
+                        terminal aesthetic including the distinctive shadow
+                        effect.
                       </DialogDescription>
                       <br />
                       <DialogFooter>
@@ -915,7 +914,7 @@ int main() {
             <AccordionTrigger>DRAWER</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
               A drawer is a panel that slides in from the screen edge using
-              Radix UI Drawer (vaul) with sacred styling.
+              Radix UI Drawer (vaul) with terminal styling.
               <br />
               <br />
               <Card>
@@ -932,8 +931,7 @@ int main() {
                         <DrawerTitle>DRAWER EXAMPLE</DrawerTitle>
                         <DrawerDescription>
                           This drawer uses vaul for smooth slide-in animations
-                          with sacred's terminal styling and distinctive border
-                          patterns.
+                          with terminal styling and distinctive border patterns.
                         </DrawerDescription>
                       </DrawerHeader>
                       <br />
@@ -959,7 +957,7 @@ int main() {
           <AccordionItem value="dropdown-menu">
             <AccordionTrigger>DROPDOWN MENU</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Dropdown menus using Radix UI DropdownMenu with sacred styling.
+              Dropdown menus using Radix UI DropdownMenu with terminal styling.
               <br />
               <br />
               <Card>
@@ -1021,7 +1019,7 @@ int main() {
           <AccordionItem value="input">
             <AccordionTrigger>INPUT</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Input fields styled with sacred's distinctive border treatment.
+              Input fields styled with distinctive border treatment.
               <br />
               <br />
               <Card>
@@ -1262,7 +1260,7 @@ int main() {
             <AccordionTrigger>MODAL</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
               Modals overlay main content - Dialog component serves this purpose
-              with sacred styling.
+              with terminal styling.
               <br />
               <br />
               <Card>
@@ -1282,7 +1280,7 @@ int main() {
                       <DialogDescription>
                         This modal uses the Dialog component which provides the
                         same functionality as traditional modals, with Radix UI
-                        accessibility and sacred terminal styling.
+                        accessibility and terminal styling.
                       </DialogDescription>
                       <br />
                       <DialogFooter>
@@ -1302,7 +1300,7 @@ int main() {
             <AccordionTrigger>NAVIGATION BAR</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
               Navigation bars for top-level navigation with terminal-style
-              styling and flexible layout options.
+              design and flexible layout options.
               <br />
               <br />
               <Card>
@@ -1370,7 +1368,7 @@ int main() {
                         <ActionButton>TOP LEFT</ActionButton>
                       </PopoverTrigger>
                       <PopoverContent>
-                        <p>This is popover content with sacred styling.</p>
+                        <p>This is popover content with terminal styling.</p>
                       </PopoverContent>
                     </Popover>
 
@@ -1440,8 +1438,8 @@ int main() {
           <AccordionItem value="radio">
             <AccordionTrigger>RADIO BUTTONS</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Radio buttons using Radix UI RadioGroup with sacred's diamond
-              indicator.
+              Radio buttons using Radix UI RadioGroup with diamond indicator
+              styling.
               <br />
               <br />
               <CardDouble title="METHOD">
@@ -1469,8 +1467,8 @@ int main() {
           <AccordionItem value="select">
             <AccordionTrigger>SELECT</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Select components using Radix UI Select with sacred dropdown
-              styling.
+              Select components using Radix UI Select with terminal-style
+              dropdown design.
               <br />
               <br />
               <Card>
@@ -1497,7 +1495,7 @@ int main() {
           <AccordionItem value="table">
             <AccordionTrigger>TABLE</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Tables organize data in rows and columns with sacred styling.
+              Tables organize data in rows and columns with terminal styling.
               <br />
               <br />
               <Card>
@@ -1573,7 +1571,7 @@ int main() {
           <AccordionItem value="textarea">
             <AccordionTrigger>TEXT AREA</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Multi-line text input with sacred styling.
+              Multi-line text input with terminal styling.
               <br />
               <br />
               <Card>
@@ -1631,7 +1629,7 @@ int main() {
             <AccordionTrigger>TREEVIEW</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
               Tree Views display hierarchical list structures (requires TreeView
-              component from sacred).
+              component from the UI library).
               <br />
               <br />
               <Card>
