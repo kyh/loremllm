@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import clsx from "clsx";
 
 import { cn } from "./utils";
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
-  caretChars?: string | any;
-  label?: string | any;
+  caretChars?: string;
+  label?: string;
   isBlink?: boolean;
 };
 
@@ -20,36 +21,43 @@ const Input = ({
   type,
   id,
   className,
+  value,
+  defaultValue,
   ...rest
 }: InputProps) => {
   const generatedId = React.useId();
-  const inputId = id || generatedId;
+  const inputId = id ?? generatedId;
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [text, setText] = React.useState<string>(
-    rest.defaultValue?.toString() || rest.value?.toString() || "",
-  );
+  const [text, setText] = useControllableState({
+    prop: value,
+    defaultProp: defaultValue,
+    onChange: (value) => {
+      if (onChange) {
+        const syntheticEvent = {
+          target: { value: value ?? "" },
+          currentTarget: { value: value ?? "" },
+        } as React.ChangeEvent<HTMLInputElement>;
+        onChange(syntheticEvent);
+      }
+    },
+  });
+
+  const textValue = String(text ?? "");
   const [isFocused, setIsFocused] = React.useState<boolean>(false);
   const [selectionStart, setSelectionStart] = React.useState<number>(
-    text.length,
+    textValue.length,
   );
 
   const lastFocusDirectionRef = React.useRef<"up" | "down" | null>(null);
 
   React.useEffect(() => {
-    if (rest.value !== undefined) {
-      const val = rest.value.toString();
-      setText(val);
-      setSelectionStart(val.length);
-    }
-  }, [rest.value]);
+    setSelectionStart(textValue.length);
+  }, [textValue]);
 
   const onHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setText(value);
-    if (onChange) {
-      onChange(e);
-    }
     setSelectionStart(e.target.selectionStart ?? value.length);
   };
 
@@ -58,8 +66,8 @@ const Input = ({
     if (!inputRef.current) return;
 
     if (lastFocusDirectionRef.current === "down") {
-      setSelectionStart(text.length);
-      inputRef.current.setSelectionRange(text.length, text.length);
+      setSelectionStart(textValue.length);
+      inputRef.current.setSelectionRange(textValue.length, textValue.length);
     } else if (lastFocusDirectionRef.current === "up") {
       setSelectionStart(0);
       inputRef.current.setSelectionRange(0, 0);
@@ -72,13 +80,13 @@ const Input = ({
 
   const onHandleSelect = (e: React.SyntheticEvent<HTMLInputElement>) => {
     const inputEl = e.currentTarget as HTMLInputElement;
-    setSelectionStart(inputEl.selectionStart ?? text.length);
+    setSelectionStart(inputEl.selectionStart ?? textValue.length);
   };
 
   const onHandleClick = (e: React.MouseEvent<HTMLInputElement>) => {
     const inputEl = e.currentTarget as HTMLInputElement;
     inputEl.focus();
-    setSelectionStart(inputEl.selectionStart ?? text.length);
+    setSelectionStart(inputEl.selectionStart ?? textValue.length);
   };
 
   const onHandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,7 +106,7 @@ const Input = ({
     }
   };
 
-  const isPlaceholderVisible = !text && placeholder;
+  const isPlaceholderVisible = !textValue && placeholder;
   const containerClasses = cn(
     "relative block",
     isFocused && "focused",
@@ -109,11 +117,11 @@ const Input = ({
     type === "password" ? "•".repeat(t.length) : t;
 
   const beforeCaretText = isPlaceholderVisible
-    ? (placeholder ?? "")
-    : maskText(text.substring(0, selectionStart));
+    ? placeholder
+    : maskText(textValue.substring(0, selectionStart));
   const afterCaretText = isPlaceholderVisible
     ? ""
-    : maskText(text.substring(selectionStart));
+    : maskText(textValue.substring(selectionStart));
 
   return (
     <div className={containerClasses}>
@@ -130,24 +138,22 @@ const Input = ({
           )}
         >
           {beforeCaretText}
-          {!isPlaceholderVisible && (
-            <span
-              className={clsx(
-                "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]",
-                isBlink && "animate-[blink_1s_step-start_0s_infinite]",
-                isFocused && "bg-[var(--theme-focused-foreground)]",
-              )}
-            >
-              {caretChars || ""}
-            </span>
-          )}
+          <span
+            className={clsx(
+              "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]",
+              isBlink && "animate-[blink_1s_step-start_0s_infinite]",
+              isFocused && "bg-[var(--theme-focused-foreground)]",
+            )}
+          >
+            {caretChars ?? ""}
+          </span>
           {!isPlaceholderVisible && afterCaretText}
         </div>
         <input
           id={inputId}
           ref={inputRef}
-          className="font-inherit absolute top-0 left-0 m-0 w-full overflow-hidden border-0 bg-transparent p-0 leading-[var(--theme-line-height-base)] text-[var(--font-size)] text-transparent caret-transparent outline-0 [&:-webkit-autofill]:shadow-[0_0_0px_1000px_var(--theme-focused-foreground)_inset]"
-          value={text}
+          className="font-inherit absolute top-0 left-0 m-0 w-full overflow-hidden border-0 bg-transparent p-0 leading-[var(--theme-line-height-base)] text-transparent caret-transparent outline-0 [&:-webkit-autofill]:shadow-[0_0_0px_1000px_var(--theme-focused-foreground)_inset]"
+          value={textValue}
           aria-placeholder={placeholder}
           type={type}
           onFocus={onHandleFocus}

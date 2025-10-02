@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import clsx from "clsx";
 
 import { cn } from "./utils";
@@ -14,14 +15,28 @@ const Textarea = ({
   placeholder,
   onChange,
   className,
+  value,
+  defaultValue,
   ...rest
 }: TextareaProps) => {
   const textAreaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const measurementRef = React.useRef<HTMLDivElement | null>(null);
 
-  const [text, setText] = React.useState<string>(
-    rest.defaultValue?.toString() ?? rest.value?.toString() ?? "",
-  );
+  const [text, setText] = useControllableState({
+    prop: value,
+    defaultProp: defaultValue,
+    onChange: (value) => {
+      if (onChange) {
+        const syntheticEvent = {
+          target: { value: value ?? "" },
+          currentTarget: { value: value ?? "" },
+        } as React.ChangeEvent<HTMLTextAreaElement>;
+        onChange(syntheticEvent);
+      }
+    },
+  });
+
+  const textValue = String(text ?? "");
   const [isFocused, setIsFocused] = React.useState<boolean>(false);
   const [selectionStart, setSelectionStart] = React.useState<number>(0);
 
@@ -32,12 +47,8 @@ const Textarea = ({
   }, [selectionStart, isFocused]);
 
   React.useEffect(() => {
-    if (rest.value !== undefined) {
-      const val = rest.value.toString();
-      setText(val);
-      setSelectionStart(val.length);
-    }
-  }, [rest.value]);
+    setSelectionStart(textValue.length);
+  }, [textValue]);
 
   const resizeTextArea = React.useCallback(() => {
     if (!textAreaRef.current) return;
@@ -55,9 +66,6 @@ const Textarea = ({
     const value = e.target.value;
     setText(value);
     resizeTextArea();
-    if (onChange) {
-      onChange(e);
-    }
     setSelectionStart(e.target.selectionStart || 0);
   };
 
@@ -93,7 +101,7 @@ const Textarea = ({
     // Focus management removed - can be re-added if needed
   };
 
-  const isPlaceholderVisible = !text && placeholder;
+  const isPlaceholderVisible = !textValue && placeholder;
 
   const containerClasses = cn("relative", isFocused && "focused", className);
 
@@ -107,16 +115,16 @@ const Textarea = ({
             "[&_.block]:bg-[var(--theme-focused-foreground)] [&_.placeholder]:bg-[var(--theme-focused-foreground)]",
         )}
       >
-        {isPlaceholderVisible ? placeholder : text.substring(0, selectionStart)}
-        {!isPlaceholderVisible && (
-          <span
-            className={clsx(
-              "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom",
-              isBlink && "animate-[blink_1s_step-start_infinite]",
-            )}
-          ></span>
-        )}
-        {!isPlaceholderVisible && text.substring(selectionStart)}
+        {isPlaceholderVisible
+          ? placeholder
+          : textValue.substring(0, selectionStart)}
+        <span
+          className={clsx(
+            "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom",
+            isBlink && "animate-[blink_1s_step-start_infinite]",
+          )}
+        ></span>
+        {!isPlaceholderVisible && textValue.substring(selectionStart)}
       </div>
 
       <div
@@ -127,7 +135,7 @@ const Textarea = ({
       <textarea
         className="font-inherit absolute top-0 left-0 m-0 h-full w-full resize-none overflow-hidden border-none bg-transparent p-0 leading-[var(--theme-line-height-base)] text-transparent caret-transparent outline-none"
         ref={textAreaRef}
-        value={text}
+        value={textValue}
         aria-placeholder={placeholder}
         onFocus={onHandleFocus}
         onBlur={onHandleBlur}
