@@ -1,26 +1,26 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
 
 import { cn } from "./utils";
 
-interface ActionListItemProps extends React.ComponentProps<"div"> {
+type ActionListItemProps = {
+  className?: string;
+  children?: React.ReactNode;
+  onClick?: () => void;
   icon?: React.ReactNode;
   href?: string;
   target?: string;
-  asChild?: boolean;
-}
+};
 
-function ActionListItem({
+const ActionListItem = ({
   className,
   icon,
   href,
   target,
-  asChild = false,
   children,
   onClick,
   ...props
-}: ActionListItemProps) {
-  const Comp = asChild ? Slot : href ? "a" : "div";
+}: ActionListItemProps) => {
+  const Comp = href ? "a" : "div";
 
   const linkProps = href
     ? {
@@ -38,7 +38,7 @@ function ActionListItem({
         "flex cursor-pointer items-start justify-between border-0 bg-transparent text-[var(--theme-text)] no-underline outline-0 visited:bg-transparent visited:text-[var(--theme-text)] hover:bg-transparent hover:text-[var(--theme-text)] hover:[&_.icon]:bg-[var(--theme-focused-foreground)] focus:[&_.icon]:bg-[var(--theme-focused-foreground)]",
         className,
       )}
-      onClick={onClick as any}
+      onClick={onClick}
       tabIndex={0}
       {...linkProps}
       {...props}
@@ -51,6 +51,6 @@ function ActionListItem({
       </span>
     </Comp>
   );
-}
+};
 
 export { ActionListItem };

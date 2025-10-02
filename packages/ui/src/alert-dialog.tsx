@@ -3,6 +3,7 @@
 import * as React from "react";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
+import { BlockLoader } from "./block-loader";
 import { Button, buttonVariants } from "./button";
 import { cn } from "./utils";
 
@@ -275,7 +276,8 @@ export const GlobalAlertDialog = () => {
         )}
         <AlertDialogFooter>
           {!alertState.action?.hidden && (
-            <Button onClick={onConfirm} loading={pendingAction}>
+            <Button onClick={onConfirm} disabled={pendingAction}>
+              {pendingAction && <BlockLoader mode={1} />}
               {alertState.action?.label ?? "Confirm"}
             </Button>
           )}
@@ -283,8 +285,9 @@ export const GlobalAlertDialog = () => {
             <Button
               variant="secondary"
               onClick={() => onOpenChange(false)}
-              loading={pendingCancel}
+              disabled={pendingCancel}
             >
+              {pendingCancel && <BlockLoader mode={1} />}
               {alertState.cancel?.label ?? "Close"}
             </Button>
           )}

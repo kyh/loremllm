@@ -1,7 +1,5 @@
 @import "tailwindcss" source("../../../../../");
 
-@import "tw-animate-css";
-
 :root {
   --background: hsl(240 10% 3.9%);
   --foreground: hsl(0 0% 98%);
@@ -22,7 +20,7 @@
   --border: hsl(240 3.7% 15.9%);
   --input: hsl(240 3.7% 15.9%);
   --ring: hsl(240 4.9% 83.9%);
-  --radius: 0.3rem;
+  --radius: 0;
 }
 
 @theme inline {
@@ -171,94 +169,6 @@
     font-family: "TX02Mono-Regular";
     src: url("https://intdev-global.s3.us-west-2.amazonaws.com/public/internet-dev/e049dfb6-9c5d-4ac4-97c2-eb6e95c61d09.woff2")
       format("woff2");
-  }
-
-  a,
-  abbr,
-  acronym,
-  address,
-  applet,
-  article,
-  aside,
-  audio,
-  b,
-  big,
-  blockquote,
-  body,
-  canvas,
-  caption,
-  center,
-  cite,
-  code,
-  dd,
-  del,
-  details,
-  dfn,
-  div,
-  dl,
-  dt,
-  embed,
-  em,
-  figure,
-  figcaption,
-  fieldset,
-  footer,
-  form,
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  header,
-  hgroup,
-  html,
-  i,
-  iframe,
-  img,
-  ins,
-  kbd,
-  label,
-  legend,
-  li,
-  mark,
-  menu,
-  nav,
-  object,
-  ol,
-  output,
-  p,
-  pre,
-  q,
-  ruby,
-  s,
-  samp,
-  section,
-  small,
-  span,
-  strike,
-  strong,
-  sub,
-  summary,
-  sup,
-  table,
-  tbody,
-  td,
-  tfoot,
-  th,
-  thead,
-  time,
-  tr,
-  tt,
-  u,
-  ul,
-  var,
-  video {
-    border: 0;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    vertical-align: baseline;
   }
 
   a {
@@ -628,13 +538,6 @@
     --theme-text: var(--color-black-100);
     --theme-line-height-base: 1.25;
     --font-size: 16px;
-
-    --z-index-page: 1;
-    --z-index-page-select: 3;
-    --z-index-page-tooltips: 4;
-    --z-index-page-popover: 5;
-    --z-index-page-dropdown-menus: 6;
-    --z-index-page-modals: 10;
 
     background: var(--theme-background);
     color: var(--theme-text);

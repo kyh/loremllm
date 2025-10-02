@@ -2,36 +2,36 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-interface CardDoubleProps extends React.ComponentProps<"article"> {
+type CardDoubleProps = {
   title?: React.ReactNode;
   mode?: "left" | "right";
-}
+} & React.ComponentProps<"article">;
 
-function CardDouble({
+const actionClasses = "flex items-end justify-between";
+
+const leftClasses =
+  "min-w-[10%] w-full border-t-[6px] border-l-[6px] border-[var(--theme-text)] [border-top-style:double] [border-left-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[2ch] pl-[1ch]";
+
+const leftCornerClasses =
+  "flex-shrink-0 border-t-[6px] border-l-[6px] border-[var(--theme-text)] [border-top-style:double] [border-left-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[calc(1ch-6px)] pl-[1ch]";
+
+const rightClasses =
+  "min-w-[10%] w-full border-t-[6px] border-r-[6px] border-[var(--theme-text)] [border-top-style:double] [border-right-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[2ch] pl-[1ch]";
+
+const rightCornerClasses =
+  "flex-shrink-0 border-t-[6px] border-r-[6px] border-[var(--theme-text)] [border-top-style:double] [border-right-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[1ch] pl-[calc(1ch-6px)]";
+
+const titleClasses =
+  "flex-shrink-0 px-[1ch] text-[var(--font-size)] font-normal";
+
+const CardDouble = ({
   className,
   title,
   mode,
   children,
   style,
   ...props
-}: CardDoubleProps) {
-  const actionClasses = "flex items-end justify-between";
-
-  const leftClasses =
-    "min-w-[10%] w-full border-t-[6px] border-l-[6px] border-[var(--theme-text)] [border-top-style:double] [border-left-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[2ch] pl-[1ch]";
-
-  const leftCornerClasses =
-    "flex-shrink-0 border-t-[6px] border-l-[6px] border-[var(--theme-text)] [border-top-style:double] [border-left-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[calc(1ch-6px)] pl-[1ch]";
-
-  const rightClasses =
-    "min-w-[10%] w-full border-t-[6px] border-r-[6px] border-[var(--theme-text)] [border-top-style:double] [border-right-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[2ch] pl-[1ch]";
-
-  const rightCornerClasses =
-    "flex-shrink-0 border-t-[6px] border-r-[6px] border-[var(--theme-text)] [border-top-style:double] [border-right-style:double] pt-[calc(6px*var(--theme-line-height-base))] pr-[1ch] pl-[calc(1ch-6px)]";
-
-  const titleClasses =
-    "flex-shrink-0 px-[1ch] text-[var(--font-size)] font-normal";
-
+}: CardDoubleProps) => {
   let titleElement = (
     <header className={actionClasses}>
       <div className={leftClasses} aria-hidden="true"></div>
@@ -72,6 +72,6 @@ function CardDouble({
       </section>
     </article>
   );
-}
+};
 
 export { CardDouble };

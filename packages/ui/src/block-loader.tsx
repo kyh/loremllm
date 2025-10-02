@@ -19,12 +19,11 @@ const SEQUENCES = [
   ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
 ];
 
-interface BlockLoaderProps
-  extends Omit<React.ComponentProps<"span">, "children"> {
+type BlockLoaderProps = {
   mode?: number;
-}
+} & Omit<React.ComponentProps<"span">, "children">;
 
-function BlockLoader({ className, mode = 0, ...props }: BlockLoaderProps) {
+const BlockLoader = ({ className, mode = 0, ...props }: BlockLoaderProps) => {
   const [index, setIndex] = React.useState(0);
   const intervalRef = React.useRef<number | null>(null);
 
@@ -59,6 +58,6 @@ function BlockLoader({ className, mode = 0, ...props }: BlockLoaderProps) {
       {sequence[index]}
     </span>
   );
-}
+};
 
 export { BlockLoader };

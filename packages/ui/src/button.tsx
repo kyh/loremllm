@@ -6,7 +6,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "./utils";
 
 const buttonVariants = cva(
-  "m-0 inline-block min-h-[calc(var(--theme-line-height-base)*(var(--font-size)*2))] w-full cursor-pointer border-0 px-[2ch] py-0 text-center text-base leading-[calc(var(--theme-line-height-base)*2em)] font-[var(--font-family-mono)] font-normal tracking-[1px] uppercase outline-0 transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:bg-[var(--theme-button-background)] disabled:text-[var(--theme-button-foreground)]",
+  "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive inline-flex shrink-0 items-center justify-center gap-2 text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -23,11 +23,10 @@ const buttonVariants = cva(
         link: "bg-transparent text-[var(--theme-text)] underline underline-offset-4 hover:bg-[var(--theme-focused-foreground)]",
       },
       size: {
-        default:
-          "min-h-[calc(var(--theme-line-height-base)*(var(--font-size)*2))] px-[2ch]",
-        sm: "min-h-[calc(var(--theme-line-height-base)*(var(--font-size)*1.5))] px-[1.5ch]",
-        lg: "min-h-[calc(var(--theme-line-height-base)*(var(--font-size)*2.5))] px-[3ch]",
-        icon: "w-[calc(var(--theme-line-height-base)*(var(--font-size)*2))] min-w-[calc(var(--theme-line-height-base)*(var(--font-size)*2))]",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 px-6 has-[>svg]:px-4",
+        icon: "size-9",
       },
     },
     defaultVariants: {
@@ -37,7 +36,7 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
+const Button = ({
   className,
   variant,
   size,
@@ -46,7 +45,7 @@ function Button({
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-  }) {
+  }) => {
   const Comp = asChild ? Slot : "button";
 
   return (
@@ -56,6 +55,6 @@ function Button({
       {...props}
     />
   );
-}
+};
 
 export { Button, buttonVariants };

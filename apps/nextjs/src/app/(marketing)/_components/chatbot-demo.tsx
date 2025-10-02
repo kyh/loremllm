@@ -7,7 +7,6 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@repo/ui/ai-elements/conversation";
-import { Loader } from "@repo/ui/ai-elements/loader";
 import { Message } from "@repo/ui/ai-elements/message";
 import {
   PromptInput,
@@ -29,6 +28,7 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@repo/ui/ai-elements/sources";
+import { BlockLoader } from "@repo/ui/block-loader";
 
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
@@ -104,7 +104,7 @@ export const ChatBotDemo = () => {
               })}
             </div>
           ))}
-          {status === "submitted" && <Loader />}
+          {status === "submitted" && <BlockLoader mode={1} />}
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>

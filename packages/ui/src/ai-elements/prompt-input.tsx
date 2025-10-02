@@ -25,7 +25,6 @@ import {
 } from "react";
 import {
   ImageIcon,
-  Loader2Icon,
   PaperclipIcon,
   PlusIcon,
   SendIcon,
@@ -34,6 +33,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 
+import { BlockLoader } from "../block-loader";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -548,14 +548,7 @@ export const PromptInputTools = ({
   className,
   ...props
 }: PromptInputToolsProps) => (
-  <div
-    className={cn(
-      "flex items-center gap-1",
-      "[&_button:first-child]:rounded-bl-xl",
-      className,
-    )}
-    {...props}
-  />
+  <div className={cn("flex items-center gap-1", className)} {...props} />
 );
 
 export type PromptInputButtonProps = ComponentProps<typeof Button>;
@@ -638,7 +631,7 @@ export const PromptInputSubmit = ({
   let Icon = <SendIcon className="size-4" />;
 
   if (status === "submitted") {
-    Icon = <Loader2Icon className="size-4 animate-spin" />;
+    Icon = <BlockLoader mode={1} />;
   } else if (status === "streaming") {
     Icon = <SquareIcon className="size-4" />;
   } else if (status === "error") {

@@ -4,17 +4,17 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-interface BarLoaderProps extends React.ComponentProps<"div"> {
+type BarLoaderProps = {
   intervalRate?: number;
   progress?: number;
-}
+} & React.ComponentProps<"div">;
 
-function BarLoader({
+const BarLoader = ({
   className,
   intervalRate,
   progress,
   ...props
-}: BarLoaderProps) {
+}: BarLoaderProps) => {
   const [currentProgress, setCurrentProgress] = React.useState<number>(
     progress || 0,
   );
@@ -51,6 +51,6 @@ function BarLoader({
       ></div>
     </div>
   );
-}
+};
 
 export { BarLoader };
