@@ -25,17 +25,10 @@ import {
 } from "@repo/ui/breadcrumb";
 import { Button } from "@repo/ui/button";
 import { ButtonGroup } from "@repo/ui/button-group";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { CardDouble } from "@repo/ui/card-double";
 import { Checkbox } from "@repo/ui/checkbox";
 import { Chessboard } from "@repo/ui/chessboard";
-import { CodeBlock } from "@repo/ui/code-block";
 import { ComboBox } from "@repo/ui/combobox";
 import { DataTable } from "@repo/ui/data-table";
 import { DatePicker } from "@repo/ui/date-picker";
@@ -52,6 +45,16 @@ import {
 } from "@repo/ui/dialog";
 import { Divider } from "@repo/ui/divider";
 import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@repo/ui/drawer";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -66,10 +69,10 @@ import { Grid } from "@repo/ui/grid";
 import { Indent } from "@repo/ui/indent";
 import { Input } from "@repo/ui/input";
 import { ListItem } from "@repo/ui/list-item";
+import { Navigation } from "@repo/ui/navigation";
 import { NumberRangeSlider } from "@repo/ui/number-range-slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@repo/ui/radio-group";
-import { Row } from "@repo/ui/row";
 import { RowSpaceBetween } from "@repo/ui/row-space-between";
 import {
   Select,
@@ -118,9 +121,7 @@ const Page = () => {
             "code-blocks",
             "combobox",
             "data-table",
-            "dashboard-radar",
             "date-picker",
-            "denabase",
             "chessboard",
             "checkbox",
             "dialog",
@@ -141,7 +142,6 @@ const Page = () => {
             "radio",
             "select",
             "table",
-            "sidebar-layout",
             "slider",
             "textarea",
             "tooltip",
@@ -721,27 +721,6 @@ int main() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="dashboard-radar">
-            <AccordionTrigger>DASHBOARD RADAR EXAMPLE</AccordionTrigger>
-            <AccordionContent className="whitespace-pre-wrap">
-              Tribute to Brian Wyvill's Nostromo interface from Alien 1979
-              (requires DashboardRadar from sacred examples).
-              <br />
-              <br />
-              <Card>
-                <CardHeader>
-                  <CardTitle>EXAMPLE</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>
-                    DashboardRadar component - orbital simulations visualization
-                  </p>
-                </CardContent>
-              </Card>
-              <br />
-            </AccordionContent>
-          </AccordionItem>
-
           <AccordionItem value="date-picker">
             <AccordionTrigger>DATE PICKER</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
@@ -757,27 +736,6 @@ int main() {
                 </CardHeader>
                 <CardContent>
                   <DatePicker year={2012} month={12} />
-                </CardContent>
-              </Card>
-              <br />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="denabase">
-            <AccordionTrigger>DENABASE EXAMPLE</AccordionTrigger>
-            <AccordionContent className="whitespace-pre-wrap">
-              Tribute to Territory Studio's work in Blade Runner 2049 (requires
-              Denabase from sacred examples).
-              <br />
-              <br />
-              <Card>
-                <CardHeader>
-                  <CardTitle>EXAMPLE</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>
-                    Denabase component - DNA database card system visualization
-                  </p>
                 </CardContent>
               </Card>
               <br />
@@ -800,6 +758,18 @@ int main() {
                     Chessboard component - maps piece codes to Unicode symbols
                     with labeled rows/columns
                   </p>
+                  <Chessboard
+                    board={[
+                      ["r", "n", "b", "q", "k", "b", "n", "r"],
+                      ["p", "p", "p", "p", "p", "p", "p", "p"],
+                      ["", "", "", "", "", "", "", ""],
+                      ["", "", "", "", "", "", "", ""],
+                      ["", "", "", "", "", "", "", ""],
+                      ["", "", "", "", "", "", "", ""],
+                      ["P", "P", "P", "P", "P", "P", "P", "P"],
+                      ["R", "N", "B", "Q", "K", "B", "N", "R"],
+                    ]}
+                  />
                 </CardContent>
               </Card>
               <br />
@@ -953,10 +923,33 @@ int main() {
                   <CardTitle>EXAMPLE</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>
-                    Drawer component available - implement with DrawerTrigger,
-                    DrawerContent pattern
-                  </p>
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="secondary">Open Drawer</Button>
+                    </DrawerTrigger>
+                    <DrawerContent>
+                      <DrawerHeader>
+                        <DrawerTitle>DRAWER EXAMPLE</DrawerTitle>
+                        <DrawerDescription>
+                          This drawer uses vaul for smooth slide-in animations
+                          with sacred's terminal styling and distinctive border
+                          patterns.
+                        </DrawerDescription>
+                      </DrawerHeader>
+                      <br />
+                      <p>
+                        Drawer content can contain any elements you need. The
+                        drawer slides in from the bottom by default, but can be
+                        configured to slide from any direction.
+                      </p>
+                      <br />
+                      <DrawerFooter>
+                        <DrawerClose asChild>
+                          <Button variant="secondary">Close</Button>
+                        </DrawerClose>
+                      </DrawerFooter>
+                    </DrawerContent>
+                  </Drawer>
                 </CardContent>
               </Card>
               <br />
@@ -1308,8 +1301,8 @@ int main() {
           <AccordionItem value="navigation-bar">
             <AccordionTrigger>NAVIGATION BAR</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Navigation bars for top-level navigation (requires Navigation
-              component from sacred).
+              Navigation bars for top-level navigation with terminal-style
+              styling and flexible layout options.
               <br />
               <br />
               <Card>
@@ -1317,10 +1310,15 @@ int main() {
                   <CardTitle>EXAMPLE</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>
-                    Navigation component - terminal-style navigation bar with
-                    logo and actions
-                  </p>
+                  <Navigation
+                    logo="LOGO"
+                    left={<ActionButton>MENU</ActionButton>}
+                    right={<ActionButton>PROFILE</ActionButton>}
+                  >
+                    <ActionButton>HOME</ActionButton>
+                    <ActionButton>ABOUT</ActionButton>
+                    <ActionButton>CONTACT</ActionButton>
+                  </Navigation>
                 </CardContent>
               </Card>
               <br />
@@ -1534,33 +1532,11 @@ int main() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="sidebar-layout">
-            <AccordionTrigger>SIDEBAR LAYOUT</AccordionTrigger>
-            <AccordionContent className="whitespace-pre-wrap">
-              Sidebars provide access to secondary actions or additional
-              information (requires SidebarLayout component from sacred).
-              <br />
-              <br />
-              <Card>
-                <CardHeader>
-                  <CardTitle>EXAMPLE</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>
-                    SidebarLayout component - see sacred implementation for full
-                    pattern
-                  </p>
-                </CardContent>
-              </Card>
-              <br />
-            </AccordionContent>
-          </AccordionItem>
-
           <AccordionItem value="slider">
             <AccordionTrigger>SLIDER</AccordionTrigger>
             <AccordionContent className="whitespace-pre-wrap">
-              Sliders let users select a value or range from a continuum
-              (requires NumberRangeSlider component from sacred).
+              Sliders let users select a value or range from a continuum with
+              terminal-style styling and precise control.
               <br />
               <br />
               <Card>
@@ -1568,9 +1544,26 @@ int main() {
                   <CardTitle>EXAMPLE</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>
-                    NumberRangeSlider component - interactive range selection
-                  </p>
+                  <NumberRangeSlider
+                    defaultValue={2500}
+                    min={0}
+                    max={5000}
+                    step={100}
+                  />
+                  <br />
+                  <NumberRangeSlider
+                    defaultValue={100}
+                    min={0}
+                    max={1000}
+                    step={10}
+                  />
+                  <br />
+                  <NumberRangeSlider
+                    defaultValue={50}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
                 </CardContent>
               </Card>
               <br />
@@ -1650,28 +1643,22 @@ int main() {
                     TreeView component - hierarchical file/folder navigation
                     with expand/collapse
                   </p>
+                  <TreeView title="File System">
+                    <TreeView title="Documents">
+                      <TreeView title="Work" />
+                      <TreeView title="Personal" />
+                    </TreeView>
+                    <TreeView title="Downloads" />
+                    <TreeView title="Music" />
+                    <TreeView title="Pictures" />
+                    <TreeView title="Videos" />
+                  </TreeView>
                 </CardContent>
               </Card>
               <br />
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      </Grid>
-
-      <Grid>
-        <ActionListItem icon="⭢" href="https://internet.dev" target="_blank">
-          Hire our studio to build your applications
-        </ActionListItem>
-        <ActionListItem
-          icon="⭢"
-          href="https://github.com/internet-development/www-sacred"
-          target="_blank"
-        >
-          View the SRCL source code
-        </ActionListItem>
-        <ActionListItem icon="⭢" href="https://vercel.com/home" target="_blank">
-          Try our hosting provider Vercel
-        </ActionListItem>
       </Grid>
     </div>
   );
