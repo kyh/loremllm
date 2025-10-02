@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function Block({ className, ...props }: React.ComponentProps<"span">) {
+const Block = ({ className, ...props }: React.ComponentProps<"span">) => {
   return (
     <span
       data-slot="block"
@@ -13,6 +13,6 @@ function Block({ className, ...props }: React.ComponentProps<"span">) {
       {...props}
     />
   );
-}
+};
 
 export { Block };

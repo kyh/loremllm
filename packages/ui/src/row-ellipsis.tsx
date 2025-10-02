@@ -1,19 +1,22 @@
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
 type RowEllipsisProps = React.HTMLAttributes<HTMLElement> & {
   children?: React.ReactNode;
 };
 
-const RowEllipsis = React.forwardRef<HTMLElement, RowEllipsisProps>(({ children, ...rest }, ref) => {
+const RowEllipsis = ({ children, ...rest }: RowEllipsisProps) => {
   return (
-    <section className="block outline-0 border-0 transition-[background] duration-200 ease-in-out whitespace-nowrap overflow-hidden text-ellipsis focus:bg-[var(--theme-focused-foreground)]" ref={ref} {...rest}>
+    <section
+      className="block overflow-hidden border-0 text-ellipsis whitespace-nowrap outline-0 transition-[background] duration-200 ease-in-out focus:bg-[var(--theme-focused-foreground)]"
+      {...rest}
+    >
       {children}
     </section>
   );
-});
+};
 
-RowEllipsis.displayName = 'RowEllipsis';
+RowEllipsis.displayName = "RowEllipsis";
 
 export { RowEllipsis };

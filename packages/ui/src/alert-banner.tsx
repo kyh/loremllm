@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function AlertBanner({ className, ...props }: React.ComponentProps<"div">) {
+const AlertBanner = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="alert-banner"
@@ -13,6 +13,6 @@ function AlertBanner({ className, ...props }: React.ComponentProps<"div">) {
       {...props}
     />
   );
-}
+};
 
 export { AlertBanner };

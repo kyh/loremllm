@@ -12,15 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu";
 
-type DefaultActionBarProps = {
-  items?: {
-    hotkey: string;
-    onClick: () => void;
-    body: React.ReactNode;
-  }[];
-};
-
-const DefaultActionBar: React.FC<DefaultActionBarProps> = () => {
+const DefaultActionBar = () => {
   function onHandleThemeChange(className?: string) {
     const body = document.body;
 

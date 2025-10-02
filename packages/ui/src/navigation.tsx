@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
-interface NavigationProps extends React.HTMLAttributes<HTMLElement> {
+type NavigationProps = {
   children?: React.ReactNode;
   logoHref?: string;
   logoTarget?: React.HTMLAttributeAnchorTarget;
@@ -10,10 +10,19 @@ interface NavigationProps extends React.HTMLAttributes<HTMLElement> {
   logo?: React.ReactNode;
   left?: React.ReactNode;
   right?: React.ReactNode;
-}
+} & React.HTMLAttributes<HTMLElement>;
 
-const Navigation: React.FC<NavigationProps> = ({ children, logoHref, logoTarget, onClickLogo, logo, left, right }) => {
-  const logoClasses = 'flex-shrink-0 px-[1ch] inline-flex text-[var(--theme-text)] bg-[var(--theme-border)] no-underline border-0 outline-0 rounded-none m-0 text-[var(--font-size)] visited:text-[var(--theme-text)] hover:text-[var(--theme-text)] hover:bg-[var(--theme-focused-foreground)] focus:outline-0 focus:border-0 focus:m-0 focus:px-[1ch] focus:bg-[var(--theme-focused-foreground)]';
+const Navigation = ({
+  children,
+  logoHref,
+  logoTarget,
+  onClickLogo,
+  logo,
+  left,
+  right,
+}: NavigationProps) => {
+  const logoClasses =
+    "flex-shrink-0 px-[1ch] inline-flex text-[var(--theme-text)] bg-[var(--theme-border)] no-underline border-0 outline-0 rounded-none m-0 text-[var(--font-size)] visited:text-[var(--theme-text)] hover:text-[var(--theme-text)] hover:bg-[var(--theme-focused-foreground)] focus:outline-0 focus:border-0 focus:m-0 focus:px-[1ch] focus:bg-[var(--theme-focused-foreground)]";
 
   let logoElement = <button className={logoClasses}>{logo}</button>;
 
@@ -37,7 +46,7 @@ const Navigation: React.FC<NavigationProps> = ({ children, logoHref, logoTarget,
     <nav className="flex items-center justify-between bg-[var(--theme-border)]">
       {logoElement}
       <section className="flex-shrink-0">{left}</section>
-      <section className="min-w-[10%] w-full">{children}</section>
+      <section className="w-full min-w-[10%]">{children}</section>
       <section className="flex-shrink-0">{right}</section>
     </nav>
   );

@@ -17,13 +17,11 @@ import { Navigation } from "../navigation";
 import { RowEllipsis } from "../row-ellipsis";
 import { SidebarLayout } from "../sidebar-layout";
 
-type MessagesInterfaceProps = {} & React.HTMLAttributes<HTMLSpanElement>;
-
 const ChatPreviewInline = (props: { children: React.ReactNode }) => {
   return <RowEllipsis>{props.children}</RowEllipsis>;
 };
 
-const MessagesInterface: React.FC<MessagesInterfaceProps> = () => {
+const MessagesInterface = () => {
   return (
     <div style={{ minWidth: "28ch" }}>
       <Navigation

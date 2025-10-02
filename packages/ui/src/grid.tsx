@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function Grid({ className, ...props }: React.ComponentProps<"div">) {
+const Grid = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="grid"
@@ -13,6 +13,6 @@ function Grid({ className, ...props }: React.ComponentProps<"div">) {
       {...props}
     />
   );
-}
+};
 
 export { Grid };

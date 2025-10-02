@@ -5,10 +5,10 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 
 import { cn } from "./utils";
 
-function RadioGroup({
+const RadioGroup = ({
   className,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) => {
   return (
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
@@ -16,15 +16,15 @@ function RadioGroup({
       {...props}
     />
   );
-}
+};
 
-function RadioGroupItem({
+const RadioGroupItem = ({
   className,
   children,
   ...props
 }: React.ComponentProps<typeof RadioGroupPrimitive.Item> & {
   children?: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="relative flex items-start justify-between">
       <RadioGroupPrimitive.Item
@@ -50,6 +50,6 @@ function RadioGroupItem({
       </div>
     </div>
   );
-}
+};
 
 export { RadioGroup, RadioGroupItem };

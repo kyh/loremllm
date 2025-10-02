@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function Indent({ className, ...props }: React.ComponentProps<"div">) {
+const Indent = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="indent"
@@ -10,6 +10,6 @@ function Indent({ className, ...props }: React.ComponentProps<"div">) {
       {...props}
     />
   );
-}
+};
 
 export { Indent };

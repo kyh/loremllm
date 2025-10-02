@@ -5,12 +5,12 @@ import { Progress as ProgressPrimitive } from "radix-ui";
 
 import { cn } from "./utils";
 
-const Progress = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
+const Progress = ({
+  className,
+  value,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>) => (
   <ProgressPrimitive.Root
-    ref={ref}
     className={cn(
       "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
       className,
@@ -22,7 +22,7 @@ const Progress = React.forwardRef<
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     />
   </ProgressPrimitive.Root>
-));
+);
 Progress.displayName = ProgressPrimitive.Root.displayName;
 
 export { Progress };

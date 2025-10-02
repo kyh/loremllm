@@ -15,12 +15,12 @@ type ComboBoxProps = {
   maxResults?: number;
 };
 
-const ComboBox: React.FC<ComboBoxProps> = ({
+const ComboBox = ({
   data,
   label,
   placeholder = "Search...",
   maxResults = 5,
-}) => {
+}: ComboBoxProps) => {
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const filtered = React.useMemo(() => {

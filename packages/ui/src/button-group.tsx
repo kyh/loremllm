@@ -4,17 +4,17 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-interface ButtonGroupProps extends React.ComponentProps<"div"> {
+type ButtonGroupProps = {
   children?: React.ReactNode;
   isFull?: boolean;
-}
+} & React.ComponentProps<"div">;
 
-function ButtonGroup({
+const ButtonGroup = ({
   className,
   children,
   isFull,
   ...props
-}: ButtonGroupProps) {
+}: ButtonGroupProps) => {
   return (
     <div
       data-slot="button-group"
@@ -29,6 +29,6 @@ function ButtonGroup({
       {children}
     </div>
   );
-}
+};
 
 export { ButtonGroup };

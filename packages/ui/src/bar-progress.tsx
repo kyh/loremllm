@@ -4,19 +4,19 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-interface BarProgressProps extends React.ComponentProps<"div"> {
+type BarProgressProps = {
   intervalRate?: number;
   progress?: number;
   fillChar?: string;
-}
+} & React.ComponentProps<"div">;
 
-function BarProgress({
+const BarProgress = ({
   className,
   intervalRate,
   progress,
   fillChar = "░",
   ...props
-}: BarProgressProps) {
+}: BarProgressProps) => {
   const [currentProgress, setCurrentProgress] = React.useState(progress ?? 0);
   const [containerWidth, setContainerWidth] = React.useState(0);
   const [charWidth, setCharWidth] = React.useState(0);
@@ -93,6 +93,6 @@ function BarProgress({
       {barStr}
     </div>
   );
-}
+};
 
 export { BarProgress };

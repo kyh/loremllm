@@ -25,39 +25,41 @@ interface ActionButtonProps
   isSelected?: boolean;
 }
 
-const ActionButton = React.forwardRef<HTMLDivElement, ActionButtonProps>(
-  (
-    { className, variant, onClick, hotkey, children, isSelected, ...props },
-    ref,
-  ) => {
-    return (
-      <div
-        className={cn(actionButtonVariants({ variant }), className)}
-        onClick={onClick}
-        tabIndex={0}
-        ref={ref}
-        role="button"
-        {...props}
-      >
-        {hotkey && (
-          <span className="flex-shrink-0 cursor-pointer bg-[var(--theme-button-foreground)] px-[1ch] indent-0 font-normal text-[var(--theme-text)] select-none hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]">
-            {hotkey}
-          </span>
-        )}
-        <span
-          className={cn(
-            "flex-shrink-0 cursor-pointer bg-[var(--theme-button-background)] px-[1ch] indent-0 font-normal uppercase shadow-[inset_0_0_0_2px_var(--theme-button-foreground)] select-none hover:shadow-[inset_0_0_0_2px_var(--theme-focused-foreground)] focus:shadow-[inset_0_0_0_2px_var(--theme-focused-foreground)]",
-            {
-              "bg-[var(--theme-focused-foreground)]": isSelected,
-            },
-          )}
-        >
-          {children}
+const ActionButton = ({
+  className,
+  variant,
+  onClick,
+  hotkey,
+  children,
+  isSelected,
+  ...props
+}: ActionButtonProps) => {
+  return (
+    <div
+      className={cn(actionButtonVariants({ variant }), className)}
+      onClick={onClick}
+      tabIndex={0}
+      role="button"
+      {...props}
+    >
+      {hotkey && (
+        <span className="flex-shrink-0 cursor-pointer bg-[var(--theme-button-foreground)] px-[1ch] indent-0 font-normal text-[var(--theme-text)] select-none hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]">
+          {hotkey}
         </span>
-      </div>
-    );
-  },
-);
+      )}
+      <span
+        className={cn(
+          "flex-shrink-0 cursor-pointer bg-[var(--theme-button-background)] px-[1ch] indent-0 font-normal uppercase shadow-[inset_0_0_0_2px_var(--theme-button-foreground)] select-none hover:shadow-[inset_0_0_0_2px_var(--theme-focused-foreground)] focus:shadow-[inset_0_0_0_2px_var(--theme-focused-foreground)]",
+          {
+            "bg-[var(--theme-focused-foreground)]": isSelected,
+          },
+        )}
+      >
+        {children}
+      </span>
+    </div>
+  );
+};
 
 ActionButton.displayName = "ActionButton";
 

@@ -4,10 +4,10 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-const RowSpaceBetween = React.forwardRef<
-  HTMLElement,
-  React.ComponentProps<"section">
->(({ className, ...props }, ref) => {
+const RowSpaceBetween = ({
+  className,
+  ...props
+}: React.ComponentProps<"section">) => {
   return (
     <section
       data-slot="row-space-between"
@@ -15,11 +15,10 @@ const RowSpaceBetween = React.forwardRef<
         "flex justify-between border-0 outline-0 transition-[background] duration-200 ease-in-out focus:bg-[var(--theme-focused-foreground)]",
         className,
       )}
-      ref={ref}
       {...props}
     />
   );
-});
+};
 
 RowSpaceBetween.displayName = "RowSpaceBetween";
 

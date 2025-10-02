@@ -20,11 +20,10 @@ const dividerVariants = cva("w-full", {
   },
 });
 
-interface DividerProps
-  extends React.ComponentProps<"div">,
-    VariantProps<typeof dividerVariants> {}
+type DividerProps = {} & React.ComponentProps<"div"> &
+  VariantProps<typeof dividerVariants>;
 
-function Divider({ className, type, ...props }: DividerProps) {
+const Divider = ({ className, type, ...props }: DividerProps) => {
   if (type === "gradient") {
     return (
       <div
@@ -60,6 +59,6 @@ function Divider({ className, type, ...props }: DividerProps) {
       <div className="block h-[2px] w-full flex-shrink-0 bg-[var(--theme-text)]" />
     </div>
   );
-}
+};
 
 export { Divider, dividerVariants };

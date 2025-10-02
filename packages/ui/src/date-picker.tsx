@@ -26,7 +26,7 @@ const MONTH_NAMES = [
 
 const MAX_CELLS = 42;
 
-const DatePicker: React.FC<DatePickerProps> = ({ year, month }) => {
+const DatePicker = ({ year, month }: DatePickerProps) => {
   const today = new Date();
   const [currentYear, setYear] = React.useState(year || today.getFullYear());
   const [currentMonth, setMonth] = React.useState(

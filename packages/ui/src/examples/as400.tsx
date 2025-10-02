@@ -9,11 +9,7 @@ import { TableColumn } from "../table-column";
 import { TableRow } from "../table-row";
 import { Textarea } from "../textarea";
 
-type AS400Props = React.HTMLAttributes<HTMLElement> & {
-  children?: React.ReactNode;
-};
-
-const AS400: React.FC<AS400Props> = () => {
+const AS400 = () => {
   return (
     <>
       <Card>

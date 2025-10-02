@@ -3,11 +3,11 @@ import * as React from "react";
 import { ButtonGroup } from "./button-group";
 import { cn } from "./utils";
 
-interface ActionBarProps extends React.ComponentProps<"div"> {
+type ActionBarProps = {
   children?: React.ReactNode;
-}
+} & React.ComponentProps<"div">;
 
-function ActionBar({ className, children, ...props }: ActionBarProps) {
+const ActionBar = ({ className, children, ...props }: ActionBarProps) => {
   return (
     <div
       data-slot="action-bar"
@@ -20,6 +20,6 @@ function ActionBar({ className, children, ...props }: ActionBarProps) {
       <ButtonGroup>{children}</ButtonGroup>
     </div>
   );
-}
+};
 
 export { ActionBar };

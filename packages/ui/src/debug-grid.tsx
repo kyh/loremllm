@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
-const DebugGrid: React.FC = () => {
+const DebugGrid = () => {
   React.useEffect(() => {
-    const debugGrid = document.createElement('div');
+    const debugGrid = document.createElement("div");
     let isVisible = false;
 
     const setGridHeight = () => {
@@ -12,19 +12,19 @@ const DebugGrid: React.FC = () => {
     };
 
     Object.assign(debugGrid.style, {
-      position: 'absolute',
-      top: '0',
-      left: '0',
-      right: '0',
-      zIndex: '-1',
-      margin: '0',
+      position: "absolute",
+      top: "0",
+      left: "0",
+      right: "0",
+      zIndex: "-1",
+      margin: "0",
       backgroundImage: `
         repeating-linear-gradient(var(--theme-border) 0 1px, transparent 1px 100%),
         repeating-linear-gradient(90deg, var(--theme-border) 0 1px, transparent 1px 100%)
       `,
-      backgroundSize: '1ch 1.25rem',
-      pointerEvents: 'none',
-      display: 'none',
+      backgroundSize: "1ch 1.25rem",
+      pointerEvents: "none",
+      display: "none",
     });
 
     document.body.appendChild(debugGrid);
@@ -32,7 +32,7 @@ const DebugGrid: React.FC = () => {
 
     const toggleDebugGrid = () => {
       isVisible = !isVisible;
-      debugGrid.style.display = isVisible ? 'block' : 'none';
+      debugGrid.style.display = isVisible ? "block" : "none";
     };
 
     const handleDebugGridToggle = () => toggleDebugGrid();
@@ -42,13 +42,13 @@ const DebugGrid: React.FC = () => {
     });
     observer.observe(document.documentElement);
 
-    window.addEventListener('debugGridToggle', handleDebugGridToggle);
-    window.addEventListener('resize', setGridHeight);
+    window.addEventListener("debugGridToggle", handleDebugGridToggle);
+    window.addEventListener("resize", setGridHeight);
 
     return () => {
       document.body.removeChild(debugGrid);
-      window.removeEventListener('resize', setGridHeight);
-      window.removeEventListener('debugGridToggle', handleDebugGridToggle);
+      window.removeEventListener("resize", setGridHeight);
+      window.removeEventListener("debugGridToggle", handleDebugGridToggle);
       observer.disconnect();
     };
   }, []);
@@ -57,7 +57,7 @@ const DebugGrid: React.FC = () => {
 };
 
 export const toggleDebugGrid = (): void => {
-  window.dispatchEvent(new CustomEvent('debugGridToggle'));
+  window.dispatchEvent(new CustomEvent("debugGridToggle"));
 };
 
 export { DebugGrid };

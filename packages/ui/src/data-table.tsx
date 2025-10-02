@@ -30,7 +30,7 @@ function interpolateColor(
   };
 }
 
-const DataTable: React.FC<DataTableProps> = ({ data }) => {
+const DataTable = ({ data }: DataTableProps) => {
   const tableRef = React.useRef<HTMLTableElement>(null);
   const prevDataRef = React.useRef<string[][]>(data);
 

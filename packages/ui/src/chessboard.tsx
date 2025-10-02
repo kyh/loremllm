@@ -21,7 +21,7 @@ const getPieceSymbol = (piece: string) => {
     n: "♞",
     p: "♟",
   };
-  return mapping[piece] || "";
+  return mapping[piece] ?? "";
 };
 
 const cellClasses =
@@ -35,7 +35,7 @@ type ChessboardProps = {
   board: string[][];
 };
 
-const Chessboard: React.FC<ChessboardProps> = ({ board }) => {
+const Chessboard = ({ board }: ChessboardProps) => {
   return (
     <table className="inline-table border-collapse">
       <tbody>

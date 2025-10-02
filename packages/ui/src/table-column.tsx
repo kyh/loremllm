@@ -1,19 +1,22 @@
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
 type TableColumnProps = React.HTMLAttributes<HTMLTableCellElement> & {
   children?: React.ReactNode;
 };
 
-const TableColumn: React.FC<TableColumnProps> = ({ children, ...rest }) => {
+const TableColumn = ({ children, ...rest }: TableColumnProps) => {
   return (
-    <td className="border-0 outline-0 m-0 p-0 transition-[background-color] duration-500 ease-in-out pl-[1ch] text-[var(--font-size)] flex-shrink-0 text-[100%] first:pl-0" {...rest}>
+    <td
+      className="m-0 flex-shrink-0 border-0 p-0 pl-[1ch] text-[100%] text-[var(--font-size)] outline-0 transition-[background-color] duration-500 ease-in-out first:pl-0"
+      {...rest}
+    >
       {children}
     </td>
   );
 };
 
-TableColumn.displayName = 'TableColumn';
+TableColumn.displayName = "TableColumn";
 
 export { TableColumn };
