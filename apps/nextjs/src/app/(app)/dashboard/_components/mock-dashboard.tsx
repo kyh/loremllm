@@ -266,7 +266,7 @@ export const MockDashboard = () => {
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" loading={createCollection.isPending}>
+              <Button type="submit" disabled={createCollection.isPending}>
                 Create collection
               </Button>
             </div>
@@ -301,7 +301,7 @@ export const MockDashboard = () => {
                 onClick={() =>
                   deleteCollection.mutate({ collectionId: collection.id })
                 }
-                loading={deleteCollection.isPending}
+                disabled={deleteCollection.isPending}
               >
                 Delete
               </Button>
@@ -349,7 +349,7 @@ export const MockDashboard = () => {
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" loading={updateCollection.isPending}>
+              <Button type="submit" disabled={updateCollection.isPending}>
                 Update collection
               </Button>
             </div>
@@ -437,7 +437,7 @@ export const MockDashboard = () => {
               </p>
             </div>
             <div className="flex justify-end">
-              <Button type="submit" loading={createInteraction.isPending}>
+              <Button type="submit" disabled={createInteraction.isPending}>
                 Save mock response
               </Button>
             </div>
@@ -463,7 +463,7 @@ export const MockDashboard = () => {
                   size="sm"
                   className="text-destructive hover:text-destructive"
                   onClick={() => handleDeleteInteraction(interaction.id)}
-                  loading={deleteInteraction.isPending}
+                  disabled={deleteInteraction.isPending}
                 >
                   Remove
                 </Button>
@@ -478,7 +478,7 @@ export const MockDashboard = () => {
             <CardContent className="flex flex-1 flex-col gap-3">
               <div className="border-border rounded border p-3 text-sm">
                 <div className="mb-2 flex items-center justify-between">
-                  <Badge variant="outline">Response</Badge>
+                  <Badge>Response</Badge>
                   <span className="text-muted-foreground text-xs">
                     {interaction.responseSchema}
                   </span>

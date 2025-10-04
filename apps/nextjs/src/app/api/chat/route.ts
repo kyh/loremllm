@@ -1,195 +1,60 @@
-import type { UIMessage } from "ai";
-import { simulateReadableStream, streamText } from "ai";
-import { MockLanguageModelV2 } from "ai/test";
-import { loremIpsum } from "lorem-ipsum";
 import { z } from "zod";
 
-// Zod schema for chat route parameters
-const ChatParamsSchema = z.object({
-  messages: z.array(z.any()), // UIMessage array
-  id: z.string().optional(),
-  count: z.number().min(1).default(1),
-  paragraphLowerBound: z.number().min(1).default(3),
-  paragraphUpperBound: z.number().min(1).default(7),
-  sentenceLowerBound: z.number().min(1).default(5),
-  sentenceUpperBound: z.number().min(1).default(15),
-  suffix: z.string().default("\n"),
-  units: z.enum(["words", "sentences", "paragraphs"]).default("sentences"),
-  words: z.array(z.string()).optional(),
-});
-
-type ChatParams = z.infer<typeof ChatParamsSchema>;
+import { handleChatQuery } from "./chat-handler";
+import { handleLoremGeneration } from "./lorem-handler";
+import { LoremParamsSchema } from "./schema";
+import { extractUserQuery } from "./utils";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    
+    const body = (await request.json()) as unknown;
+
     // Validate and parse the request body using Zod schema
-    const validatedData = ChatParamsSchema.parse(body);
+    const validatedData = LoremParamsSchema.parse(body);
     const { messages, ...params } = validatedData;
 
-    const userQuery = extractUserQuery(messages);
+    // Handle case where messages might not be provided
+    const userQuery = messages
+      ? extractUserQuery(messages)
+      : "Generate lorem ipsum text";
     if (!userQuery) {
       return new Response("No user message found", { status: 400 });
     }
 
     // Check if an id is provided, if not, use lorem ipsum generation
-    const id = params.id;
-    
-    if (!id) {
-      // Generate lorem ipsum with validated parameters
-      const loremParams = {
-        count: params.count,
-        paragraphLowerBound: params.paragraphLowerBound,
-        paragraphUpperBound: params.paragraphUpperBound,
-        sentenceLowerBound: params.sentenceLowerBound,
-        sentenceUpperBound: params.sentenceUpperBound,
-        suffix: params.suffix,
-        units: params.units,
-        words: params.words,
-      };
+    const collectionId = params.collectionId;
 
-      const output = loremIpsum(loremParams);
-      const chunks = parseMarkdownIntoChunks(output);
-
-      // Create streaming chunks for the AI SDK
-      const streamChunks = [
-        { type: "text-start" as const, id: "text-1" },
-        ...chunks.map((chunk) => ({
-          type: "text-delta" as const,
-          id: "text-1",
-          delta: chunk,
-        })),
-        { type: "text-end" as const, id: "text-1" },
-        {
-          type: "finish" as const,
-          finishReason: "stop" as const,
-          logprobs: undefined,
-          usage: {
-            inputTokens: userQuery.length,
-            outputTokens: output.length,
-            totalTokens: userQuery.length + output.length,
-          },
-        },
-      ];
-
-      const result = streamText({
-        prompt: userQuery,
-        model: new MockLanguageModelV2({
-          doStream: async () => ({
-            stream: simulateReadableStream({
-              chunks: streamChunks,
-              chunkDelayInMs: 20,
-            }),
-          }),
-        }),
-      });
-
-      return result.toUIMessageStreamResponse();
+    if (!collectionId) {
+      // Handle lorem ipsum generation
+      return await handleLoremGeneration(userQuery, params);
     }
 
-    // Dynamically import caller only when needed (when id is provided)
-    const { caller } = await import("@/trpc/server");
-    
-    // Query the specified collection for the best matching interaction
-    const queryResult = await caller.interaction.query({
-      publicId: id,
-      query: userQuery,
-      limit: 1,
-    });
-
-    const bestMatch = queryResult.matches[0];
-    if (!bestMatch) {
-      return new Response("No matching response found", { status: 404 });
+    // Handle chat query
+    try {
+      return await handleChatQuery(userQuery, collectionId);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "No matching response found"
+      ) {
+        return new Response("No matching response found", { status: 404 });
+      }
+      throw error;
     }
-
-    // Parse the markdown output into word-level chunks for streaming
-    const output = bestMatch.output;
-    const chunks = parseMarkdownIntoChunks(output);
-
-    // Create streaming chunks for the AI SDK
-    const streamChunks = [
-      { type: "text-start" as const, id: "text-1" },
-      ...chunks.map((chunk) => ({
-        type: "text-delta" as const,
-        id: "text-1",
-        delta: chunk,
-      })),
-      { type: "text-end" as const, id: "text-1" },
-      {
-        type: "finish" as const,
-        finishReason: "stop" as const,
-        logprobs: undefined,
-        usage: {
-          inputTokens: userQuery.length,
-          outputTokens: output.length,
-          totalTokens: userQuery.length + output.length,
-        },
-      },
-    ];
-
-    const result = streamText({
-      prompt: userQuery,
-      model: new MockLanguageModelV2({
-        doStream: async () => ({
-          stream: simulateReadableStream({
-            chunks: streamChunks,
-            chunkDelayInMs: 20,
-          }),
-        }),
-      }),
-    });
-
-    return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("Error processing chat request:", error);
-    
+    console.error("Error processing request:", error);
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return new Response(
-        `Validation error: ${error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
+        `Validation error: ${error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
         { status: 400 },
       );
     }
-    
+
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
       { status: 500 },
     );
   }
 }
-
-const extractUserQuery = (messages: UIMessage[]): string => {
-  const lastUserMessage = messages
-    .reverse()
-    .find((message) => message.role === "user");
-  const textParts =
-    lastUserMessage?.parts.filter(
-      (part) =>
-        typeof part === "object" && "type" in part && part.type === "text",
-    ) ?? [];
-
-  return textParts
-    .map((part) => part.text)
-    .join("")
-    .trim();
-};
-
-/**
- * Parse markdown into word-level chunks for smooth streaming
- * Preserves whitespace and newlines between words
- */
-const parseMarkdownIntoChunks = (markdown: string): string[] => {
-  const chunks: string[] = [];
-
-  // Split by whitespace while preserving the whitespace itself
-  const tokens = markdown.split(/(\s+)/);
-
-  for (const token of tokens) {
-    if (token) {
-      chunks.push(token);
-    }
-  }
-
-  return chunks;
-};
