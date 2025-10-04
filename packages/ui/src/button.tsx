@@ -11,16 +11,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--theme-button)] text-[var(--theme-button-text)] hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]",
+          "bg-theme-button text-theme-button-text hover:bg-theme-focused-foreground focus:bg-theme-focused-foreground",
         secondary:
-          "border border-[var(--theme-border)] bg-[var(--theme-background)] text-[var(--theme-text)] hover:border-transparent hover:bg-[var(--theme-focused-foreground)] focus:border-transparent focus:bg-[var(--theme-focused-foreground)]",
+          "border border-theme-border bg-theme-background text-theme-text hover:border-transparent hover:bg-theme-focused-foreground focus:border-transparent focus:bg-theme-focused-foreground",
         destructive:
-          "bg-[var(--theme-button)] text-[var(--theme-button-text)] hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]",
+          "bg-theme-button text-theme-button-text hover:bg-theme-focused-foreground focus:bg-theme-focused-foreground",
         outline:
-          "border border-[var(--theme-border)] bg-[var(--theme-background)] text-[var(--theme-text)] hover:border-transparent hover:bg-[var(--theme-focused-foreground)] focus:border-transparent focus:bg-[var(--theme-focused-foreground)]",
+          "border border-theme-border bg-theme-background text-theme-text hover:border-transparent hover:bg-theme-focused-foreground focus:border-transparent focus:bg-theme-focused-foreground",
         ghost:
-          "bg-transparent text-[var(--theme-text)] hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]",
-        link: "bg-transparent text-[var(--theme-text)] underline underline-offset-4 hover:bg-[var(--theme-focused-foreground)]",
+          "bg-transparent text-theme-text hover:bg-theme-focused-foreground focus:bg-theme-focused-foreground",
+        link: "bg-transparent text-theme-text underline underline-offset-4 hover:bg-theme-focused-foreground",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
