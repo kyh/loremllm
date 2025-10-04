@@ -14,6 +14,14 @@ import {
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@repo/ui/table";
 import { toast } from "@repo/ui/toast";
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 
@@ -232,38 +240,39 @@ export const MockDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateCollection} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="collection-name">Collection name</Label>
-              <Input
-                id="collection-name"
-                placeholder="My new collection"
-                value={collectionForm.name}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="collection-description">
-                Description (optional)
-              </Label>
-              <Textarea
-                id="collection-description"
-                placeholder="A brief description of what this collection does."
-                value={collectionForm.description}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={2}
-              />
+          <form onSubmit={handleCreateCollection} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="collection-name">Collection name</Label>
+                <Input
+                  id="collection-name"
+                  placeholder="My new collection"
+                  value={collectionForm.name}
+                  onChange={(event) =>
+                    setCollectionForm((state) => ({
+                      ...state,
+                      name: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="collection-description">
+                  Description (optional)
+                </Label>
+                <Input
+                  id="collection-description"
+                  placeholder="A brief description of what this collection does."
+                  value={collectionForm.description}
+                  onChange={(event) =>
+                    setCollectionForm((state) => ({
+                      ...state,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <Button type="submit" loading={createCollection.isPending}>
@@ -315,38 +324,39 @@ export const MockDashboard = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpdateCollection} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="collection-name">Collection name</Label>
-              <Input
-                id="collection-name"
-                placeholder="My new collection"
-                value={collectionForm.name}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="collection-description">
-                Description (optional)
-              </Label>
-              <Textarea
-                id="collection-description"
-                placeholder="A brief description of what this collection does."
-                value={collectionForm.description}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={2}
-              />
+          <form onSubmit={handleUpdateCollection} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="collection-name">Collection name</Label>
+                <Input
+                  id="collection-name"
+                  placeholder="My new collection"
+                  value={collectionForm.name}
+                  onChange={(event) =>
+                    setCollectionForm((state) => ({
+                      ...state,
+                      name: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="collection-description">
+                  Description (optional)
+                </Label>
+                <Input
+                  id="collection-description"
+                  placeholder="A brief description of what this collection does."
+                  value={collectionForm.description}
+                  onChange={(event) =>
+                    setCollectionForm((state) => ({
+                      ...state,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <Button type="submit" loading={updateCollection.isPending}>
@@ -365,76 +375,79 @@ export const MockDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateInteraction} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="interaction-title">Title</Label>
-              <Input
-                id="interaction-title"
-                placeholder="Weather in San Francisco"
-                value={interactionForm.title}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    title: event.target.value,
-                  }))
-                }
-                required
-              />
+          <form onSubmit={handleCreateInteraction} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="interaction-title">Title</Label>
+                <Input
+                  id="interaction-title"
+                  placeholder="Weather in San Francisco"
+                  value={interactionForm.title}
+                  onChange={(event) =>
+                    setInteractionForm((state) => ({
+                      ...state,
+                      title: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="interaction-description">
+                  Description (optional)
+                </Label>
+                <Input
+                  id="interaction-description"
+                  placeholder="A brief description of this mock interaction."
+                  value={interactionForm.description}
+                  onChange={(event) =>
+                    setInteractionForm((state) => ({
+                      ...state,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="interaction-description">
-                Description (optional)
-              </Label>
-              <Textarea
-                id="interaction-description"
-                placeholder="A brief description of this mock interaction."
-                value={interactionForm.description}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={2}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="interaction-input">Input (User Query)</Label>
-              <Textarea
-                id="interaction-input"
-                placeholder="What's the weather like in San Francisco?"
-                value={interactionForm.input}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    input: event.target.value,
-                  }))
-                }
-                rows={4}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                The user input that will be matched using semantic search.
-              </p>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="interaction-output">Output (Response)</Label>
-              <Textarea
-                id="interaction-output"
-                placeholder="It's 72°F and sunny along the bay."
-                value={interactionForm.output}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    output: event.target.value,
-                  }))
-                }
-                rows={6}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                The response content. Supports markdown formatting.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="interaction-input">Input (User Query)</Label>
+                <Textarea
+                  id="interaction-input"
+                  placeholder="What's the weather like in San Francisco?"
+                  value={interactionForm.input}
+                  onChange={(event) =>
+                    setInteractionForm((state) => ({
+                      ...state,
+                      input: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                  required
+                />
+                <p className="text-muted-foreground text-xs">
+                  The user input that will be matched using semantic search.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="interaction-output">Output (Response)</Label>
+                <Textarea
+                  id="interaction-output"
+                  placeholder="It's 72°F and sunny along the bay."
+                  value={interactionForm.output}
+                  onChange={(event) =>
+                    setInteractionForm((state) => ({
+                      ...state,
+                      output: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                  required
+                />
+                <p className="text-muted-foreground text-xs">
+                  The response content. Supports markdown formatting.
+                </p>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button type="submit" loading={createInteraction.isPending}>
@@ -445,97 +458,171 @@ export const MockDashboard = () => {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {collection.interactions.map((interaction) => (
-          <Card key={interaction.id} className="flex flex-col">
-            <CardHeader className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base">
-                    {interaction.title}
-                  </CardTitle>
-                  {interaction.description ? (
-                    <CardDescription>{interaction.description}</CardDescription>
-                  ) : null}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDeleteInteraction(interaction.id)}
-                  loading={deleteInteraction.isPending}
-                >
-                  Remove
-                </Button>
-              </div>
-              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                <span>Input:</span>
-                <span className="bg-muted rounded px-2 py-1">
-                  {interaction.input}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
-              <div className="border-border rounded border p-3 text-sm">
-                <div className="mb-2 flex items-center justify-between">
-                  <Badge variant="outline">Response</Badge>
-                  <span className="text-muted-foreground text-xs">
-                    {interaction.responseSchema}
-                  </span>
-                </div>
-                <div className="prose prose-sm max-w-none">
-                  {typeof interaction.output === "string" ? (
-                    <div
-                      className="text-sm whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: interaction.output
-                          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                          .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                          .replace(
-                            /`(.*?)`/g,
-                            '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
-                          )
-                          .replace(
-                            /^# (.*$)/gm,
-                            '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>',
-                          )
-                          .replace(
-                            /^## (.*$)/gm,
-                            '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
-                          )
-                          .replace(
-                            /^### (.*$)/gm,
-                            '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
-                          )
-                          .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
-                          .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
-                          .replace(/\n\n/g, '</p><p class="mb-2">')
-                          .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
-                          .replace(
-                            /(<li.*<\/li>)/gs,
-                            '<ul class="list-disc ml-4 mb-2">$1</ul>',
-                          ),
-                      }}
-                    />
-                  ) : (
-                    <pre className="text-sm whitespace-pre-wrap">
-                      {JSON.stringify(interaction.output, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {!collection.interactions.length ? (
-          <Card className="md:col-span-2">
-            <CardContent className="text-muted-foreground py-10 text-center">
-              No interactions yet. Create one to start streaming mocked
-              responses.
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Mock Interactions</CardTitle>
+          <CardDescription>
+            View and manage your saved mock interactions in a spreadsheet format.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {collection.interactions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[200px]">Title</TableHead>
+                    <TableHead className="min-w-[250px] hidden md:table-cell">Input</TableHead>
+                    <TableHead className="min-w-[300px] hidden lg:table-cell">Response</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {collection.interactions.map((interaction) => (
+                    <TableRow key={interaction.id}>
+                      <TableCell className="font-medium">
+                        <div className="space-y-1">
+                          <div className="font-semibold">{interaction.title}</div>
+                          {interaction.description && (
+                            <div className="text-muted-foreground text-xs">
+                              {interaction.description}
+                            </div>
+                          )}
+                          <div className="md:hidden mt-2 space-y-2">
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Input:</div>
+                              <div className="text-sm whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                {interaction.input}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Response:</div>
+                              <div className="text-sm bg-muted/50 p-2 rounded">
+                                {typeof interaction.output === "string" ? (
+                                  <div
+                                    className="whitespace-pre-wrap break-words"
+                                    dangerouslySetInnerHTML={{
+                                      __html: interaction.output
+                                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                                        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                                        .replace(
+                                          /`(.*?)`/g,
+                                          '<code class="bg-background px-1 py-0.5 rounded text-xs">$1</code>',
+                                        )
+                                        .replace(
+                                          /^# (.*$)/gm,
+                                          '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>',
+                                        )
+                                        .replace(
+                                          /^## (.*$)/gm,
+                                          '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
+                                        )
+                                        .replace(
+                                          /^### (.*$)/gm,
+                                          '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
+                                        )
+                                        .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
+                                        .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
+                                        .replace(/\n\n/g, '</p><p class="mb-2">')
+                                        .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
+                                        .replace(
+                                          /(<li.*<\/li>)/gs,
+                                          '<ul class="list-disc ml-4 mb-2">$1</ul>',
+                                        ),
+                                    }}
+                                  />
+                                ) : (
+                                  <pre className="whitespace-pre-wrap break-words text-xs">
+                                    {JSON.stringify(interaction.output, null, 2)}
+                                  </pre>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="max-w-[250px]">
+                          <div className="text-sm whitespace-pre-wrap break-words">
+                            {interaction.input}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="max-w-[300px]">
+                          <div className="mb-2 flex items-center justify-between">
+                            <Badge variant="outline" className="text-xs">
+                              Response
+                            </Badge>
+                            <span className="text-muted-foreground text-xs">
+                              {interaction.responseSchema}
+                            </span>
+                          </div>
+                          <div className="text-sm">
+                            {typeof interaction.output === "string" ? (
+                              <div
+                                className="whitespace-pre-wrap break-words"
+                                dangerouslySetInnerHTML={{
+                                  __html: interaction.output
+                                    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                                    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                                    .replace(
+                                      /`(.*?)`/g,
+                                      '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
+                                    )
+                                    .replace(
+                                      /^# (.*$)/gm,
+                                      '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>',
+                                    )
+                                    .replace(
+                                      /^## (.*$)/gm,
+                                      '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
+                                    )
+                                    .replace(
+                                      /^### (.*$)/gm,
+                                      '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
+                                    )
+                                    .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
+                                    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
+                                    .replace(/\n\n/g, '</p><p class="mb-2">')
+                                    .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
+                                    .replace(
+                                      /(<li.*<\/li>)/gs,
+                                      '<ul class="list-disc ml-4 mb-2">$1</ul>',
+                                    ),
+                                }}
+                              />
+                            ) : (
+                              <pre className="whitespace-pre-wrap break-words text-xs">
+                                {JSON.stringify(interaction.output, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteInteraction(interaction.id)}
+                          loading={deleteInteraction.isPending}
+                        >
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-muted-foreground py-10 text-center">
+              No interactions yet. Create one to start streaming mocked responses.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
