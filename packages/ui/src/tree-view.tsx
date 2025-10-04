@@ -47,7 +47,7 @@ const TreeView = ({
         tabIndex={0}
         role="button"
         onClick={onToggleShow}
-        className="cursor-pointer focus:border-0 focus:bg-[var(--theme-focused-foreground)] focus:outline-0"
+        className="cursor-pointer focus:border-0 focus:bg-theme-focused-foreground focus:outline-0"
         aria-expanded={show}
       >
         {prefix}
