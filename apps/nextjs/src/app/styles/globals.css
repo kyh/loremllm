@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  /* Shadcn colors */
   --background: hsl(240 10% 3.9%);
   --foreground: hsl(0 0% 98%);
   --card: hsl(240 10% 3.9%);
@@ -21,9 +22,7 @@
   --input: hsl(240 3.7% 15.9%);
   --ring: hsl(240 4.9% 83.9%);
   --radius: 0;
-}
 
-@theme {
   /* Static color palette */
   --color-black-100: rgba(0, 0, 0, 1);
   --color-black-100-1: rgba(0, 0, 0, 0.1);
@@ -156,6 +155,26 @@
   --color-white-2: rgba(255, 255, 255, 0.2);
   --color-white-4: rgba(255, 255, 255, 0.4);
 
+  /* Font families */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, helvetica neue, helvetica, sans-serif;
+  --font-family-mono: "GeistMono-Regular", Consolas, monaco, monospace;
+  --font-family-serif: Georgia, Times New Roman, serif;
+
+  /* Font sizes */
+  --font-size-base: 16px;
+
+  /* Line heights */
+  --line-height-base: 1.25;
+
+  /* Border radius */
+  --radius-radius: var(--radius);
+
+  /* Theme variables that will be dynamically set */
+  --theme-line-height-base: 1.25;
+  --font-size: 16px;
+}
+
+@theme {
   /* Theme variables that will be dynamically set */
   --color-theme-overlay: var(--theme-overlay);
   --color-theme-background: var(--theme-background);
@@ -171,20 +190,6 @@
   --color-theme-button-background: var(--theme-button-background);
   --color-theme-focused-foreground: var(--theme-focused-foreground);
   --color-theme-focused-foreground-subdued: var(--theme-focused-foreground-subdued);
-
-  /* Font families */
-  --font-family-sans: -apple-system, BlinkMacSystemFont, helvetica neue, helvetica, sans-serif;
-  --font-family-mono: "GeistMono-Regular", Consolas, monaco, monospace;
-  --font-family-serif: Georgia, Times New Roman, serif;
-
-  /* Font sizes */
-  --font-size-base: 16px;
-
-  /* Line heights */
-  --line-height-base: 1.25;
-
-  /* Border radius */
-  --radius-radius: var(--radius);
 
   /* Animations */
   --animate-blink: blink 1s infinite;
@@ -565,4 +570,124 @@
     --theme-focused-foreground: var(--color-gray-30);
     --theme-focused-foreground-subdued: var(--color-gray-40);
   }
+}
+
+/* Individual theme blocks for Tailwind v4 */
+@theme theme-blue {
+  --color-theme-overlay: var(--color-blue-20-5);
+  --color-theme-background: var(--color-blue-80);
+  --color-theme-background-modal: var(--color-blue-70);
+  --color-theme-background-modal-footer: var(--color-blue-90);
+  --color-theme-background-input: var(--color-blue-60);
+  --color-theme-border: var(--color-blue-70);
+  --color-theme-border-subdued: var(--color-blue-60-2);
+  --color-theme-text: var(--color-blue-10);
+  --color-theme-button: var(--color-blue-10);
+  --color-theme-button-text: var(--color-blue-80);
+  --color-theme-button-foreground: var(--color-blue-60);
+  --color-theme-button-background: var(--color-blue-70);
+  --color-theme-focused-foreground: var(--color-blue-50);
+  --color-theme-focused-foreground-subdued: var(--color-blue-50-5);
+}
+
+@theme theme-light {
+  --color-theme-overlay: var(--color-black-100-4);
+  --color-theme-background: var(--color-white);
+  --color-theme-background-modal: var(--color-gray-20);
+  --color-theme-background-modal-footer: var(--color-gray-40);
+  --color-theme-background-input: var(--color-gray-10);
+  --color-theme-border: var(--color-gray-20);
+  --color-theme-border-subdued: var(--color-gray-40-2);
+  --color-theme-text: var(--color-black-100);
+  --color-theme-button: var(--color-black-100);
+  --color-theme-button-text: var(--color-white);
+  --color-theme-button-foreground: var(--color-gray-30);
+  --color-theme-button-background: var(--color-gray-20);
+  --color-theme-focused-foreground: var(--color-neon-green-50);
+  --color-theme-focused-foreground-subdued: var(--color-neon-green-50-5);
+}
+
+@theme theme-dark {
+  --color-theme-overlay: var(--color-black-100-4);
+  --color-theme-background: var(--color-black-100);
+  --color-theme-background-modal: var(--color-gray-80);
+  --color-theme-background-modal-footer: var(--color-gray-70);
+  --color-theme-background-input: var(--color-gray-60);
+  --color-theme-border: var(--color-gray-80);
+  --color-theme-border-subdued: var(--color-gray-70-3);
+  --color-theme-text: var(--color-white);
+  --color-theme-button: var(--color-white);
+  --color-theme-button-text: var(--color-black-100);
+  --color-theme-button-foreground: var(--color-gray-90);
+  --color-theme-button-background: var(--color-gray-80);
+  --color-theme-focused-foreground: var(--color-daybreak-10);
+  --color-theme-focused-foreground-subdued: var(--color-daybreak-10-5);
+}
+
+@theme theme-green {
+  --color-theme-overlay: var(--color-neon-green-100-4);
+  --color-theme-background: rgba(44, 255, 5);
+  --color-theme-background-modal: var(--color-neon-green-50);
+  --color-theme-background-modal-footer: var(--color-neon-green-50-5);
+  --color-theme-background-input: var(--color-neon-green-30);
+  --color-theme-border: var(--color-neon-green-60);
+  --color-theme-border-subdued: var(--color-neon-green-60-3);
+  --color-theme-text: var(--color-neon-green-100);
+  --color-theme-button: var(--color-neon-green-100);
+  --color-theme-button-text: var(--color-neon-green-10);
+  --color-theme-button-foreground: var(--color-neon-green-80);
+  --color-theme-button-background: var(--color-neon-green-70);
+  --color-theme-focused-foreground: rgba(255, 82, 243, 1);
+  --color-theme-focused-foreground-subdued: rgba(255, 82, 243, 0.5);
+}
+
+@theme theme-black-red {
+  --color-theme-overlay: var(--color-red-100-4);
+  --color-theme-background: var(--color-black-100);
+  --color-theme-background-modal: var(--color-red-70);
+  --color-theme-background-modal-footer: var(--color-red-80);
+  --color-theme-background-input: var(--color-red-60);
+  --color-theme-border: var(--color-red-60-7);
+  --color-theme-border-subdued: var(--color-red-60-3);
+  --color-theme-text: var(--color-red-30);
+  --color-theme-button: var(--color-red-100);
+  --color-theme-button-text: var(--color-red-20);
+  --color-theme-button-foreground: var(--color-red-80);
+  --color-theme-button-background: var(--color-red-90);
+  --color-theme-focused-foreground: var(--color-gray-70);
+  --color-theme-focused-foreground-subdued: var(--color-red-70-4);
+}
+
+@theme theme-black-teal {
+  --color-theme-overlay: var(--color-teal-100-4);
+  --color-theme-background: var(--color-black-100);
+  --color-theme-background-modal: var(--color-teal-70);
+  --color-theme-background-modal-footer: var(--color-teal-80);
+  --color-theme-background-input: var(--color-teal-60);
+  --color-theme-border: var(--color-teal-60-7);
+  --color-theme-border-subdued: var(--color-teal-60-3);
+  --color-theme-text: var(--color-teal-30);
+  --color-theme-button: var(--color-teal-100);
+  --color-theme-button-text: var(--color-teal-20);
+  --color-theme-button-foreground: var(--color-teal-80);
+  --color-theme-button-background: var(--color-teal-90);
+  --color-theme-focused-foreground: var(--color-gray-70);
+  --color-theme-focused-foreground-subdued: var(--color-teal-70-4);
+}
+
+@theme theme-black-green {
+  --color-theme-overlay: var(--color-black-100-4);
+  --color-theme-background: var(--color-black-100);
+  --color-theme-background-modal: var(--color-gray-90);
+  --color-theme-background-modal-footer: var(--color-gray-80);
+  --color-theme-background-input: var(--color-gray-70);
+  --color-theme-border: var(--color-gray-80);
+  --color-theme-border-subdued: var(--color-gray-70-3);
+  --color-theme-text: var(--color-green-50);
+  --color-theme-button: var(--color-green-50);
+  --color-theme-button-text: var(--color-green-80);
+  --color-theme-button-foreground: var(--color-green-80);
+  --color-theme-button-background: var(--color-green-90);
+  --color-theme-focused-foreground: var(--color-gray-30);
+  --color-theme-focused-foreground-subdued: var(--color-gray-40);
 }
