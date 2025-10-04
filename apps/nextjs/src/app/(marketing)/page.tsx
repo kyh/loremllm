@@ -1,8 +1,6 @@
 import { Logo } from "@repo/ui/logo";
-import { Card } from "@repo/ui/card";
 
 import { ChatBotDemo } from "./_components/chatbot-demo";
-import { LoremDemo } from "./_components/lorem-demo";
 
 const Page = () => {
   return (
@@ -15,7 +13,12 @@ const Page = () => {
           <p className="text-sm text-gray-600 mb-4">
             This demo queries the "demo" collection for responses.
           </p>
-          <ChatBotDemo />
+          <ChatBotDemo 
+            mode="demo"
+            title="Demo Collection Chat"
+            description="This demo queries the 'demo' collection for responses."
+            placeholder="Ask a question about the demo collection..."
+          />
         </div>
         
         <div>
@@ -23,7 +26,12 @@ const Page = () => {
           <p className="text-sm text-gray-600 mb-4">
             This demo generates dynamic lorem ipsum text with customizable parameters.
           </p>
-          <LoremDemo />
+          <ChatBotDemo 
+            mode="lorem"
+            title="Lorem Ipsum Generator"
+            description="This demo generates dynamic lorem ipsum text with customizable parameters."
+            placeholder="Type any message to generate lorem ipsum..."
+          />
         </div>
       </div>
     </main>
