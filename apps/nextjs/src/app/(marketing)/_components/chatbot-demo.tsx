@@ -34,7 +34,12 @@ import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
 export const ChatBotDemo = () => {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status } = useChat({
+    api: "/api/chat",
+    initialBody: {
+      id: "demo", // Query the demo collection
+    },
+  });
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text?.trim();
