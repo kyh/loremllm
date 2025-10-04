@@ -1,11 +1,12 @@
 import type { UIMessage } from "ai";
 import { simulateReadableStream, streamText } from "ai";
 import { MockLanguageModelV2 } from "ai/test";
+import { loremIpsum } from "lorem-ipsum";
 
 import { caller } from "@/trpc/server";
 
 export async function POST(request: Request) {
-  const { messages }: { messages: UIMessage[] } = await request.json();
+  const { messages, ...params }: { messages: UIMessage[]; [key: string]: any } = await request.json();
 
   const userQuery = extractUserQuery(messages);
   if (!userQuery) {
@@ -13,9 +14,64 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Query the "demo" collection for the best matching interaction
+    // Check if an id is provided, if not, use lorem ipsum generation
+    const id = params.id;
+    
+    if (!id) {
+      // Generate lorem ipsum with provided parameters
+      const loremParams = {
+        count: params.count || 1,
+        paragraphLowerBound: params.paragraphLowerBound || 3,
+        paragraphUpperBound: params.paragraphUpperBound || 7,
+        sentenceLowerBound: params.sentenceLowerBound || 5,
+        sentenceUpperBound: params.sentenceUpperBound || 15,
+        suffix: params.suffix || "\n",
+        units: params.units || "sentences",
+        words: params.words || undefined,
+      };
+
+      const output = loremIpsum(loremParams);
+      const chunks = parseMarkdownIntoChunks(output);
+
+      // Create streaming chunks for the AI SDK
+      const streamChunks = [
+        { type: "text-start" as const, id: "text-1" },
+        ...chunks.map((chunk) => ({
+          type: "text-delta" as const,
+          id: "text-1",
+          delta: chunk,
+        })),
+        { type: "text-end" as const, id: "text-1" },
+        {
+          type: "finish" as const,
+          finishReason: "stop" as const,
+          logprobs: undefined,
+          usage: {
+            inputTokens: userQuery.length,
+            outputTokens: output.length,
+            totalTokens: userQuery.length + output.length,
+          },
+        },
+      ];
+
+      const result = streamText({
+        prompt: userQuery,
+        model: new MockLanguageModelV2({
+          doStream: async () => ({
+            stream: simulateReadableStream({
+              chunks: streamChunks,
+              chunkDelayInMs: 20,
+            }),
+          }),
+        }),
+      });
+
+      return result.toUIMessageStreamResponse();
+    }
+
+    // Query the specified collection for the best matching interaction
     const queryResult = await caller.interaction.query({
-      publicId: "demo",
+      publicId: id,
       query: userQuery,
       limit: 1,
     });
@@ -64,7 +120,7 @@ export async function POST(request: Request) {
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("Error querying demo collection:", error);
+    console.error("Error processing chat request:", error);
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
       { status: 500 },
