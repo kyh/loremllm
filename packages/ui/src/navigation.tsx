@@ -22,7 +22,7 @@ const Navigation = ({
   right,
 }: NavigationProps) => {
   const logoClasses =
-    "flex-shrink-0 px-[1ch] inline-flex text-[var(--theme-text)] bg-[var(--theme-border)] no-underline border-0 outline-0 rounded-none m-0 text-[var(--font-size)] visited:text-[var(--theme-text)] hover:text-[var(--theme-text)] hover:bg-[var(--theme-focused-foreground)] focus:outline-0 focus:border-0 focus:m-0 focus:px-[1ch] focus:bg-[var(--theme-focused-foreground)]";
+    "flex-shrink-0 px-[1ch] inline-flex text-theme-text bg-theme-border no-underline border-0 outline-0 rounded-none m-0 text-[var(--font-size)] visited:text-theme-text hover:text-theme-text hover:bg-theme-focused-foreground focus:outline-0 focus:border-0 focus:m-0 focus:px-[1ch] focus:bg-theme-focused-foreground";
 
   let logoElement = <button className={logoClasses}>{logo}</button>;
 
@@ -43,7 +43,7 @@ const Navigation = ({
   }
 
   return (
-    <nav className="flex items-center justify-between bg-[var(--theme-border)]">
+    <nav className="flex items-center justify-between bg-theme-border">
       {logoElement}
       <section className="flex-shrink-0">{left}</section>
       <section className="w-full min-w-[10%]">{children}</section>

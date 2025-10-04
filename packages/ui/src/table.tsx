@@ -45,7 +45,7 @@ const TableFooter = ({
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "bg-[var(--theme-border)] font-normal uppercase",
+        "bg-theme-border font-normal uppercase",
         className,
       )}
       {...props}
@@ -58,7 +58,7 @@ const TableRow = ({ className, ...props }: React.ComponentProps<"tr">) => {
     <tr
       data-slot="table-row"
       className={cn(
-        "transition-all duration-200 ease-in-out hover:bg-[var(--theme-focused-foreground)]",
+        "transition-all duration-200 ease-in-out hover:bg-theme-focused-foreground",
         className,
       )}
       {...props}
@@ -71,7 +71,7 @@ const TableHead = ({ className, ...props }: React.ComponentProps<"th">) => {
     <th
       data-slot="table-head"
       className={cn(
-        "bg-[var(--theme-border)] px-[1ch] py-[calc(var(--font-size)*0.5*var(--theme-line-height-base))] text-left align-middle font-normal whitespace-nowrap text-[var(--theme-text)] uppercase",
+        "bg-theme-border px-[1ch] py-[calc(var(--font-size)*0.5*var(--theme-line-height-base))] text-left align-middle font-normal whitespace-nowrap text-theme-text uppercase",
         className,
       )}
       {...props}
