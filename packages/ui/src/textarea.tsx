@@ -6,12 +6,9 @@ import clsx from "clsx";
 
 import { cn } from "./utils";
 
-type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  isBlink?: boolean;
-};
+type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 const Textarea = ({
-  isBlink = true,
   placeholder,
   onChange,
   className,
@@ -118,12 +115,9 @@ const Textarea = ({
         {isPlaceholderVisible
           ? placeholder
           : textValue.substring(0, selectionStart)}
-        <span
-          className={clsx(
-            "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom",
-            isBlink && "animate-[blink_1s_step-start_infinite]",
-          )}
-        ></span>
+        {isFocused && (
+          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom" />
+        )}
         {!isPlaceholderVisible && textValue.substring(selectionStart)}
       </div>
 

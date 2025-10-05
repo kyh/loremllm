@@ -9,12 +9,10 @@ import { cn } from "./utils";
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   caretChars?: string;
   label?: string;
-  isBlink?: boolean;
 };
 
 const Input = ({
   caretChars,
-  isBlink = true,
   label,
   placeholder,
   onChange,
@@ -138,15 +136,11 @@ const Input = ({
           )}
         >
           {beforeCaretText}
-          <span
-            className={clsx(
-              "inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]",
-              isBlink && "animate-[blink_1s_step-start_0s_infinite]",
-              isFocused && "bg-[var(--theme-focused-foreground)]",
-            )}
-          >
-            {caretChars ?? ""}
-          </span>
+          {isFocused && (
+            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-focused-foreground)] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
+              {caretChars ?? ""}
+            </span>
+          )}
           {!isPlaceholderVisible && afterCaretText}
         </div>
         <input
