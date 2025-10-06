@@ -4,6 +4,7 @@ import { z } from "zod";
 export const LoremParamsSchema = z.object({
   messages: z.array(z.unknown()).optional(), // UIMessage array - optional for flexibility
   collectionId: z.string().optional(),
+  markdown: z.string().optional(),
   // Lorem parameters - all optional with defaults
   count: z.number().min(1).optional().default(1),
   paragraphLowerBound: z.number().min(1).optional().default(3),

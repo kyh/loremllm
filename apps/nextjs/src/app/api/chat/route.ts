@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
+import { handleMarkdownParsing } from "./markdown-handler";
 import { LoremParamsSchema } from "./schema";
 import { extractUserQuery } from "./utils";
 
@@ -11,22 +12,30 @@ export async function POST(request: Request) {
 
     // Validate and parse the request body using Zod schema
     const validatedData = LoremParamsSchema.parse(body);
-    const { messages, ...params } = validatedData;
+    const { messages, markdown, ...params } = validatedData;
+    const { collectionId, ...loremParams } = params;
 
     // Handle case where messages might not be provided
-    const userQuery = messages
-      ? extractUserQuery(messages)
-      : "Generate lorem ipsum text";
+    const userQueryFromMessages = messages ? extractUserQuery(messages) : "";
+    const userQuery =
+      userQueryFromMessages ||
+      (markdown ? "Parse provided markdown" : "Generate lorem ipsum text");
     if (!userQuery) {
       return new Response("No user message found", { status: 400 });
     }
 
-    // Check if an id is provided, if not, use lorem ipsum generation
-    const collectionId = params.collectionId;
+    if (typeof markdown === "string") {
+      if (!markdown.trim().length) {
+        return new Response("Markdown content is empty", { status: 400 });
+      }
 
+      return await handleMarkdownParsing(markdown, userQuery);
+    }
+
+    // Check if an id is provided, if not, use lorem ipsum generation
     if (!collectionId) {
       // Handle lorem ipsum generation
-      return await handleLoremGeneration(userQuery, params);
+      return await handleLoremGeneration(userQuery, loremParams);
     }
 
     // Handle chat query
