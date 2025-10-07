@@ -100,7 +100,7 @@ const AS400 = () => {
               </TableRow>
               <TableRow>
                 <TableColumn>
-                  <Textarea isBlink />
+                  <Textarea />
                 </TableColumn>
               </TableRow>
             </TableBody>

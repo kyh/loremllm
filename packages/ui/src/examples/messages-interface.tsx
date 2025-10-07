@@ -166,7 +166,6 @@ const MessagesInterface = () => {
         <br />
         <Input
           autoComplete="off"
-          isBlink={true}
           label="Message"
           name="test_message_interface"
         />

@@ -58,7 +58,6 @@ const ComboBox = ({
       <div className="p-0">
         <Input
           autoComplete="off"
-          isBlink
           label={label}
           placeholder={placeholder}
           name="combo-box-search"

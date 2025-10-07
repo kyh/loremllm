@@ -16,10 +16,7 @@ export const Message = ({
 }: MessageProps) =>
   from === "user" ? (
     <div
-      className={cn(
-        "mb-[calc(var(--font-size)*var(--theme-line-height-base))] flex items-start justify-between",
-        className,
-      )}
+      className={cn("flex items-start justify-between", className)}
       {...props}
     >
       <div className="w-full min-w-[10%] text-right">
@@ -33,10 +30,7 @@ export const Message = ({
     </div>
   ) : (
     <div
-      className={cn(
-        "mb-[calc(var(--font-size)*var(--theme-line-height-base))] flex items-start justify-between last:mb-0",
-        className,
-      )}
+      className={cn("flex items-start justify-between last:mb-0", className)}
       {...props}
     >
       <div className="relative flex flex-shrink-0 items-end self-stretch">

@@ -6,7 +6,7 @@ type LayoutProps = {
 
 const Layout = (props: LayoutProps) => {
   return (
-    <div className="max-w-screen-md px-5">
+    <div className="px-5">
       <Header />
       {props.children}
     </div>

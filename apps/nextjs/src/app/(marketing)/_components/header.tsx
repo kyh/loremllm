@@ -10,7 +10,7 @@ export const Header = () => {
   const { data: organization, isPending } = authClient.useActiveOrganization();
 
   return (
-    <header className="flex items-center justify-end pt-16">
+    <header className="flex items-center justify-end pt-4">
       <div className="flex flex-1 justify-end">
         {isPending ? (
           <span

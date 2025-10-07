@@ -32,32 +32,49 @@ import { BlockLoader } from "@repo/ui/block-loader";
 
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
+type ChatMode = "demo" | "lorem" | "markdown";
+
 type ChatBotDemoProps = {
-  mode: "demo" | "lorem";
+  mode: ChatMode;
+  preset?: string;
 };
 
-export const ChatBotDemo = ({ mode }: ChatBotDemoProps) => {
-  const [input, setInput] = useState("");
+export const ChatBotDemo = ({ mode, preset }: ChatBotDemoProps) => {
+  const [input, setInput] = useState(() => preset ?? "");
   const { messages, sendMessage, status } = useChat({});
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text?.trim();
     if (!text) return;
-    void sendMessage(
-      { text },
-      {
-        body: {
-          collectionId: mode === "demo" ? "demo" : undefined,
-        },
-      },
-    );
-    setInput("");
+    const body: Record<string, unknown> = {};
+
+    if (mode === "demo") {
+      body.collectionId = "demo";
+    }
+
+    if (mode === "markdown") {
+      body.markdown = text;
+    }
+
+    void sendMessage({ text }, { body });
+    setInput(preset ?? "");
   };
 
+  const placeholder = (() => {
+    switch (mode) {
+      case "demo":
+        return "Ask the demo collection a question";
+      case "lorem":
+        return "Describe the lorem ipsum you'd like";
+      case "markdown":
+        return "Paste markdown to stream it back";
+    }
+  })();
+
   return (
-    <div className="flex h-[520px] flex-col">
+    <div className="flex flex-1 flex-col">
       <Conversation className="h-full">
-        <ConversationContent>
+        <ConversationContent className="h-[300px]">
           {messages.map((message) => (
             <div key={message.id}>
               {message.role === "assistant" &&
@@ -120,10 +137,11 @@ export const ChatBotDemo = ({ mode }: ChatBotDemoProps) => {
         <ConversationScrollButton />
       </Conversation>
 
-      <PromptInput onSubmit={handleSubmit} className="mt-4">
-        <PromptInputBody>
+      <PromptInput onSubmit={handleSubmit} className="mt-4 border-t pt-4">
+        <PromptInputBody className="h-[100px]">
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}
+            placeholder={placeholder}
             value={input}
           />
         </PromptInputBody>
