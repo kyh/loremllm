@@ -6,10 +6,7 @@ import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
 /**
  * Handle streaming markdown parsing response
  */
-export const handleMarkdownParsing = async (
-  markdown: string,
-  userQuery: string,
-) => {
+export const handleMarkdownParsing = async (markdown: string) => {
   const normalizedMarkdown = markdown.trim();
 
   if (!normalizedMarkdown.length) {
@@ -17,14 +14,10 @@ export const handleMarkdownParsing = async (
   }
 
   const chunks = parseMarkdownIntoChunks(normalizedMarkdown);
-  const streamChunks = createStreamChunks(
-    chunks,
-    userQuery,
-    normalizedMarkdown,
-  );
+  const streamChunks = createStreamChunks(chunks, "", normalizedMarkdown);
 
   const result = streamText({
-    prompt: userQuery,
+    prompt: "",
     model: new MockLanguageModelV2({
       doStream: async () => ({
         stream: simulateReadableStream({

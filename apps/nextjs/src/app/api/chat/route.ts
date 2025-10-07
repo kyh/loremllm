@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
 import { handleMarkdownParsing } from "./markdown-handler";
@@ -12,34 +10,23 @@ export async function POST(request: Request) {
 
     // Validate and parse the request body using Zod schema
     const validatedData = LoremParamsSchema.parse(body);
-    const { messages, markdown, ...params } = validatedData;
-    const { collectionId, ...loremParams } = params;
 
-    // Handle case where messages might not be provided
-    const userQueryFromMessages = messages ? extractUserQuery(messages) : "";
-    const userQuery =
-      userQueryFromMessages ||
-      (markdown ? "Parse provided markdown" : "Generate lorem ipsum text");
-    if (!userQuery) {
-      return new Response("No user message found", { status: 400 });
+    const { messages, collectionId, markdown, ...params } = validatedData;
+
+    // Handle markdown parsing
+    if (typeof markdown === "string" && markdown.trim().length) {
+      return await handleMarkdownParsing(markdown);
     }
 
-    if (typeof markdown === "string") {
-      if (!markdown.trim().length) {
-        return new Response("Markdown content is empty", { status: 400 });
-      }
-
-      return await handleMarkdownParsing(markdown, userQuery);
-    }
-
-    // Check if an id is provided, if not, use lorem ipsum generation
+    // If there's no collection id, use lorem ipsum generation
     if (!collectionId) {
-      // Handle lorem ipsum generation
-      return await handleLoremGeneration(userQuery, loremParams);
+      return await handleLoremGeneration(params);
     }
 
     // Handle chat query
     try {
+      const userQuery = extractUserQuery(messages ?? []);
+
       return await handleChatQuery(userQuery, collectionId);
     } catch (error) {
       if (
@@ -52,14 +39,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("Error processing request:", error);
-
-    // Handle Zod validation errors
-    if (error instanceof z.ZodError) {
-      return new Response(
-        `Validation error: ${error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
-        { status: 400 },
-      );
-    }
 
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Unknown error"}`,

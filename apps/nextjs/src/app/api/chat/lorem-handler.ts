@@ -18,10 +18,7 @@ export type LoremParams = {
 /**
  * Handle lorem ipsum generation
  */
-export const handleLoremGeneration = async (
-  userQuery: string,
-  params: LoremParams,
-) => {
+export const handleLoremGeneration = async (params: LoremParams) => {
   await new Promise((resolve) => setTimeout(resolve, 0));
   // Generate lorem ipsum with validated parameters and defaults
   const loremParams = {
@@ -37,10 +34,10 @@ export const handleLoremGeneration = async (
 
   const output = loremIpsum(loremParams);
   const chunks = parseMarkdownIntoChunks(output);
-  const streamChunks = createStreamChunks(chunks, userQuery, output);
+  const streamChunks = createStreamChunks(chunks, "", output);
 
   const result = streamText({
-    prompt: userQuery,
+    prompt: "",
     model: new MockLanguageModelV2({
       doStream: async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
