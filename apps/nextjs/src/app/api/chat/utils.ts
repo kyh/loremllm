@@ -1,3 +1,4 @@
+import { load as parseYaml } from "js-yaml";
 import type { ToolUIPart, UIMessage } from "ai";
 
 /**
@@ -40,7 +41,61 @@ export type ToolCallChunk = {
 
 export type MarkdownChunk = TextChunk | ToolCallChunk;
 
-const TOOL_BLOCK_REGEX = /```tool\s*\n([\s\S]*?)\n?```/g;
+const TOOL_CALLOUT_REGEX = /^> \[!tool[^\]]*\](?:\n>.*)*/gim;
+
+const removeBlockquotePrefix = (line: string): string =>
+  line.replace(/^>\s?/, "");
+
+const parseToolCallHeader = (
+  headerLine: string,
+): { headerToolName?: string; headerToolCallId?: string } => {
+  const headerMatch = headerLine.match(/^\[!tool([^\]]*)\]\s*$/i);
+
+  if (!headerMatch) {
+    return {};
+  }
+
+  const rawTokens = headerMatch[1]?.trim();
+
+  if (!rawTokens) {
+    return {};
+  }
+
+  const tokens = rawTokens.split(/\s+/);
+  let headerToolName: string | undefined;
+  let headerToolCallId: string | undefined;
+
+  for (const token of tokens) {
+    const [rawKey = token, rawValue] = token.includes("=")
+      ? token.split(/=/, 2)
+      : [token, undefined];
+
+    if (rawValue) {
+      const key = rawKey.toLowerCase();
+      const value = rawValue.trim();
+
+      if (!value.length) {
+        continue;
+      }
+
+      if (["name", "tool", "toolname"].includes(key) && !headerToolName) {
+        headerToolName = value;
+      } else if (["id", "toolcallid", "call", "callid"].includes(key) && !headerToolCallId) {
+        headerToolCallId = value;
+      }
+
+      continue;
+    }
+
+    if (!headerToolName) {
+      headerToolName = token;
+    } else if (!headerToolCallId) {
+      headerToolCallId = token;
+    }
+  }
+
+  return { headerToolName, headerToolCallId };
+};
 
 const isValidToolState = (
   value: unknown,
@@ -80,32 +135,56 @@ const parseToolCallChunk = (
   rawContent: string,
   fallbackId: string,
 ): ToolCallChunk | null => {
-  const trimmed = rawContent.trim();
+  const lines = rawContent.split("\n");
 
-  if (!trimmed.length) {
+  if (!lines.length) {
     return null;
   }
 
-  let parsed: unknown;
+  const [rawHeaderLine, ...rawBodyLines] = lines;
 
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch (error) {
-    console.error("Failed to parse tool call block:", error);
+  if (!rawHeaderLine) {
     return null;
   }
 
-  if (!parsed || typeof parsed !== "object") {
+  const headerLine = removeBlockquotePrefix(rawHeaderLine).trim();
+  const { headerToolName, headerToolCallId } =
+    parseToolCallHeader(headerLine);
+
+  const bodyLines = rawBodyLines.map((line) => removeBlockquotePrefix(line));
+  const bodyContent = bodyLines.join("\n").trim();
+
+  let parsed: unknown = {};
+
+  if (bodyContent.length) {
+    try {
+      parsed = parseYaml(bodyContent);
+    } catch (error) {
+      console.error("Failed to parse tool call callout:", error);
+      return null;
+    }
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return null;
   }
 
   const data = parsed as Record<string, unknown>;
 
   const toolCallId =
-    getStringField(data, ["toolCallId", "tool_call_id", "callId", "id"]) ??
+    headerToolCallId ??
+    getStringField(data, [
+      "toolCallId",
+      "tool_call_id",
+      "callId",
+      "id",
+      "toolCall",
+    ]) ??
     fallbackId;
   const toolName =
-    getStringField(data, ["toolName", "tool_name", "name"]) ?? "tool";
+    headerToolName ??
+    getStringField(data, ["toolName", "tool_name", "name", "tool"]) ??
+    "tool";
   const state = isValidToolState(data.state);
   const errorText =
     getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
@@ -146,9 +225,9 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
   let lastIndex = 0;
   let toolIndex = 1;
 
-  for (const match of markdown.matchAll(TOOL_BLOCK_REGEX)) {
+  for (const match of markdown.matchAll(TOOL_CALLOUT_REGEX)) {
     const fullMatch = match[0];
-    const content = match[1] ?? "";
+    const content = fullMatch;
     const startIndex = match.index ?? 0;
     const endIndex = startIndex + fullMatch.length;
 
