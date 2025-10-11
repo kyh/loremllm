@@ -18,8 +18,8 @@ describe("parseMarkdownIntoChunks", () => {
     ]);
   });
 
-  it("extracts tool call definitions from markdown callouts", () => {
-    const markdown = `Before\n> [!tool search call_1]\n> state: output-available\n> input:\n>   query: cats\n> output:\n>   results: []\nAfter`;
+  it("extracts tool call definitions from tool fences", () => {
+    const markdown = `Before\n\n\`\`\`tool search call_1\nstate: output-available\ninput:\n  query: cats\noutput:\n  results: []\n\`\`\`\n\nAfter`;
 
     const result = parseMarkdownIntoChunks(markdown);
     const toolChunk = result.find(
@@ -44,7 +44,7 @@ describe("parseMarkdownIntoChunks", () => {
   });
 
   it("supports header assignments", () => {
-    const markdown = `> [!tool name=weather id=call_99]\n> input:\n>   location: Paris`;
+    const markdown = `\`\`\`tool name=weather id=call_99\ninput:\n  location: Paris\n\`\`\``;
 
     const [toolChunk] = parseMarkdownIntoChunks(markdown);
 
@@ -53,6 +53,32 @@ describe("parseMarkdownIntoChunks", () => {
       toolCallId: "call_99",
       toolName: "weather",
       input: { location: "Paris" },
+    });
+  });
+
+  it("parses multiple fences in order", () => {
+    const markdown = [
+      "```tool search call_a",
+      "input:",
+      "  query: cats",
+      "```",
+      "",
+      "```tool map-directions call_b",
+      "input:",
+      "  destination: museum",
+      "```",
+    ].join("\n");
+
+    const toolChunks = parseMarkdownIntoChunks(markdown).filter(
+      (chunk): chunk is ToolCallChunk => chunk.type === "tool",
+    );
+
+    expect(toolChunks).toHaveLength(2);
+    expect(toolChunks[0]).toMatchObject({ toolCallId: "call_a", toolName: "search" });
+    expect(toolChunks[1]).toMatchObject({
+      toolCallId: "call_b",
+      toolName: "map-directions",
+      input: { destination: "museum" },
     });
   });
 });

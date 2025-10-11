@@ -41,27 +41,28 @@ export type ToolCallChunk = {
 
 export type MarkdownChunk = TextChunk | ToolCallChunk;
 
-const TOOL_CALLOUT_REGEX = /^> \[!tool[^\]]*\](?:\n>.*)*/gim;
+const TOOL_FENCE_REGEX = /```tool[^\n]*\n[\s\S]*?```/gi;
 
-const removeBlockquotePrefix = (line: string): string =>
-  line.replace(/^>\s?/, "");
+const stripSurroundingQuotes = (value: string): string => {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1);
+  }
 
-const parseToolCallHeader = (
-  headerLine: string,
+  return value;
+};
+
+const parseToolFenceInfo = (
+  infoString: string,
 ): { headerToolName?: string; headerToolCallId?: string } => {
-  const headerMatch = headerLine.match(/^\[!tool([^\]]*)\]\s*$/i);
+  const tokens = infoString.trim().split(/\s+/).filter(Boolean);
 
-  if (!headerMatch) {
+  if (!tokens.length) {
     return {};
   }
 
-  const rawTokens = headerMatch[1]?.trim();
-
-  if (!rawTokens) {
-    return {};
-  }
-
-  const tokens = rawTokens.split(/\s+/);
   let headerToolName: string | undefined;
   let headerToolCallId: string | undefined;
 
@@ -70,9 +71,9 @@ const parseToolCallHeader = (
       ? token.split(/=/, 2)
       : [token, undefined];
 
-    if (rawValue) {
+    if (rawValue !== undefined) {
       const key = rawKey.toLowerCase();
-      const value = rawValue.trim();
+      const value = stripSurroundingQuotes(rawValue.trim());
 
       if (!value.length) {
         continue;
@@ -137,21 +138,31 @@ const parseToolCallChunk = (
 ): ToolCallChunk | null => {
   const lines = rawContent.split("\n");
 
-  if (!lines.length) {
+  if (lines.length === 0) {
     return null;
   }
 
-  const [rawHeaderLine, ...rawBodyLines] = lines;
+  const rawHeaderLine = lines[0];
 
   if (!rawHeaderLine) {
     return null;
   }
 
-  const headerLine = removeBlockquotePrefix(rawHeaderLine).trim();
-  const { headerToolName, headerToolCallId } =
-    parseToolCallHeader(headerLine);
+  const infoString = rawHeaderLine.replace(/^```tool/i, "");
+  const { headerToolName, headerToolCallId } = parseToolFenceInfo(infoString);
 
-  const bodyLines = rawBodyLines.map((line) => removeBlockquotePrefix(line));
+  const bodyLines = lines.slice(1);
+
+  while (bodyLines.length > 0) {
+    const lastLine = bodyLines[bodyLines.length - 1];
+
+    if (!lastLine || lastLine.trim() !== "```") {
+      break;
+    }
+
+    bodyLines.pop();
+  }
+
   const bodyContent = bodyLines.join("\n").trim();
 
   let parsed: unknown = {};
@@ -160,7 +171,7 @@ const parseToolCallChunk = (
     try {
       parsed = parseYaml(bodyContent);
     } catch (error) {
-      console.error("Failed to parse tool call callout:", error);
+      console.error("Failed to parse tool call fence:", error);
       return null;
     }
   }
@@ -225,7 +236,7 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
   let lastIndex = 0;
   let toolIndex = 1;
 
-  for (const match of markdown.matchAll(TOOL_CALLOUT_REGEX)) {
+  for (const match of markdown.matchAll(TOOL_FENCE_REGEX)) {
     const fullMatch = match[0];
     const content = fullMatch;
     const startIndex = match.index ?? 0;
