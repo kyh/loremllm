@@ -1,4 +1,4 @@
-import { load as parseYaml } from "js-yaml";
+import { parse as parseYaml } from "yaml";
 import type { ToolUIPart, UIMessage } from "ai";
 
 /**
