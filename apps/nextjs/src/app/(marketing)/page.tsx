@@ -1,44 +1,135 @@
-import { Logo } from "@repo/ui/logo";
+"use client";
+
+import { useMemo, useState } from "react";
+import { ActionButton } from "@repo/ui/action-button";
+import { Avatar, AvatarFallback } from "@repo/ui/avatar";
+import { Divider } from "@repo/ui/divider";
+import { Navigation } from "@repo/ui/navigation";
+import { RowEllipsis } from "@repo/ui/row-ellipsis";
+import { SidebarLayout } from "@repo/ui/sidebar-layout";
+import { cn } from "@repo/ui/utils";
 
 import { ChatBotDemo } from "./_components/chatbot-demo";
 
-const Page = () => {
-  return (
-    <main className="mt-8 flex flex-col gap-8">
-      <Logo />
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold">Demo Collection Chat</h2>
-          <p className="text-sm text-gray-600">
-            This demo queries the "demo" collection for responses.
-          </p>
-          <ChatBotDemo mode="demo" />
-        </div>
+type DemoConfig = {
+  id: "demo" | "lorem" | "markdown";
+  title: string;
+  description: string;
+  preset?: string;
+};
 
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold">Lorem Ipsum Generator</h2>
-          <p className="text-sm text-gray-600">
-            This demo generates dynamic lorem ipsum text with customizable
-            parameters.
-          </p>
-          <ChatBotDemo mode="lorem" />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold">Markdown Streaming</h2>
-          <p className="text-sm text-gray-600">
-            Paste markdown to see it parsed and streamed back in real time.
-          </p>
-          <ChatBotDemo
-            mode="markdown"
-            preset={`# Release Highlights
+const demos: DemoConfig[] = [
+  {
+    id: "demo",
+    title: "Demo Collection Chat",
+    description: 'This demo queries the "demo" collection for responses.',
+  },
+  {
+    id: "lorem",
+    title: "Lorem Ipsum Generator",
+    description:
+      "Generate dynamic lorem ipsum text with customizable parameters.",
+  },
+  {
+    id: "markdown",
+    title: "Markdown Streaming",
+    description:
+      "Paste markdown to see it parsed and streamed back in real time.",
+    preset: `# Release Highlights
 
 - **Streaming markdown** with live updates
 - Rendered exactly as you provide it
-- Great for previewing documentation tweaks`}
-          />
+- Great for previewing documentation tweaks`,
+  },
+];
+
+const Page = () => {
+  const [activeDemoId, setActiveDemoId] = useState<DemoConfig["id"]>("demo");
+
+  const activeDemo = useMemo(
+    () => demos.find((demo) => demo.id === activeDemoId) ?? demos[0],
+    [activeDemoId],
+  );
+
+  return (
+    <main className="mt-2 flex flex-1 flex-col">
+      <Navigation
+        logo="✶"
+        left={
+          <div className="flex gap-2">
+            <ActionButton onClick={() => setActiveDemoId("demo")}>
+              DEMO CHAT
+            </ActionButton>
+            <ActionButton onClick={() => setActiveDemoId("lorem")}>
+              LOREM IPSUM
+            </ActionButton>
+            <ActionButton onClick={() => setActiveDemoId("markdown")}>
+              MARKDOWN
+            </ActionButton>
+          </div>
+        }
+      />
+      <Divider type="double" />
+      <SidebarLayout
+        defaultSidebarWidth={32}
+        isShowingHandle
+        sidebar={
+          <div className="flex flex-col gap-2">
+            {demos.map((demo) => (
+              <div key={demo.id}>
+                <button
+                  className={cn(
+                    "flex w-full items-center gap-3 border-0 bg-transparent px-2 py-2 text-left text-sm transition outline-none",
+                    "hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]",
+                    activeDemoId === demo.id &&
+                      "bg-[var(--theme-focused-foreground)]",
+                  )}
+                  onClick={() => setActiveDemoId(demo.id)}
+                  type="button"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      {demo.title
+                        .split(" ")
+                        .map((word) => word[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-semibold uppercase">
+                      {demo.title}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {demo.description}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-6">
+          {activeDemo && (
+            <>
+              <header className="flex flex-col gap-2">
+                <span className="text-muted-foreground text-xs uppercase">
+                  {activeDemo.id === "demo"
+                    ? "Collection"
+                    : activeDemo.id === "lorem"
+                      ? "Generator"
+                      : "Streaming"}
+                </span>
+                <h1 className="text-xl font-semibold">{activeDemo.title}</h1>
+                <p className="text-muted-foreground text-sm">
+                  {activeDemo.description}
+                </p>
+              </header>
+              <ChatBotDemo mode={activeDemo.id} preset={activeDemo.preset} />
+            </>
+          )}
         </div>
-      </div>
+      </SidebarLayout>
     </main>
   );
 };
