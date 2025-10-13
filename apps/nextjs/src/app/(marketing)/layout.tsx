@@ -6,7 +6,7 @@ type LayoutProps = {
 
 const Layout = (props: LayoutProps) => {
   return (
-    <div className="px-5">
+    <div className="flex min-h-dvh flex-col px-5">
       <Header />
       {props.children}
     </div>

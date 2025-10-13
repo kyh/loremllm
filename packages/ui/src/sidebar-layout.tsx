@@ -2,14 +2,13 @@
 
 import * as React from "react";
 
-interface SidebarLayoutProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "defaultValue"> {
+type SidebarLayoutProps = {
   children?: React.ReactNode;
   sidebar?: React.ReactNode;
   defaultSidebarWidth?: number;
   isShowingHandle?: boolean;
   isReversed?: boolean;
-}
+} & Omit<React.HTMLAttributes<HTMLDivElement>, "defaultValue">;
 
 const LINE_HEIGHT = 20;
 const CHARACTER_WIDTH = 9.6;
@@ -47,7 +46,7 @@ const SidebarLayout = ({
   if (isReversed) {
     return (
       <div
-        className="flex items-start justify-between whitespace-pre-wrap"
+        className="flex flex-1 items-start justify-between whitespace-pre-wrap"
         {...rest}
       >
         <div className="w-full min-w-[10%]">{children}</div>
@@ -66,7 +65,7 @@ const SidebarLayout = ({
 
   return (
     <div
-      className="flex items-start justify-between whitespace-pre-wrap"
+      className="flex flex-1 items-start justify-between whitespace-pre-wrap"
       {...rest}
     >
       <div
