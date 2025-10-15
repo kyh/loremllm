@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { buttonVariants } from "@repo/ui/button";
+import { Logo } from "@repo/ui/logo";
 import { cn } from "@repo/ui/utils";
 
 import { authClient } from "@/auth/auth-client";
@@ -11,6 +12,7 @@ export const Header = () => {
 
   return (
     <header className="flex items-center justify-end pt-4">
+      <Logo />
       <div className="flex flex-1 justify-end">
         {isPending ? (
           <span

@@ -1,11 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
 import { ActionButton } from "@repo/ui/action-button";
 import { Avatar, AvatarFallback } from "@repo/ui/avatar";
 import { Divider } from "@repo/ui/divider";
-import { Logo } from "@repo/ui/logo";
 import { Navigation } from "@repo/ui/navigation";
 import { RowEllipsis } from "@repo/ui/row-ellipsis";
 import { SidebarLayout } from "@repo/ui/sidebar-layout";
@@ -24,7 +22,7 @@ const demos: DemoConfig[] = [
   {
     id: "demo",
     title: "Demo Collection Chat",
-    description: "This demo queries the \"demo\" collection for responses.",
+    description: 'This demo queries the "demo" collection for responses.',
   },
   {
     id: "lorem",
@@ -35,7 +33,8 @@ const demos: DemoConfig[] = [
   {
     id: "markdown",
     title: "Markdown Streaming",
-    description: "Paste markdown to see it parsed and streamed back in real time.",
+    description:
+      "Paste markdown to see it parsed and streamed back in real time.",
     preset: `# Release Highlights
 
 - **Streaming markdown** with live updates
@@ -53,7 +52,7 @@ const Page = () => {
   );
 
   return (
-    <main className="mt-8 flex flex-col gap-6">
+    <main className="mt-2 flex flex-1 flex-col">
       <Navigation
         logo="✶"
         left={
@@ -75,12 +74,12 @@ const Page = () => {
         defaultSidebarWidth={32}
         isShowingHandle
         sidebar={
-          <ul className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             {demos.map((demo) => (
-              <li key={demo.id}>
+              <div key={demo.id}>
                 <button
                   className={cn(
-                    "flex w-full items-center gap-3 border-0 bg-transparent px-2 py-2 text-left text-sm outline-none transition",
+                    "flex w-full items-center gap-3 border-0 bg-transparent px-2 py-2 text-left text-sm transition outline-none",
                     "hover:bg-[var(--theme-focused-foreground)] focus:bg-[var(--theme-focused-foreground)]",
                     activeDemoId === demo.id &&
                       "bg-[var(--theme-focused-foreground)]",
@@ -96,40 +95,39 @@ const Page = () => {
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col gap-1">
-                    <RowEllipsis>
-                      <span className="font-semibold uppercase">
-                        {demo.title}
-                      </span>
-                    </RowEllipsis>
-                    <RowEllipsis>
-                      <span className="text-xs text-muted-foreground">
-                        {demo.description}
-                      </span>
-                    </RowEllipsis>
+                  <div className="flex flex-col">
+                    <span className="font-semibold uppercase">
+                      {demo.title}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {demo.description}
+                    </span>
                   </div>
                 </button>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         }
       >
         <div className="flex flex-col gap-6">
-          <Logo />
-          <header className="flex flex-col gap-2">
-            <span className="text-xs uppercase text-muted-foreground">
-              {activeDemo.id === "demo"
-                ? "Collection"
-                : activeDemo.id === "lorem"
-                  ? "Generator"
-                  : "Streaming"}
-            </span>
-            <h1 className="text-xl font-semibold">{activeDemo.title}</h1>
-            <p className="text-sm text-muted-foreground">
-              {activeDemo.description}
-            </p>
-          </header>
-          <ChatBotDemo mode={activeDemo.id} preset={activeDemo.preset} />
+          {activeDemo && (
+            <>
+              <header className="flex flex-col gap-2">
+                <span className="text-muted-foreground text-xs uppercase">
+                  {activeDemo.id === "demo"
+                    ? "Collection"
+                    : activeDemo.id === "lorem"
+                      ? "Generator"
+                      : "Streaming"}
+                </span>
+                <h1 className="text-xl font-semibold">{activeDemo.title}</h1>
+                <p className="text-muted-foreground text-sm">
+                  {activeDemo.description}
+                </p>
+              </header>
+              <ChatBotDemo mode={activeDemo.id} preset={activeDemo.preset} />
+            </>
+          )}
         </div>
       </SidebarLayout>
     </main>
