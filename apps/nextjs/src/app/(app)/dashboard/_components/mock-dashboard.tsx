@@ -13,6 +13,14 @@ import {
 } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@repo/ui/table";
 import { Textarea } from "@repo/ui/textarea";
 import { toast } from "@repo/ui/toast";
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
@@ -48,6 +56,23 @@ const createDefaultInteractionForm = (): InteractionFormState => ({
   input: "",
   output: "",
 });
+
+const formatOutputToHtml = (content: string) =>
+  content
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(
+      /`(.*?)`/g,
+      '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
+    )
+    .replace(/^# (.*$)/gm, '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>')
+    .replace(/^## (.*$)/gm, '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>')
+    .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
+    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
+    .replace(/\n\n/g, '</p><p class="mb-2">')
+    .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
+    .replace(/(<li.*<\/li>)/gs, '<ul class="list-disc ml-4 mb-2">$1</ul>');
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
@@ -232,8 +257,11 @@ export const MockDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateCollection} className="grid gap-4">
-            <div className="grid gap-2">
+          <form
+            onSubmit={handleCreateCollection}
+            className="grid gap-3 sm:grid-cols-2"
+          >
+            <div className="grid gap-1.5">
               <Label htmlFor="collection-name">Collection name</Label>
               <Input
                 id="collection-name"
@@ -248,7 +276,7 @@ export const MockDashboard = () => {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5 sm:col-span-2">
               <Label htmlFor="collection-description">
                 Description (optional)
               </Label>
@@ -262,10 +290,10 @@ export const MockDashboard = () => {
                     description: event.target.value,
                   }))
                 }
-                rows={2}
+                rows={3}
               />
             </div>
-            <div className="flex justify-end">
+            <div className="sm:col-span-2 flex justify-end">
               <Button type="submit" disabled={createCollection.isPending}>
                 Create collection
               </Button>
@@ -277,46 +305,45 @@ export const MockDashboard = () => {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="grid gap-1">
-              <CardTitle className="text-base">
-                Collection: {collection.name}
-              </CardTitle>
-              {collection.description ? (
-                <CardDescription>{collection.description}</CardDescription>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-              <CollectionChatDrawer
-                collectionId={collection.publicId}
-                collectionName={collection.name ?? "Untitled Collection"}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                onClick={() =>
-                  deleteCollection.mutate({ collectionId: collection.id })
-                }
-                disabled={deleteCollection.isPending}
-              >
-                Delete
-              </Button>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base">{collection.name}</CardTitle>
+            {collection.description ? (
+              <CardDescription>{collection.description}</CardDescription>
+            ) : null}
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+              <span>Public ID:</span>
+              <span className="bg-muted rounded px-2 py-1 font-mono">
+                {collection.publicId}
+              </span>
             </div>
           </div>
-          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-            <span>Public ID:</span>
-            <span className="bg-muted rounded px-2 py-1">
-              {collection.publicId}
-            </span>
+          <div className="flex items-center gap-2">
+            <CollectionChatDrawer
+              collectionId={collection.publicId}
+              collectionName={collection.name ?? "Untitled Collection"}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() =>
+                deleteCollection.mutate({ collectionId: collection.id })
+              }
+              disabled={deleteCollection.isPending}
+            >
+              Delete
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpdateCollection} className="grid gap-4">
-            <div className="grid gap-2">
+          <form
+            onSubmit={handleUpdateCollection}
+            className="grid gap-3 sm:grid-cols-2"
+          >
+            <div className="grid gap-1.5">
               <Label htmlFor="collection-name">Collection name</Label>
               <Input
                 id="collection-name"
@@ -331,7 +358,7 @@ export const MockDashboard = () => {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5 sm:col-span-2">
               <Label htmlFor="collection-description">
                 Description (optional)
               </Label>
@@ -345,10 +372,10 @@ export const MockDashboard = () => {
                     description: event.target.value,
                   }))
                 }
-                rows={2}
+                rows={3}
               />
             </div>
-            <div className="flex justify-end">
+            <div className="sm:col-span-2 flex justify-end">
               <Button type="submit" disabled={updateCollection.isPending}>
                 Update collection
               </Button>
@@ -365,8 +392,11 @@ export const MockDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateInteraction} className="grid gap-4">
-            <div className="grid gap-2">
+          <form
+            onSubmit={handleCreateInteraction}
+            className="grid gap-3 md:grid-cols-2"
+          >
+            <div className="grid gap-1.5">
               <Label htmlFor="interaction-title">Title</Label>
               <Input
                 id="interaction-title"
@@ -381,7 +411,7 @@ export const MockDashboard = () => {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               <Label htmlFor="interaction-description">
                 Description (optional)
               </Label>
@@ -395,10 +425,10 @@ export const MockDashboard = () => {
                     description: event.target.value,
                   }))
                 }
-                rows={2}
+                rows={3}
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5 md:col-span-1">
               <Label htmlFor="interaction-input">Input (User Query)</Label>
               <Textarea
                 id="interaction-input"
@@ -414,10 +444,10 @@ export const MockDashboard = () => {
                 required
               />
               <p className="text-muted-foreground text-xs">
-                The user input that will be matched using semantic search.
+                The user input matched using semantic search.
               </p>
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5 md:col-span-1">
               <Label htmlFor="interaction-output">Output (Response)</Label>
               <Textarea
                 id="interaction-output"
@@ -429,14 +459,14 @@ export const MockDashboard = () => {
                     output: event.target.value,
                   }))
                 }
-                rows={6}
+                rows={5}
                 required
               />
               <p className="text-muted-foreground text-xs">
-                The response content. Supports markdown formatting.
+                Supports markdown formatting for richer answers.
               </p>
             </div>
-            <div className="flex justify-end">
+            <div className="md:col-span-2 flex justify-end">
               <Button type="submit" disabled={createInteraction.isPending}>
                 Save mock response
               </Button>
@@ -445,97 +475,88 @@ export const MockDashboard = () => {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {collection.interactions.map((interaction) => (
-          <Card key={interaction.id} className="flex flex-col">
-            <CardHeader className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base">
-                    {interaction.title}
-                  </CardTitle>
-                  {interaction.description ? (
-                    <CardDescription>{interaction.description}</CardDescription>
-                  ) : null}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDeleteInteraction(interaction.id)}
-                  disabled={deleteInteraction.isPending}
-                >
-                  Remove
-                </Button>
-              </div>
-              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                <span>Input:</span>
-                <span className="bg-muted rounded px-2 py-1">
-                  {interaction.input}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
-              <div className="border-border rounded border p-3 text-sm">
-                <div className="mb-2 flex items-center justify-between">
-                  <Badge>Response</Badge>
-                  <span className="text-muted-foreground text-xs">
-                    {interaction.responseSchema}
-                  </span>
-                </div>
-                <div className="prose prose-sm max-w-none">
-                  {typeof interaction.output === "string" ? (
-                    <div
-                      className="text-sm whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: interaction.output
-                          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                          .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                          .replace(
-                            /`(.*?)`/g,
-                            '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
-                          )
-                          .replace(
-                            /^# (.*$)/gm,
-                            '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>',
-                          )
-                          .replace(
-                            /^## (.*$)/gm,
-                            '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
-                          )
-                          .replace(
-                            /^### (.*$)/gm,
-                            '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
-                          )
-                          .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
-                          .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
-                          .replace(/\n\n/g, '</p><p class="mb-2">')
-                          .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
-                          .replace(
-                            /(<li.*<\/li>)/gs,
-                            '<ul class="list-disc ml-4 mb-2">$1</ul>',
-                          ),
-                      }}
-                    />
-                  ) : (
-                    <pre className="text-sm whitespace-pre-wrap">
-                      {JSON.stringify(interaction.output, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {!collection.interactions.length ? (
-          <Card className="md:col-span-2">
-            <CardContent className="text-muted-foreground py-10 text-center">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Mock responses</CardTitle>
+          <CardDescription>
+            Review inputs and generated outputs in a spreadsheet-style table.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {collection.interactions.length ? (
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[16rem]">Interaction</TableHead>
+                  <TableHead className="min-w-[18rem]">Input</TableHead>
+                  <TableHead className="min-w-[24rem]">Response</TableHead>
+                  <TableHead className="w-[1%] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {collection.interactions.map((interaction) => (
+                  <TableRow key={interaction.id}>
+                    <TableCell className="whitespace-normal align-top">
+                      <div className="font-medium leading-6">
+                        {interaction.title}
+                      </div>
+                      {interaction.description ? (
+                        <p className="text-muted-foreground mt-1 text-xs leading-5">
+                          {interaction.description}
+                        </p>
+                      ) : null}
+                      <div className="text-muted-foreground mt-2 flex items-center gap-2 text-[0.7rem]">
+                        <span>Response schema:</span>
+                        <span className="rounded bg-muted px-2 py-0.5 font-mono">
+                          {interaction.responseSchema}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-pre-wrap align-top text-xs leading-5 text-muted-foreground">
+                      {interaction.input}
+                    </TableCell>
+                    <TableCell className="whitespace-normal align-top">
+                      <div className="flex flex-col gap-2">
+                        <Badge className="w-fit">
+                          Response
+                        </Badge>
+                        {typeof interaction.output === "string" ? (
+                          <div
+                            className="prose prose-sm max-w-none whitespace-pre-wrap text-sm"
+                            dangerouslySetInnerHTML={{
+                              __html: formatOutputToHtml(interaction.output),
+                            }}
+                          />
+                        ) : (
+                          <pre className="text-xs whitespace-pre-wrap">
+                            {JSON.stringify(interaction.output, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="align-top text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteInteraction(interaction.id)}
+                        disabled={deleteInteraction.isPending}
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-muted-foreground py-10 text-center text-sm">
               No interactions yet. Create one to start streaming mocked
               responses.
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
