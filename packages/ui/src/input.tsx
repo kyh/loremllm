@@ -6,6 +6,115 @@ import clsx from "clsx";
 
 import { cn } from "./utils";
 
+type MirrorCaretOptions = {
+  value: string;
+  placeholder?: string;
+  maskText?: (text: string) => string;
+};
+
+type MirrorCaretReturn<TElement extends HTMLInputElement | HTMLTextAreaElement> = {
+  isFocused: boolean;
+  isPlaceholderVisible: boolean;
+  clampedSelectionStart: number;
+  isCaretAtEnd: boolean;
+  beforeCaretText: string;
+  highlightedDisplayCharacter: string;
+  afterCaretText: string;
+  handleFocus: (event: React.FocusEvent<TElement>) => void;
+  handleBlur: () => void;
+  handleSelect: (event: React.SyntheticEvent<TElement>) => void;
+  handleClick: (event: React.MouseEvent<TElement>) => void;
+  setSelectionStart: React.Dispatch<React.SetStateAction<number>>;
+  setSelectionFromTarget: (target: TElement) => void;
+};
+
+const useMirrorCaret = <TElement extends HTMLInputElement | HTMLTextAreaElement>({
+  value,
+  placeholder = "",
+  maskText = (text: string) => text,
+}: MirrorCaretOptions): MirrorCaretReturn<TElement> => {
+  const [isFocused, setIsFocused] = React.useState(false);
+  const [selectionStart, setSelectionStart] = React.useState<number>(value.length);
+
+  React.useEffect(() => {
+    setSelectionStart((previous) => Math.min(previous, value.length));
+  }, [value]);
+
+  const setSelectionFromTarget = React.useCallback((target: TElement) => {
+    const nextSelectionStart =
+      typeof target.selectionStart === "number"
+        ? target.selectionStart
+        : target.value.length;
+
+    setSelectionStart(nextSelectionStart);
+  }, []);
+
+  const handleFocus = React.useCallback(
+    (event: React.FocusEvent<TElement>) => {
+      setIsFocused(true);
+      setSelectionFromTarget(event.currentTarget);
+    },
+    [setSelectionFromTarget],
+  );
+
+  const handleBlur = React.useCallback(() => {
+    setIsFocused(false);
+  }, []);
+
+  const handleSelect = React.useCallback(
+    (event: React.SyntheticEvent<TElement>) => {
+      setSelectionFromTarget(event.currentTarget);
+    },
+    [setSelectionFromTarget],
+  );
+
+  const handleClick = React.useCallback(
+    (event: React.MouseEvent<TElement>) => {
+      event.currentTarget.focus();
+      setSelectionFromTarget(event.currentTarget);
+    },
+    [setSelectionFromTarget],
+  );
+
+  const isPlaceholderVisible = !value && placeholder.length > 0;
+  const clampedSelectionStart = Math.min(selectionStart, value.length);
+  const isCaretAtEnd = clampedSelectionStart >= value.length;
+
+  const beforeCaretText = isPlaceholderVisible
+    ? placeholder
+    : maskText(value.substring(0, clampedSelectionStart));
+
+  const highlightedCharacter =
+    !isPlaceholderVisible && !isCaretAtEnd
+      ? maskText(value.charAt(clampedSelectionStart))
+      : "";
+
+  const highlightedDisplayCharacter =
+    highlightedCharacter === "" ? "\u00a0" : highlightedCharacter;
+
+  const afterCaretText = isPlaceholderVisible
+    ? ""
+    : maskText(
+        value.substring(clampedSelectionStart + (isCaretAtEnd ? 0 : 1)),
+      );
+
+  return {
+    isFocused,
+    isPlaceholderVisible,
+    clampedSelectionStart,
+    isCaretAtEnd,
+    beforeCaretText,
+    highlightedDisplayCharacter,
+    afterCaretText,
+    handleFocus,
+    handleBlur,
+    handleSelect,
+    handleClick,
+    setSelectionStart,
+    setSelectionFromTarget,
+  };
+};
+
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   caretChars?: string;
   label?: string;
@@ -42,25 +151,42 @@ const Input = ({
   });
 
   const textValue = String(text ?? "");
-  const [isFocused, setIsFocused] = React.useState<boolean>(false);
-  const [selectionStart, setSelectionStart] = React.useState<number>(
-    textValue.length,
-  );
-
   const lastFocusDirectionRef = React.useRef<"up" | "down" | null>(null);
 
-  React.useEffect(() => {
-    setSelectionStart(textValue.length);
-  }, [textValue]);
+  const placeholderText = placeholder ?? "";
+
+  const maskText = React.useCallback(
+    (t: string) => (type === "password" ? "•".repeat(t.length) : t),
+    [type],
+  );
+
+  const {
+    isFocused,
+    isPlaceholderVisible,
+    isCaretAtEnd,
+    beforeCaretText,
+    highlightedDisplayCharacter,
+    afterCaretText,
+    handleFocus,
+    handleBlur,
+    handleSelect,
+    handleClick,
+    setSelectionStart,
+    setSelectionFromTarget,
+  } = useMirrorCaret<HTMLInputElement>({
+    value: textValue,
+    placeholder: placeholderText,
+    maskText,
+  });
 
   const onHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setText(value);
-    setSelectionStart(e.target.selectionStart ?? value.length);
+    setSelectionFromTarget(e.currentTarget);
   };
 
-  const onHandleFocus = () => {
-    setIsFocused(true);
+  const onHandleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    handleFocus(event);
     if (!inputRef.current) return;
 
     if (lastFocusDirectionRef.current === "down") {
@@ -73,18 +199,15 @@ const Input = ({
   };
 
   const onHandleBlur = () => {
-    setIsFocused(false);
+    handleBlur();
   };
 
   const onHandleSelect = (e: React.SyntheticEvent<HTMLInputElement>) => {
-    const inputEl = e.currentTarget as HTMLInputElement;
-    setSelectionStart(inputEl.selectionStart ?? textValue.length);
+    handleSelect(e);
   };
 
   const onHandleClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    const inputEl = e.currentTarget as HTMLInputElement;
-    inputEl.focus();
-    setSelectionStart(inputEl.selectionStart ?? textValue.length);
+    handleClick(e);
   };
 
   const onHandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -104,22 +227,12 @@ const Input = ({
     }
   };
 
-  const isPlaceholderVisible = !textValue && placeholder;
   const containerClasses = cn(
     "relative block",
     isFocused && "focused",
     className,
   );
-
-  const maskText = (t: string) =>
-    type === "password" ? "•".repeat(t.length) : t;
-
-  const beforeCaretText = isPlaceholderVisible
-    ? placeholder
-    : maskText(textValue.substring(0, selectionStart));
-  const afterCaretText = isPlaceholderVisible
-    ? ""
-    : maskText(textValue.substring(selectionStart));
+  const caretDisplayContent = caretChars ?? "";
 
   return (
     <div className={containerClasses}>
@@ -131,14 +244,19 @@ const Input = ({
       <div className="relative block">
         <div
           className={clsx(
-            "break-anywhere pointer-events-none overflow-hidden bg-[var(--theme-background-input)] whitespace-nowrap shadow-[inset_0_0_0_2px_var(--theme-border)]",
+            "break-anywhere pointer-events-none overflow-hidden whitespace-nowrap bg-[var(--theme-background-input)] shadow-[inset_0_0_0_2px_var(--theme-border)]",
             isPlaceholderVisible && "text-[var(--theme-overlay)] italic",
           )}
         >
           {beforeCaretText}
-          {isFocused && (
-            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-focused-foreground)] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
-              {caretChars ?? ""}
+          {isFocused && !isPlaceholderVisible && !isCaretAtEnd && (
+            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
+              {highlightedDisplayCharacter}
+            </span>
+          )}
+          {isFocused && (isPlaceholderVisible || isCaretAtEnd) && (
+            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
+              {caretDisplayContent}
             </span>
           )}
           {!isPlaceholderVisible && afterCaretText}
@@ -198,4 +316,4 @@ const findNextFocusable = (
   return null;
 };
 
-export { Input };
+export { Input, useMirrorCaret };

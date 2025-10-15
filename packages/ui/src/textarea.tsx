@@ -4,6 +4,7 @@ import * as React from "react";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import clsx from "clsx";
 
+import { useMirrorCaret } from "./input";
 import { cn } from "./utils";
 
 type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
@@ -34,18 +35,24 @@ const Textarea = ({
   });
 
   const textValue = String(text ?? "");
-  const [isFocused, setIsFocused] = React.useState<boolean>(false);
-  const [selectionStart, setSelectionStart] = React.useState<number>(0);
+  const placeholderText = placeholder ?? "";
 
-  React.useEffect(() => {
-    if (textAreaRef.current && isFocused) {
-      textAreaRef.current.setSelectionRange(selectionStart, selectionStart);
-    }
-  }, [selectionStart, isFocused]);
-
-  React.useEffect(() => {
-    setSelectionStart(textValue.length);
-  }, [textValue]);
+  const {
+    isFocused,
+    isPlaceholderVisible,
+    isCaretAtEnd,
+    beforeCaretText,
+    highlightedDisplayCharacter,
+    afterCaretText,
+    handleFocus,
+    handleBlur,
+    handleSelect,
+    handleClick,
+    setSelectionFromTarget,
+  } = useMirrorCaret<HTMLTextAreaElement>({
+    value: textValue,
+    placeholder: placeholderText,
+  });
 
   const resizeTextArea = React.useCallback(() => {
     if (!textAreaRef.current) return;
@@ -63,42 +70,28 @@ const Textarea = ({
     const value = e.target.value;
     setText(value);
     resizeTextArea();
-    setSelectionStart(e.target.selectionStart || 0);
+    setSelectionFromTarget(e.currentTarget);
   };
 
   const onHandleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget as HTMLTextAreaElement;
-    setSelectionStart(textarea.selectionStart);
+    handleSelect(e);
   };
 
-  const onHandleFocus = () => {
-    setIsFocused(true);
-    if (textAreaRef.current) {
-      setSelectionStart(textAreaRef.current.selectionStart);
-    }
+  const onHandleFocus = (event: React.FocusEvent<HTMLTextAreaElement>) => {
+    handleFocus(event);
   };
 
   const onHandleBlur = () => {
-    setIsFocused(false);
+    handleBlur();
   };
 
   const onHandleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget as HTMLTextAreaElement;
-    textarea.focus();
-    setSelectionStart(textarea.selectionStart);
+    handleClick(e);
   };
-
-  React.useLayoutEffect(() => {
-    if (!measurementRef.current) return;
-
-    // Line counting removed - can be re-added if needed
-  }, [text, selectionStart, placeholder]);
 
   const onHandleKeyDown = (_e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Focus management removed - can be re-added if needed
   };
-
-  const isPlaceholderVisible = !textValue && placeholder;
 
   const containerClasses = cn("relative", isFocused && "focused", className);
 
@@ -112,13 +105,16 @@ const Textarea = ({
             "[&_.block]:bg-[var(--theme-focused-foreground)] [&_.placeholder]:bg-[var(--theme-focused-foreground)]",
         )}
       >
-        {isPlaceholderVisible
-          ? placeholder
-          : textValue.substring(0, selectionStart)}
-        {isFocused && (
-          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom" />
+        {beforeCaretText}
+        {isFocused && !isPlaceholderVisible && !isCaretAtEnd && (
+          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
+            {highlightedDisplayCharacter}
+          </span>
         )}
-        {!isPlaceholderVisible && textValue.substring(selectionStart)}
+        {isFocused && (isPlaceholderVisible || isCaretAtEnd) && (
+          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]" />
+        )}
+        {!isPlaceholderVisible && afterCaretText}
       </div>
 
       <div
