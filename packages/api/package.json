@@ -14,8 +14,9 @@
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "lint": "eslint",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false",
-    "seed": "tsx scripts/seed.ts",
-    "seed-prod": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts"
+    "seed": "pnpm with-env tsx scripts/seed.ts",
+    "seed-remote": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts",
+    "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
     "@better-auth/expo": "^1.3.27",

@@ -65,7 +65,9 @@ export const interactionRouter = createTRPCRouter({
       // Generate embedding for the input
       let embedding: number[];
       try {
-        embedding = await generateEmbedding(input.input);
+        embedding = await generateEmbedding(
+          `${input.title ?? ""} ${input.description ?? ""} ${input.input}`,
+        );
       } catch (error) {
         console.error("Failed to generate embedding:", error);
         throw new TRPCError({
@@ -84,7 +86,7 @@ export const interactionRouter = createTRPCRouter({
             title: input.title ?? "Unamed Interaction",
             description: input.description ?? null,
             input: input.input,
-            embedding: sql`${JSON.stringify(embedding)}::vector`,
+            vector: sql`vector32(${JSON.stringify(embedding)})`,
             output: input.output,
             responseSchema: "LanguageModelV2StreamPart",
           })
@@ -186,17 +188,9 @@ export const interactionRouter = createTRPCRouter({
         });
       }
 
-      // Use pgvector's cosine distance operator to find similar interactions
-      // The <=> operator returns distance (lower is better), so we order by ascending
-      const results = await ctx.db.execute<{
-        id: string;
-        title: string | null;
-        description: string | null;
-        input: string;
-        output: string;
-        response_schema: string;
-        distance: number;
-      }>(sql`
+      // Use Turso's vector_distance_cos function to find similar interactions
+      // Returns cosine distance (lower is better), so we order by ascending
+      const resultSet = await ctx.db.run(sql`
         SELECT 
           id,
           title,
@@ -204,12 +198,22 @@ export const interactionRouter = createTRPCRouter({
           input,
           output,
           response_schema,
-          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
+          1 - vector_distance_cos(vector, vector32(${JSON.stringify(queryEmbedding)})) as distance
         FROM mock_interaction
         WHERE collection_id = ${collection.id}
-        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        ORDER BY vector_distance_cos(vector, vector32(${JSON.stringify(queryEmbedding)}))
         LIMIT ${input.limit ?? 1}
       `);
+
+      const results = resultSet.rows as unknown as {
+        id: string;
+        title: string | null;
+        description: string | null;
+        input: string;
+        output: string;
+        response_schema: string;
+        distance: number;
+      }[];
 
       if (results.length === 0) {
         throw new TRPCError({

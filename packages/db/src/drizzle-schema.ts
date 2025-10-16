@@ -1,10 +1,27 @@
 /**
  * Application schema
  */
-import { relations } from "drizzle-orm";
-import { pgTable, vector } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { customType, sqliteTable } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./drizzle-schema-auth";
+
+const float32Array = customType<{
+  data: number[];
+  config: { dimensions: number };
+  configRequired: true;
+  driverData: Buffer;
+}>({
+  dataType(config) {
+    return `F32_BLOB(${config.dimensions})`;
+  },
+  fromDriver(value: Buffer) {
+    return Array.from(new Float32Array(value.buffer));
+  },
+  toDriver(value: number[]) {
+    return sql`vector32(${JSON.stringify(value)})`;
+  },
+});
 
 /**
  * Mock Collection
@@ -16,8 +33,11 @@ import { organization, user } from "./drizzle-schema-auth";
  * @example
  * name: "API Documentation Chatbot"
  */
-export const mockCollection = pgTable("mock_collection", (t) => ({
-  id: t.uuid().primaryKey().defaultRandom(),
+export const mockCollection = sqliteTable("mock_collection", (t) => ({
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   publicId: t.text().notNull().unique(),
   organizationId: t
     .text()
@@ -25,15 +45,18 @@ export const mockCollection = pgTable("mock_collection", (t) => ({
     .references(() => organization.id, { onDelete: "cascade" }),
   name: t.text(),
   description: t.text(),
-  isPublic: t.boolean().notNull().default(false),
-  metadata: t.jsonb().$type<Record<string, unknown>>().default({}),
+  isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
+  metadata: t
+    .text({ mode: "json" })
+    .$type<Record<string, unknown>>()
+    .default({}),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -47,25 +70,32 @@ export const mockCollection = pgTable("mock_collection", (t) => ({
  * output: "The weather in San Francisco is sunny and 60 degrees."
  * responseSchema: "LanguageModelV2StreamPart"
  */
-export const mockInteraction = pgTable("mock_interaction", (t) => ({
-  id: t.uuid().primaryKey().defaultRandom(),
+export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   collectionId: t
-    .uuid()
+    .text()
     .references(() => mockCollection.id, { onDelete: "cascade" }), // Nullable for demo interactions
   title: t.text().notNull(),
   description: t.text(),
   input: t.text().notNull(), // will be matched against the user input
-  embedding: vector("embedding", { dimensions: 384 }), // embedding of input for semantic search, 384 dimensions for all-MiniLM-L6-v2
+  vector: float32Array("vector", { dimensions: 384 }),
   output: t.text().notNull(), // Markdown response string
   responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
-  metadata: t.jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  metadata: t
+    .text({ mode: "json" })
+    .$type<Record<string, unknown>>()
+    .default({})
+    .notNull(),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -86,8 +116,12 @@ export const mockInteractionRelations = relations(
   }),
 );
 
-export const waitlist = pgTable("waitlist", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const waitlist = sqliteTable("waitlist", (t) => ({
+  id: t
+    .text()
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   userId: t.text().references(() => user.id),
   source: t.text(),
   email: t.text(),

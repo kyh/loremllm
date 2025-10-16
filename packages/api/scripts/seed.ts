@@ -217,7 +217,6 @@ async function main() {
 
     // Create the tRPC caller
     const callerFactory = createCallerFactory(appRouter);
-    // @ts-expect-error - Script context doesn't need full better-auth session structure
     const caller = callerFactory(createCallerContext);
 
     // Step 4: Create or get the Demo collection
