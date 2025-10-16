@@ -5,7 +5,7 @@ import { buttonVariants } from "@repo/ui/button";
 import { Logo } from "@repo/ui/logo";
 import { cn } from "@repo/ui/utils";
 
-import { authClient } from "@/auth/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 export const Header = () => {
   const { data: organization, isPending } = authClient.useActiveOrganization();
