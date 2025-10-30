@@ -19,8 +19,14 @@ function applyCors(response: Response) {
   return response;
 }
 
+export function GET(_request: Request) {
+  const response = new Response("Hello, world!", { status: 200 });
+  return applyCors(response);
+}
+
 export function OPTIONS(_request: Request) {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+  const response = new Response(null, { status: 200 });
+  return applyCors(response);
 }
 
 export async function POST(request: Request) {
