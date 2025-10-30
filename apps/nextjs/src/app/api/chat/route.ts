@@ -7,9 +7,7 @@ import { extractUserQuery } from "./utils";
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Requested-With, Accept, Origin",
-  "Access-Control-Max-Age": "86400",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 function applyCors(response: Response) {
@@ -19,13 +17,13 @@ function applyCors(response: Response) {
   return response;
 }
 
-export function GET(_request: Request) {
-  const response = new Response("Hello, world!", { status: 200 });
+export function OPTIONS(_request: Request) {
+  const response = new Response(null, { status: 200 });
   return applyCors(response);
 }
 
-export function OPTIONS(_request: Request) {
-  const response = new Response(null, { status: 200 });
+export function GET(_request: Request) {
+  const response = new Response("Hello, world!", { status: 200 });
   return applyCors(response);
 }
 
@@ -37,18 +35,18 @@ export async function POST(request: Request) {
 
     switch (payload.type) {
       case "markdown": {
-        const res = await handleMarkdownParsing(payload.data.markdown);
-        return applyCors(res);
+        const response = await handleMarkdownParsing(payload.data.markdown);
+        return applyCors(response);
       }
       case "chat": {
         try {
           const userQuery = extractUserQuery(payload.data.messages ?? []);
 
-          const res = await handleChatQuery(
+          const response = await handleChatQuery(
             userQuery,
             payload.data.collectionId,
           );
-          return applyCors(res);
+          return applyCors(response);
         } catch (error) {
           if (
             error instanceof Error &&
@@ -63,8 +61,8 @@ export async function POST(request: Request) {
       }
       case "lorem": {
         const { messages: _messages, ...params } = payload.data;
-        const res = await handleLoremGeneration(params);
-        return applyCors(res);
+        const response = await handleLoremGeneration(params);
+        return applyCors(response);
       }
       default: {
         // Exhaustive check in case a new payload type is added in the future
