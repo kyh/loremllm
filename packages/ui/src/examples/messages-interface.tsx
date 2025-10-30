@@ -164,11 +164,7 @@ const MessagesInterface = () => {
         <Message from="assistant">No. Just you.</Message>
         <br />
         <br />
-        <Input
-          autoComplete="off"
-          label="Message"
-          name="test_message_interface"
-        />
+        <Input autoComplete="off" name="test_message_interface" />
       </SidebarLayout>
     </div>
   );

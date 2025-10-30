@@ -1,319 +1,169 @@
 "use client";
 
 import * as React from "react";
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import clsx from "clsx";
 
-import { cn } from "./utils";
-
-type MirrorCaretOptions = {
-  value: string;
-  placeholder?: string;
-  maskText?: (text: string) => string;
+type InputProps = Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "defaultValue" | "onChange"
+> & {
+  value?: string;
+  defaultValue?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  className?: string;
 };
 
-type MirrorCaretReturn<TElement extends HTMLInputElement | HTMLTextAreaElement> = {
-  isFocused: boolean;
-  isPlaceholderVisible: boolean;
-  clampedSelectionStart: number;
-  isCaretAtEnd: boolean;
-  beforeCaretText: string;
-  highlightedDisplayCharacter: string;
-  afterCaretText: string;
-  handleFocus: (event: React.FocusEvent<TElement>) => void;
-  handleBlur: () => void;
-  handleSelect: (event: React.SyntheticEvent<TElement>) => void;
-  handleClick: (event: React.MouseEvent<TElement>) => void;
-  setSelectionStart: React.Dispatch<React.SetStateAction<number>>;
-  setSelectionFromTarget: (target: TElement) => void;
-};
+export const Input: React.FC<InputProps> = ({
+  value: controlled,
+  defaultValue,
+  onChange,
+  className,
+  placeholder,
+  ...props
+}) => {
+  const [val, setVal] = React.useState(defaultValue ?? "");
+  const value = typeof controlled === "string" ? controlled : val;
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const overlayRef = React.useRef<HTMLDivElement>(null);
+  const [isFocused, setFocused] = React.useState(false);
+  const [caretIndex, setCaretIndex] = React.useState(0);
 
-const useMirrorCaret = <TElement extends HTMLInputElement | HTMLTextAreaElement>({
-  value,
-  placeholder = "",
-  maskText = (text: string) => text,
-}: MirrorCaretOptions): MirrorCaretReturn<TElement> => {
-  const [isFocused, setIsFocused] = React.useState(false);
-  const [selectionStart, setSelectionStart] = React.useState<number>(value.length);
-
+  // Sync overlay scroll with input scroll (should be no effect for non-scrollable input)
   React.useEffect(() => {
-    setSelectionStart((previous) => Math.min(previous, value.length));
+    if (!inputRef.current || !overlayRef.current) return;
+    overlayRef.current.scrollLeft = inputRef.current.scrollLeft;
   }, [value]);
 
-  const setSelectionFromTarget = React.useCallback((target: TElement) => {
-    const nextSelectionStart =
-      typeof target.selectionStart === "number"
-        ? target.selectionStart
-        : target.value.length;
-
-    setSelectionStart(nextSelectionStart);
-  }, []);
-
-  const handleFocus = React.useCallback(
-    (event: React.FocusEvent<TElement>) => {
-      setIsFocused(true);
-      setSelectionFromTarget(event.currentTarget);
-    },
-    [setSelectionFromTarget],
+  // Dynamically copy padding, font, and other computed styles
+  const [overlayStyle, setOverlayStyle] = React.useState<React.CSSProperties>(
+    {},
   );
-
-  const handleBlur = React.useCallback(() => {
-    setIsFocused(false);
-  }, []);
-
-  const handleSelect = React.useCallback(
-    (event: React.SyntheticEvent<TElement>) => {
-      setSelectionFromTarget(event.currentTarget);
-    },
-    [setSelectionFromTarget],
-  );
-
-  const handleClick = React.useCallback(
-    (event: React.MouseEvent<TElement>) => {
-      event.currentTarget.focus();
-      setSelectionFromTarget(event.currentTarget);
-    },
-    [setSelectionFromTarget],
-  );
-
-  const isPlaceholderVisible = !value && placeholder.length > 0;
-  const clampedSelectionStart = Math.min(selectionStart, value.length);
-  const isCaretAtEnd = clampedSelectionStart >= value.length;
-
-  const beforeCaretText = isPlaceholderVisible
-    ? placeholder
-    : maskText(value.substring(0, clampedSelectionStart));
-
-  const highlightedCharacter =
-    !isPlaceholderVisible && !isCaretAtEnd
-      ? maskText(value.charAt(clampedSelectionStart))
-      : "";
-
-  const highlightedDisplayCharacter =
-    highlightedCharacter === "" ? "\u00a0" : highlightedCharacter;
-
-  const afterCaretText = isPlaceholderVisible
-    ? ""
-    : maskText(
-        value.substring(clampedSelectionStart + (isCaretAtEnd ? 0 : 1)),
-      );
-
-  return {
-    isFocused,
-    isPlaceholderVisible,
-    clampedSelectionStart,
-    isCaretAtEnd,
-    beforeCaretText,
-    highlightedDisplayCharacter,
-    afterCaretText,
-    handleFocus,
-    handleBlur,
-    handleSelect,
-    handleClick,
-    setSelectionStart,
-    setSelectionFromTarget,
-  };
-};
-
-type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
-  caretChars?: string;
-  label?: string;
-};
-
-const Input = ({
-  caretChars,
-  label,
-  placeholder,
-  onChange,
-  type,
-  id,
-  className,
-  value,
-  defaultValue,
-  ...rest
-}: InputProps) => {
-  const generatedId = React.useId();
-  const inputId = id ?? generatedId;
-
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [text, setText] = useControllableState({
-    prop: value,
-    defaultProp: defaultValue,
-    onChange: (value) => {
-      if (onChange) {
-        const syntheticEvent = {
-          target: { value: value ?? "" },
-          currentTarget: { value: value ?? "" },
-        } as React.ChangeEvent<HTMLInputElement>;
-        onChange(syntheticEvent);
-      }
-    },
-  });
-
-  const textValue = String(text ?? "");
-  const lastFocusDirectionRef = React.useRef<"up" | "down" | null>(null);
-
-  const placeholderText = placeholder ?? "";
-
-  const maskText = React.useCallback(
-    (t: string) => (type === "password" ? "•".repeat(t.length) : t),
-    [type],
-  );
-
-  const {
-    isFocused,
-    isPlaceholderVisible,
-    isCaretAtEnd,
-    beforeCaretText,
-    highlightedDisplayCharacter,
-    afterCaretText,
-    handleFocus,
-    handleBlur,
-    handleSelect,
-    handleClick,
-    setSelectionStart,
-    setSelectionFromTarget,
-  } = useMirrorCaret<HTMLInputElement>({
-    value: textValue,
-    placeholder: placeholderText,
-    maskText,
-  });
-
-  const onHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setText(value);
-    setSelectionFromTarget(e.currentTarget);
-  };
-
-  const onHandleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-    handleFocus(event);
+  React.useLayoutEffect(() => {
     if (!inputRef.current) return;
+    const cs = window.getComputedStyle(inputRef.current);
+    setOverlayStyle({
+      padding: cs.padding,
+      fontFamily: cs.fontFamily,
+      fontSize: cs.fontSize,
+      fontWeight: cs.fontWeight,
+      fontVariant: cs.fontVariant,
+      lineHeight: cs.lineHeight,
+      letterSpacing: cs.letterSpacing,
+      color: cs.color,
+      width: cs.width, // For absolute overlay match to input size
+    });
+  }, [isFocused, className, value]);
 
-    if (lastFocusDirectionRef.current === "down") {
-      setSelectionStart(textValue.length);
-      inputRef.current.setSelectionRange(textValue.length, textValue.length);
-    } else if (lastFocusDirectionRef.current === "up") {
-      setSelectionStart(0);
-      inputRef.current.setSelectionRange(0, 0);
+  // Handler: Tracks caret index reliably
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFocused(true);
+    setCaretIndex(e.target.selectionStart ?? 0);
+    props.onFocus?.(e);
+  };
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFocused(false);
+    props.onBlur?.(e);
+  };
+  const handleSelect = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    setCaretIndex(e.currentTarget.selectionStart ?? 0);
+    props.onSelect?.(e);
+  };
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setVal(newValue);
+    setCaretIndex(e.target.selectionStart ?? 0);
+    onChange?.(e);
+  };
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCaretIndex(e.currentTarget.selectionStart ?? 0);
+    props.onKeyUp?.(e);
+  };
+
+  // Overlay: render value+caret (or placeholder if empty+not focused)
+  let overlayRender: React.ReactNode;
+  if (!isFocused && value.length === 0 && placeholder) {
+    overlayRender = (
+      <span className="text-[var(--theme-placeholder,theme(colors.gray.400))] italic opacity-70">
+        {placeholder}
+      </span>
+    );
+  } else {
+    const cells = value.split("");
+    overlayRender = cells.map((c, i) =>
+      i === caretIndex && isFocused ? (
+        <span
+          key={`caret-${i}`}
+          className="block-cursor animate-[block-cursor-blink_1s_steps(1)_infinite_alternate] rounded-none bg-black text-white"
+          style={{
+            display: "inline-block",
+            width: "1ch",
+            height: "1em",
+            textAlign: "center",
+          }}
+        >
+          {c === " " ? "\u00a0" : c}
+        </span>
+      ) : (
+        <span
+          key={i}
+          style={{ display: "inline-block", width: "1ch", height: "1em" }}
+        >
+          {c === " " ? "\u00a0" : c}
+        </span>
+      ),
+    );
+    if (caretIndex === value.length && isFocused) {
+      overlayRender = [
+        ...overlayRender,
+        <span
+          key="caret-phantom"
+          className="block-cursor animate-[block-cursor-blink_1s_steps(1)_infinite_alternate] rounded-none bg-black text-white"
+          style={{
+            display: "inline-block",
+            width: "1ch",
+            height: "1em",
+            textAlign: "center",
+          }}
+        />,
+      ];
     }
-  };
-
-  const onHandleBlur = () => {
-    handleBlur();
-  };
-
-  const onHandleSelect = (e: React.SyntheticEvent<HTMLInputElement>) => {
-    handleSelect(e);
-  };
-
-  const onHandleClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    handleClick(e);
-  };
-
-  const onHandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      lastFocusDirectionRef.current = "up";
-      const previousFocusable = findNextFocusable(
-        document.activeElement,
-        "previous",
-      );
-      previousFocusable?.focus();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      lastFocusDirectionRef.current = "down";
-      const nextFocusable = findNextFocusable(document.activeElement, "next");
-      nextFocusable?.focus();
-    }
-  };
-
-  const containerClasses = cn(
-    "relative block",
-    isFocused && "focused",
-    className,
-  );
-  const caretDisplayContent = caretChars ?? "";
+  }
 
   return (
-    <div className={containerClasses}>
-      {label && (
-        <label htmlFor={inputId} className="block bg-[var(--theme-border)]">
-          {label}
-        </label>
-      )}
-      <div className="relative block">
-        <div
-          className={clsx(
-            "break-anywhere pointer-events-none overflow-hidden whitespace-nowrap bg-[var(--theme-background-input)] shadow-[inset_0_0_0_2px_var(--theme-border)]",
-            isPlaceholderVisible && "text-[var(--theme-overlay)] italic",
-          )}
-        >
-          {beforeCaretText}
-          {isFocused && !isPlaceholderVisible && !isCaretAtEnd && (
-            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
-              {highlightedDisplayCharacter}
-            </span>
-          )}
-          {isFocused && (isPlaceholderVisible || isCaretAtEnd) && (
-            <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_0s_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
-              {caretDisplayContent}
-            </span>
-          )}
-          {!isPlaceholderVisible && afterCaretText}
-        </div>
-        <input
-          id={inputId}
-          ref={inputRef}
-          className="font-inherit absolute top-0 left-0 m-0 w-full overflow-hidden border-0 bg-transparent p-0 leading-[var(--theme-line-height-base)] text-transparent caret-transparent outline-0 [&:-webkit-autofill]:shadow-[0_0_0px_1000px_var(--theme-focused-foreground)_inset]"
-          value={textValue}
-          aria-placeholder={placeholder}
-          type={type}
-          onFocus={onHandleFocus}
-          onBlur={onHandleBlur}
-          onChange={onHandleChange}
-          onSelect={onHandleSelect}
-          onClick={onHandleClick}
-          onKeyDown={onHandleKeyDown}
-          {...rest}
-        />
+    <div className="relative inline-block w-full">
+      <input
+        ref={inputRef}
+        value={value}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSelect={handleSelect}
+        onChange={handleInput}
+        onKeyUp={handleKeyUp}
+        className={clsx(
+          "relative z-1 box-border w-full bg-inherit p-0 font-mono text-base leading-[1em] tracking-normal outline-none",
+          "font-variant-numeric-tabular lining-nums",
+          "[font-feature-settings:'tnum_1']",
+          className,
+        )}
+        autoComplete="off"
+        style={{ caretColor: "transparent", background: "transparent" }}
+        {...props}
+      />
+      {/* Overlay caret and text */}
+      <div
+        ref={overlayRef}
+        className={clsx(
+          "pointer-events-none absolute top-0 left-0 h-full w-full overflow-hidden font-mono text-base leading-[1em] tracking-normal",
+          className,
+        )}
+        aria-hidden
+        style={{
+          zIndex: 10,
+          ...overlayStyle,
+        }}
+      >
+        {overlayRender}
       </div>
     </div>
   );
 };
-
-const findNextFocusable = (
-  element: Element | null,
-  direction: "next" | "previous" = "next",
-): HTMLElement | null => {
-  if (!element) return null;
-
-  const focusableSelectors = [
-    "a[href]",
-    "button",
-    "input",
-    "select",
-    "textarea",
-    '[tabindex]:not([tabindex="-1"])',
-    '[contenteditable="true"]',
-  ];
-
-  const focusableElements = Array.from(
-    document.querySelectorAll<HTMLElement>(focusableSelectors.join(", ")),
-  );
-
-  const currentIndex = focusableElements.indexOf(element as HTMLElement);
-
-  if (currentIndex !== -1) {
-    const nextIndex =
-      direction === "next"
-        ? (currentIndex + 1) % focusableElements.length
-        : (currentIndex - 1 + focusableElements.length) %
-          focusableElements.length;
-
-    return focusableElements[nextIndex] ?? null;
-  }
-
-  return null;
-};
-
-export { Input, useMirrorCaret };

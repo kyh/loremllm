@@ -1,142 +1,188 @@
 "use client";
 
 import * as React from "react";
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import clsx from "clsx";
 
-import { useMirrorCaret } from "./input";
-import { cn } from "./utils";
+type TextareaProps = Omit<
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  "value" | "defaultValue" | "onChange"
+> & {
+  value?: string;
+  defaultValue?: string;
+  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  className?: string;
+};
 
-type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
-
-const Textarea = ({
-  placeholder,
+export const Textarea: React.FC<TextareaProps> = ({
+  value: controlled,
+  defaultValue,
   onChange,
   className,
-  value,
-  defaultValue,
-  ...rest
-}: TextareaProps) => {
-  const textAreaRef = React.useRef<HTMLTextAreaElement | null>(null);
-  const measurementRef = React.useRef<HTMLDivElement | null>(null);
+  placeholder,
+  ...props
+}) => {
+  const [val, setVal] = React.useState(defaultValue ?? "");
+  const value = typeof controlled === "string" ? controlled : val;
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const overlayRef = React.useRef<HTMLDivElement>(null);
+  const [isFocused, setFocused] = React.useState(false);
+  const [caretIndex, setCaretIndex] = React.useState(0);
 
-  const [text, setText] = useControllableState({
-    prop: value,
-    defaultProp: defaultValue,
-    onChange: (value) => {
-      if (onChange) {
-        const syntheticEvent = {
-          target: { value: value ?? "" },
-          currentTarget: { value: value ?? "" },
-        } as React.ChangeEvent<HTMLTextAreaElement>;
-        onChange(syntheticEvent);
-      }
-    },
-  });
-
-  const textValue = String(text ?? "");
-  const placeholderText = placeholder ?? "";
-
-  const {
-    isFocused,
-    isPlaceholderVisible,
-    isCaretAtEnd,
-    beforeCaretText,
-    highlightedDisplayCharacter,
-    afterCaretText,
-    handleFocus,
-    handleBlur,
-    handleSelect,
-    handleClick,
-    setSelectionFromTarget,
-  } = useMirrorCaret<HTMLTextAreaElement>({
-    value: textValue,
-    placeholder: placeholderText,
-  });
-
-  const resizeTextArea = React.useCallback(() => {
-    if (!textAreaRef.current) return;
-    textAreaRef.current.style.height = "auto";
-    textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
-  }, []);
-
+  // Sync overlay scroll with textarea scroll
   React.useEffect(() => {
-    resizeTextArea();
-    window.addEventListener("resize", resizeTextArea);
-    return () => window.removeEventListener("resize", resizeTextArea);
-  }, [resizeTextArea]);
+    const ta = textareaRef.current,
+      ov = overlayRef.current;
+    if (ta && ov) {
+      ov.scrollTop = ta.scrollTop;
+      ov.scrollLeft = ta.scrollLeft;
+    }
+  }, [value, isFocused]);
 
-  const onHandleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setText(value);
-    resizeTextArea();
-    setSelectionFromTarget(e.currentTarget);
+  // Dynamically copy padding, font, and other computed styles
+  const [overlayStyle, setOverlayStyle] = React.useState<React.CSSProperties>(
+    {},
+  );
+  React.useLayoutEffect(() => {
+    if (!textareaRef.current) return;
+    const cs = window.getComputedStyle(textareaRef.current);
+    setOverlayStyle({
+      padding: cs.padding,
+      fontFamily: cs.fontFamily,
+      fontSize: cs.fontSize,
+      fontWeight: cs.fontWeight,
+      fontVariant: cs.fontVariant,
+      lineHeight: cs.lineHeight,
+      letterSpacing: cs.letterSpacing,
+      color: cs.color,
+      width: cs.width,
+      whiteSpace: "pre-wrap",
+    });
+  }, [isFocused, className, value]);
+
+  // Handlers update caret position and value
+  const handleFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    setFocused(true);
+    setCaretIndex(e.target.selectionStart);
+    props.onFocus?.(e);
+  };
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    setFocused(false);
+    props.onBlur?.(e);
+  };
+  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    setCaretIndex(e.currentTarget.selectionStart);
+    props.onSelect?.(e);
+  };
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setVal(newValue);
+    setCaretIndex(e.target.selectionStart);
+    onChange?.(e);
+  };
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    setCaretIndex(e.currentTarget.selectionStart);
+    props.onKeyUp?.(e);
   };
 
-  const onHandleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    handleSelect(e);
-  };
-
-  const onHandleFocus = (event: React.FocusEvent<HTMLTextAreaElement>) => {
-    handleFocus(event);
-  };
-
-  const onHandleBlur = () => {
-    handleBlur();
-  };
-
-  const onHandleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
-    handleClick(e);
-  };
-
-  const onHandleKeyDown = (_e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Focus management removed - can be re-added if needed
-  };
-
-  const containerClasses = cn("relative", isFocused && "focused", className);
-
-  return (
-    <div className={containerClasses}>
-      <div
-        className={clsx(
-          "break-anywhere pointer-events-none break-words whitespace-pre-wrap",
-          isPlaceholderVisible && "italic opacity-70",
-          isFocused &&
-            "[&_.block]:bg-[var(--theme-focused-foreground)] [&_.placeholder]:bg-[var(--theme-focused-foreground)]",
-        )}
-      >
-        {beforeCaretText}
-        {isFocused && !isPlaceholderVisible && !isCaretAtEnd && (
-          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]">
-            {highlightedDisplayCharacter}
+  // Overlay: Split lines, then chars for each line. Place caret block.
+  let overlayRender: React.ReactNode = null;
+  if (!isFocused && value.length === 0 && placeholder) {
+    overlayRender = (
+      <span className="text-[var(--theme-placeholder,theme(colors.gray.400))] italic opacity-70">
+        {placeholder}
+      </span>
+    );
+  } else {
+    const lines = value.split("\n");
+    let flatCaret = 0;
+    overlayRender = lines.map((line, lineIdx) => {
+      const chars = line.split("");
+      const result = chars.map((ch, i) => {
+        const absolutePos = flatCaret;
+        flatCaret++;
+        if (absolutePos === caretIndex && isFocused) {
+          return (
+            <span
+              key={`caret-${lineIdx}-${i}`}
+              className="block-cursor animate-[block-cursor-blink_1s_steps(1)_infinite_alternate] rounded-none bg-black text-white"
+              style={{
+                display: "inline-block",
+                width: "1ch",
+                height: "1em",
+                textAlign: "center",
+              }}
+            >
+              {ch === " " ? "\u00a0" : ch}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={i}
+            style={{ display: "inline-block", width: "1ch", height: "1em" }}
+          >
+            {ch === " " ? "\u00a0" : ch}
           </span>
-        )}
-        {isFocused && (isPlaceholderVisible || isCaretAtEnd) && (
-          <span className="inline-block h-[calc(var(--font-size)*var(--theme-line-height-base))] min-w-[1ch] animate-[blink_1s_step-start_infinite] bg-[var(--theme-text)] align-bottom text-[var(--theme-background)]" />
-        )}
-        {!isPlaceholderVisible && afterCaretText}
-      </div>
-
-      <div
-        ref={measurementRef}
-        className="break-anywhere pointer-events-none invisible absolute w-full overflow-auto break-words whitespace-pre-wrap"
-      ></div>
-
+        );
+      });
+      if (flatCaret === caretIndex && isFocused) {
+        result.push(
+          <span
+            key={`caret-phantom-${lineIdx}`}
+            className="block-cursor animate-[block-cursor-blink_1s_steps(1)_infinite_alternate] rounded-none bg-black text-white"
+            style={{
+              display: "inline-block",
+              width: "1ch",
+              height: "1em",
+              textAlign: "center",
+            }}
+          />,
+        );
+      }
+      flatCaret++;
+      return (
+        <React.Fragment key={`line-${lineIdx}`}>
+          {result}
+          {lineIdx < lines.length - 1 ? <br /> : null}
+        </React.Fragment>
+      );
+    });
+  }
+  return (
+    <div className="relative inline-block w-full">
       <textarea
-        className="font-inherit absolute top-0 left-0 m-0 h-full w-full resize-none overflow-hidden border-none bg-transparent p-0 leading-[var(--theme-line-height-base)] text-transparent caret-transparent outline-none"
-        ref={textAreaRef}
-        value={textValue}
-        aria-placeholder={placeholder}
-        onFocus={onHandleFocus}
-        onBlur={onHandleBlur}
-        onKeyDown={onHandleKeyDown}
-        onChange={onHandleChange}
-        onSelect={onHandleSelect}
-        onClick={onHandleClick}
-        {...rest}
+        ref={textareaRef}
+        value={value}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSelect={handleSelect}
+        onChange={handleInput}
+        onKeyUp={handleKeyUp}
+        className={clsx(
+          "relative z-1 box-border w-full bg-inherit p-0 font-mono text-base leading-[1em] tracking-normal outline-none",
+          "font-variant-numeric-tabular lining-nums",
+          "[font-feature-settings:'tnum_1']",
+          className,
+        )}
+        autoComplete="off"
+        style={{ caretColor: "transparent", background: "transparent" }}
+        {...props}
       />
+      {/* Overlay caret and text */}
+      <div
+        ref={overlayRef}
+        className={clsx(
+          "pointer-events-none absolute top-0 left-0 h-full w-full overflow-hidden font-mono text-base leading-[1em] tracking-normal whitespace-pre-wrap",
+          className,
+        )}
+        aria-hidden
+        style={{
+          zIndex: 10,
+          ...overlayStyle,
+        }}
+      >
+        {overlayRender}
+      </div>
     </div>
   );
 };
-
-export { Textarea };
