@@ -6,7 +6,7 @@ import { extractUserQuery } from "./utils";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -18,13 +18,11 @@ function applyCors(response: Response) {
 }
 
 export function OPTIONS(_request: Request) {
-  const response = new Response(null, { status: 200 });
-  return applyCors(response);
+  return new Response(null, { status: 200, headers: CORS_HEADERS });
 }
 
 export function GET(_request: Request) {
-  const response = new Response("Hello, world!", { status: 200 });
-  return applyCors(response);
+  return new Response("Hello, world!", { status: 200, headers: CORS_HEADERS });
 }
 
 export async function POST(request: Request) {
