@@ -4,28 +4,35 @@ import { handleMarkdownParsing } from "./markdown-handler";
 import { parseRequestPayload } from "./schema";
 import { extractUserQuery } from "./utils";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function applyCors(response: Response) {
-  Object.entries(CORS_HEADERS).forEach(([key, value]) =>
-    response.headers.set(key, value),
-  );
-  return response;
+function applyCors(response: Response, origin?: string) {
+  const headers = new Headers(response.headers);
+  // Add/override CORS headers
+  headers.set("Access-Control-Allow-Origin", origin ?? "*");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // Add credentials if a specific origin is used
+  if (origin) {
+    headers.set("Access-Control-Allow-Credentials", "true");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
-export function OPTIONS(_request: Request) {
-  return new Response(null, { status: 200, headers: CORS_HEADERS });
+export function OPTIONS(request: Request) {
+  const origin = request.headers.get("origin") ?? "";
+  return applyCors(new Response(null, { status: 200 }), origin);
 }
 
-export function GET(_request: Request) {
-  return new Response("Hello, world!", { status: 200, headers: CORS_HEADERS });
+export function GET(request: Request) {
+  const origin = request.headers.get("origin") ?? "";
+  return applyCors(new Response("Hello, world!", { status: 200 }), origin);
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin") ?? "";
   try {
     const body = (await request.json()) as unknown;
 
@@ -34,7 +41,7 @@ export async function POST(request: Request) {
     switch (payload.type) {
       case "markdown": {
         const response = await handleMarkdownParsing(payload.data.markdown);
-        return applyCors(response);
+        return applyCors(response, origin);
       }
       case "chat": {
         try {
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
             userQuery,
             payload.data.collectionId,
           );
-          return applyCors(response);
+          return applyCors(response, origin);
         } catch (error) {
           if (
             error instanceof Error &&
@@ -52,6 +59,7 @@ export async function POST(request: Request) {
           ) {
             return applyCors(
               new Response("No matching response found", { status: 404 }),
+              origin,
             );
           }
           throw error;
@@ -60,7 +68,7 @@ export async function POST(request: Request) {
       case "lorem": {
         const { messages: _messages, ...params } = payload.data;
         const response = await handleLoremGeneration(params);
-        return applyCors(response);
+        return applyCors(response, origin);
       }
       default: {
         // Exhaustive check in case a new payload type is added in the future
@@ -76,6 +84,7 @@ export async function POST(request: Request) {
         `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
         { status: 500 },
       ),
+      origin,
     );
   }
 }
