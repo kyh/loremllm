@@ -17,11 +17,15 @@
     "lint:ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
-    "gen:ui": "pnpm -F ui gen:ui"
+    "gen:ui": "pnpm -F ui gen:ui",
+    "changeset": "changeset",
+    "publish-packages": "changeset version && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
     "@kyh/prettier-config": "catalog:",
     "dotenv-cli": "^10.0.0",
+    "pkgroll": "^2.20.1",
     "prettier": "catalog:",
     "tsx": "^4.20.6",
     "turbo": "^2.5.8",
