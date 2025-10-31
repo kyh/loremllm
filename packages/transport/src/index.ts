@@ -7,20 +7,18 @@ import type {
 
 type MaybePromise<T> = T | Promise<T>;
 
-export interface StaticTransportContext<UI_MESSAGE extends UIMessage>
-  extends ChatRequestOptions
-{
+export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
   trigger: "submit-message" | "regenerate-message";
   chatId: string;
   messageId: string | undefined;
   messages: UI_MESSAGE[];
-}
+} & ChatRequestOptions;
 
 export type ChunkDelayResolver =
   | number
   | ((chunk: UIMessageChunk) => MaybePromise<number | undefined>);
 
-export interface StaticChatTransportInit<UI_MESSAGE extends UIMessage> {
+export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
   /**
    * Computes the messages that should be visible after the transport completes.
    * Must include the assistant response that should be streamed to the UI.
@@ -32,7 +30,7 @@ export interface StaticChatTransportInit<UI_MESSAGE extends UIMessage> {
    * Optional delay (in milliseconds) to wait between chunk emissions to simulate streaming.
    */
   chunkDelayMs?: ChunkDelayResolver;
-}
+};
 
 class AbortTransportError extends Error {
   constructor() {
@@ -358,6 +356,56 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
         break;
       }
       default: {
+        // Handle tool-* parts and dynamic-tool
+        if (
+          (typeof part.type === "string" && part.type.startsWith("tool-")) ||
+          part.type === "dynamic-tool"
+        ) {
+          const toolPart = part as {
+            type: `tool-${string}` | "dynamic-tool";
+            toolCallId: string;
+            toolName?: string;
+            state?: string;
+            input?: unknown;
+            output?: unknown;
+            errorText?: string;
+            providerMetadata?: unknown;
+          };
+
+          // Always emit tool-input-available
+          chunks.push({
+            type: "tool-input-available",
+            toolCallId: toolPart.toolCallId,
+            toolName: toolPart.toolName ?? "tool",
+            input: toolPart.input ?? {},
+            providerMetadata: toolPart.providerMetadata,
+          } as UIMessageChunk);
+
+          // Emit tool-output-error if state is output-error or errorText is provided
+          const finalState = toolPart.state;
+          if (finalState === "output-error" || toolPart.errorText) {
+            chunks.push({
+              type: "tool-output-error",
+              toolCallId: toolPart.toolCallId,
+              errorText:
+                toolPart.errorText ?? "An unknown tool error occurred.",
+              providerMetadata: toolPart.providerMetadata,
+            } as UIMessageChunk);
+          } else if (
+            finalState === "output-available" ||
+            toolPart.output !== undefined
+          ) {
+            // Emit tool-output-available if state is output-available or output is provided
+            chunks.push({
+              type: "tool-output-available",
+              toolCallId: toolPart.toolCallId,
+              output: toolPart.output ?? null,
+              providerMetadata: toolPart.providerMetadata,
+            } as UIMessageChunk);
+          }
+          break;
+        }
+        // Handle data-* parts
         if (part.type.startsWith("data-")) {
           const dataPart = part as {
             type: `data-${string}`;
