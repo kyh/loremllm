@@ -22,7 +22,8 @@ const demos: DemoConfig[] = [
   {
     id: "demo",
     title: "Demo Collection Chat",
-    description: 'This demo queries the "demo" collection for responses.',
+    description:
+      'This demo queries the "demo" collection for responses. Try asking "What is Lorem Ipsum?" or "Faq", it will respond with the corresponding response from the collection.',
   },
   {
     id: "lorem",
@@ -53,22 +54,6 @@ const Page = () => {
 
   return (
     <main className="mt-2 flex flex-1 flex-col">
-      <Navigation
-        logo="✶"
-        left={
-          <div className="flex gap-2">
-            <ActionButton onClick={() => setActiveDemoId("demo")}>
-              DEMO CHAT
-            </ActionButton>
-            <ActionButton onClick={() => setActiveDemoId("lorem")}>
-              LOREM IPSUM
-            </ActionButton>
-            <ActionButton onClick={() => setActiveDemoId("markdown")}>
-              MARKDOWN
-            </ActionButton>
-          </div>
-        }
-      />
       <Divider type="double" />
       <SidebarLayout
         defaultSidebarWidth={32}
@@ -98,9 +83,6 @@ const Page = () => {
                   <div className="flex flex-col">
                     <span className="font-semibold uppercase">
                       {demo.title}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {demo.description}
                     </span>
                   </div>
                 </button>

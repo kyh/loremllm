@@ -77,7 +77,7 @@ export const WaitlistForm = () => {
             joinWaitlist.isPending && "[&>:first-child]:bg-input",
           )}
           variant="ghost"
-          loading={joinWaitlist.isPending}
+          disabled={joinWaitlist.isPending}
         >
           Join Waitlist
         </Button>
