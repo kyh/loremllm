@@ -6,9 +6,9 @@ LoremLLM is a platform that helps developers create and manage mock LLM endpoint
 
 ## Packages
 
-- **`@loremllm/transport`** - Transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). Allows you to mock AI interactions directly in your React components. See the [transport package README](./packages/transport/README.md) for detailed documentation.
+- [**`@loremllm/transport`**](./packages/transport/README.md) - Transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). Allows you to mock AI interactions directly in your React components.
 
-- **`@loremllm/app`** - Main application that provides:
+- [**`@loremllm/app`**](./apps/nextjs/README.md) - [loremllm.com](https://loremllm.com) application that provides:
   - Web UI for managing collections of LLM interactions
   - REST API endpoints (`/api/chat`) for:
     - Chat queries with semantic search matching
