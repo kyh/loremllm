@@ -10,16 +10,6 @@ const createUserMessage = (text: string, id = "user-1"): UIMessage =>
     parts: [{ type: "text", text }],
   }) as UIMessage;
 
-const createAssistantMessage = (
-  parts: UIMessage["parts"],
-  id = "assistant-1",
-): UIMessage =>
-  ({
-    id,
-    role: "assistant",
-    parts,
-  }) as UIMessage;
-
 const readAllChunks = async (
   stream: ReadableStream<UIMessageChunk>,
 ): Promise<UIMessageChunk[]> => {
@@ -59,12 +49,11 @@ describe("StaticChatTransport", () => {
 
   it("streams the assistant message as UI message chunks", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "text", text: "Hi there!" },
-    ]);
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage],
+      async *mockResponse() {
+        yield { type: "text", text: "Hi there!" };
+      },
     });
 
     const stream = await transport.sendMessages({
@@ -89,12 +78,11 @@ describe("StaticChatTransport", () => {
 
   it("can replay the last assistant response via reconnectToStream", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "text", text: "Response" },
-    ]);
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage],
+      async *mockResponse() {
+        yield { type: "text", text: "Response" };
+      },
     });
 
     await readAllChunks(
@@ -120,12 +108,11 @@ describe("StaticChatTransport", () => {
 
   it("supports data-* parts", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "data-widget", data: { foo: "bar" } },
-    ]);
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage],
+      async *mockResponse() {
+        yield { type: "data-widget", data: { foo: "bar" } };
+      },
     });
 
     const chunks = await readAllChunks(
@@ -146,11 +133,13 @@ describe("StaticChatTransport", () => {
     });
   });
 
-  it("requires resolveMessages to return an assistant response", async () => {
+  it("requires mockResponse to yield at least one part", async () => {
     const userMessage = createUserMessage("Hello");
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage],
+      async *mockResponse() {
+        // Yield nothing
+      },
     });
 
     await expect(
@@ -158,32 +147,19 @@ describe("StaticChatTransport", () => {
         ...createSendContext({ messages: [userMessage] }),
         abortSignal: undefined,
       }),
-    ).rejects.toThrow(/assistant/i);
-  });
-
-  it("throws if resolveMessages is not provided", async () => {
-    const userMessage = createUserMessage("Hello");
-    const transport = new StaticChatTransport();
-
-    await expect(
-      transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    ).rejects.toThrow(/resolveMessages/i);
+    ).rejects.toThrow(/at least one part/i);
   });
 
   it("invokes the chunk delay resolver for every chunk", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "text", text: "Hello again!" },
-    ]);
     const chunkDelay = vi
       .fn<(chunk: UIMessageChunk) => number>()
       .mockReturnValue(0);
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage],
+      async *mockResponse() {
+        yield { type: "text", text: "Hello again!" };
+      },
       chunkDelayMs: chunkDelay,
     });
 
@@ -198,13 +174,62 @@ describe("StaticChatTransport", () => {
     expect(chunkDelay.mock.calls.length).toBeGreaterThan(0);
   });
 
+  it("supports tuple delay range for random delays", async () => {
+    const userMessage = createUserMessage("Hello");
+    const transport = new StaticChatTransport({
+      async *mockResponse() {
+        yield { type: "text", text: "Test" };
+      },
+      chunkDelayMs: [10, 20], // Random delay between 10ms and 20ms
+    });
+
+    const start = Date.now();
+    await readAllChunks(
+      await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: undefined,
+      }),
+    );
+    const duration = Date.now() - start;
+
+    // Should have some delay (at least 10ms)
+    // We check for at least 5ms to account for test execution time variance
+    expect(duration).toBeGreaterThanOrEqual(5);
+  });
+
+  it("supports function returning tuple for per-chunk random delays", async () => {
+    const userMessage = createUserMessage("Hello");
+    const transport = new StaticChatTransport({
+      async *mockResponse() {
+        yield { type: "text", text: "Test" };
+      },
+      chunkDelayMs: (chunk) => {
+        if (chunk.type === "text-delta") {
+          return [15, 25]; // Random delay between 15ms and 25ms for text deltas
+        }
+        return 0;
+      },
+    });
+
+    const start = Date.now();
+    await readAllChunks(
+      await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: undefined,
+      }),
+    );
+    const duration = Date.now() - start;
+
+    // Should have some delay from text-delta chunks
+    expect(duration).toBeGreaterThanOrEqual(5);
+  });
+
   it("aborts the stream when the abort signal fires", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "text", text: "Streaming..." },
-    ]);
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage],
+      async *mockResponse() {
+        yield { type: "text", text: "Streaming..." };
+      },
       chunkDelayMs: () => 50,
     });
 
@@ -223,17 +248,17 @@ describe("StaticChatTransport", () => {
 
   it("regenerates an existing assistant message by id", async () => {
     const userMessage = createUserMessage("Hello");
-    const previousAssistant = createAssistantMessage(
-      [{ type: "text", text: "Old response" }],
-      "assistant-1",
-    );
-    const regeneratedAssistant = createAssistantMessage(
-      [{ type: "text", text: "Fresh response" }],
-      "assistant-1",
-    );
+    const previousAssistant: UIMessage = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "Old response" }],
+    } as UIMessage;
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, regeneratedAssistant],
+      async *mockResponse({ messageId }) {
+        // Use the provided messageId for regeneration
+        yield { type: "text", text: "Fresh response" };
+      },
     });
 
     const chunks = await readAllChunks(
@@ -254,43 +279,45 @@ describe("StaticChatTransport", () => {
     expect(textChunk?.delta).toBe("Fresh response");
   });
 
-  it("throws when resolveMessages appends more than one new message", async () => {
+  it("yields multiple parts in sequence", async () => {
     const userMessage = createUserMessage("Hello");
-    const assistantMessage = createAssistantMessage([
-      { type: "text", text: "Response one" },
-    ]);
-    const extraAssistant = createAssistantMessage(
-      [{ type: "text", text: "Response two" }],
-      "assistant-2",
-    );
 
     const transport = new StaticChatTransport({
-      resolveMessages: () => [userMessage, assistantMessage, extraAssistant],
+      async *mockResponse() {
+        yield { type: "text", text: "Response one" };
+        yield { type: "text", text: "Response two" };
+      },
     });
 
-    await expect(
-      transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    ).rejects.toThrow(/only one new assistant message/i);
+    const stream = await transport.sendMessages({
+      ...createSendContext({ messages: [userMessage] }),
+      abortSignal: undefined,
+    });
+
+    const chunks = await readAllChunks(stream);
+    const textChunks = chunks.filter(
+      (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+        chunk.type === "text-delta",
+    );
+    expect(textChunks).toHaveLength(2);
+    expect(textChunks[0]?.delta).toBe("Response one");
+    expect(textChunks[1]?.delta).toBe("Response two");
   });
 
   describe("tool calls", () => {
     it("streams tool-input-available and tool-output-available for tool parts with output", async () => {
       const userMessage = createUserMessage("Search for cats");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-search",
-          toolCallId: "call_123",
-          state: "output-available",
-          input: { query: "cats" },
-          output: { results: [{ title: "All About Cats" }] },
-        } as UIMessage["parts"][number] & { toolName?: string },
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_123",
+            state: "output-available",
+            input: { query: "cats" },
+            output: { results: [{ title: "All About Cats" }] },
+          } as UIMessage["parts"][number] & { toolName?: string };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -337,18 +364,17 @@ describe("StaticChatTransport", () => {
 
     it("streams tool-input-available and tool-output-error for tool parts with error", async () => {
       const userMessage = createUserMessage("Book a reservation");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-booking",
-          toolCallId: "call_failure",
-          state: "output-error",
-          input: { reservationId: 123 },
-          errorText: "Reservation not found",
-        } as UIMessage["parts"][number] & { toolName?: string },
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-booking",
+            toolCallId: "call_failure",
+            state: "output-error",
+            input: { reservationId: 123 },
+            errorText: "Reservation not found",
+          } as UIMessage["parts"][number] & { toolName?: string };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -380,18 +406,17 @@ describe("StaticChatTransport", () => {
 
     it("handles dynamic-tool type", async () => {
       const userMessage = createUserMessage("Use a tool");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "dynamic-tool",
-          toolCallId: "call_dynamic",
-          state: "output-available",
-          input: { action: "perform" },
-          output: { result: "success" },
-        } as UIMessage["parts"][number] & { toolName?: string },
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "dynamic-tool",
+            toolCallId: "call_dynamic",
+            state: "output-available",
+            input: { action: "perform" },
+            output: { result: "success" },
+          } as UIMessage["parts"][number] & { toolName?: string };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -422,17 +447,16 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts without toolName (defaults to 'tool')", async () => {
       const userMessage = createUserMessage("Call a tool");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-custom",
-          toolCallId: "call_no_name",
-          state: "input-streaming",
-          input: { data: "test" },
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-custom",
+            toolCallId: "call_no_name",
+            state: "input-streaming",
+            input: { data: "test" },
+          } as UIMessage["parts"][number];
+        },
       });
 
       const chunks = await readAllChunks(
@@ -457,20 +481,18 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts with explicit toolName", async () => {
       const userMessage = createUserMessage("Use named tool");
-      // Using 'as any' to bypass TypeScript since toolName is supported at runtime
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-search",
-          toolCallId: "call_named",
-          toolName: "search-tool",
-          state: "output-available",
-          input: { query: "test" },
-          output: { results: [] },
-        } as any,
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_named",
+            toolName: "search-tool",
+            state: "output-available",
+            input: { query: "test" },
+            output: { results: [] },
+          } as any;
+        },
       });
 
       const chunks = await readAllChunks(
@@ -495,17 +517,16 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts with only input (no output state)", async () => {
       const userMessage = createUserMessage("Start a tool");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-task",
-          toolCallId: "call_input_only",
-          state: "input-streaming",
-          input: { task: "do something" },
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-task",
+            toolCallId: "call_input_only",
+            state: "input-streaming",
+            input: { task: "do something" },
+          } as UIMessage["parts"][number];
+        },
       });
 
       const chunks = await readAllChunks(
@@ -524,18 +545,17 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts with output but no state (uses output presence)", async () => {
       const userMessage = createUserMessage("Get results");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-query",
-          toolCallId: "call_output_no_state",
-          state: "output-available",
-          input: { query: "test" },
-          output: { result: "data" },
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-query",
+            toolCallId: "call_output_no_state",
+            state: "output-available",
+            input: { query: "test" },
+            output: { result: "data" },
+          } as UIMessage["parts"][number];
+        },
       });
 
       const chunks = await readAllChunks(
@@ -555,18 +575,17 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts with errorText but no state", async () => {
       const userMessage = createUserMessage("Try operation");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-operation",
-          toolCallId: "call_error",
-          state: "output-error",
-          input: { op: "test" },
-          errorText: "Operation failed",
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-operation",
+            toolCallId: "call_error",
+            state: "output-error",
+            input: { op: "test" },
+            errorText: "Operation failed",
+          } as UIMessage["parts"][number];
+        },
       });
 
       const chunks = await readAllChunks(
@@ -594,25 +613,24 @@ describe("StaticChatTransport", () => {
 
     it("handles multiple tool parts in sequence", async () => {
       const userMessage = createUserMessage("Check multiple sources");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-search",
-          toolCallId: "call_a",
-          state: "output-available",
-          input: { query: "coffee" },
-          output: { results: [] },
-        } as UIMessage["parts"][number],
-        {
-          type: "tool-map",
-          toolCallId: "call_b",
-          state: "output-available",
-          input: { origin: "A", destination: "B" },
-          output: { etaMinutes: 5 },
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_a",
+            state: "output-available",
+            input: { query: "coffee" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+          yield {
+            type: "tool-map",
+            toolCallId: "call_b",
+            state: "output-available",
+            input: { origin: "A", destination: "B" },
+            output: { etaMinutes: 5 },
+          } as UIMessage["parts"][number];
+        },
       });
 
       const chunks = await readAllChunks(
@@ -644,20 +662,19 @@ describe("StaticChatTransport", () => {
 
     it("handles tool parts mixed with text parts", async () => {
       const userMessage = createUserMessage("Search and explain");
-      const assistantMessage = createAssistantMessage([
-        { type: "text", text: "Let me search for that." },
-        {
-          type: "tool-search",
-          toolCallId: "call_mixed",
-          state: "output-available",
-          input: { query: "something" },
-          output: { results: [] },
-        } as UIMessage["parts"][number],
-        { type: "text", text: "Here are the results!" },
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield { type: "text", text: "Let me search for that." };
+          yield {
+            type: "tool-search",
+            toolCallId: "call_mixed",
+            state: "output-available",
+            input: { query: "something" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+          yield { type: "text", text: "Here are the results!" };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -685,18 +702,17 @@ describe("StaticChatTransport", () => {
 
     it("replays tool calls via reconnectToStream", async () => {
       const userMessage = createUserMessage("Search");
-      const assistantMessage = createAssistantMessage([
-        {
-          type: "tool-search",
-          toolCallId: "call_reconnect",
-          state: "output-available",
-          input: { query: "test" },
-          output: { results: [] },
-        } as UIMessage["parts"][number],
-      ]);
 
       const transport = new StaticChatTransport({
-        resolveMessages: () => [userMessage, assistantMessage],
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_reconnect",
+            state: "output-available",
+            input: { query: "test" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+        },
       });
 
       await readAllChunks(

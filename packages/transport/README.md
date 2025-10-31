@@ -3,9 +3,10 @@
 A lightweight transport implementation for the [Vercel AI SDK UI layer](https://ai-sdk.dev/docs/ai-sdk-ui/transport).  
 It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack.
 
-> **When to use it**  
-> - Building demos or stories where the response is known ahead of time.  
-> - Faking AI interactions offline or in tests.  
+> **When to use it**
+>
+> - Building demos or stories where the response is known ahead of time.
+> - Faking AI interactions offline or in tests.
 > - Wrapping bespoke backends that already output `UIMessage` objects.
 
 ## Installation
@@ -24,19 +25,12 @@ import { useChat } from "ai/react";
 
 const transport = new StaticChatTransport({
   chunkDelayMs: 25,
-  async resolveMessages({ messages }) {
+  async *mockResponse({ messages }) {
     const userMessage = messages[messages.length - 1];
+    const userText =
+      userMessage?.parts.find((p) => p.type === "text")?.text ?? "…";
 
-    return [
-      ...messages,
-      {
-        id: "assistant-1",
-        role: "assistant",
-        parts: [
-          { type: "text", text: `You said: ${userMessage?.parts[0]?.text ?? "…"}` },
-        ],
-      },
-    ];
+    yield { type: "text", text: `You said: ${userText}` };
   },
 });
 
@@ -50,8 +44,8 @@ export const DemoChat = () => {
 };
 ```
 
-Provide a `resolveMessages` implementation (either via the constructor option above or by overriding the protected method) that returns the full message history after your transport runs.  
-The helper compares the previous history with your returned array and streams the newly created assistant message back to the UI.
+Provide a `mockResponse` async generator function that yields `UIMessagePart` objects.  
+All yielded parts are collected into a single assistant message with an auto-generated ID and streamed back to the UI.
 
 Prefer factory helpers? Use the convenience wrapper:
 
@@ -59,15 +53,180 @@ Prefer factory helpers? Use the convenience wrapper:
 import { createStaticChatTransport } from "@loremllm/transport";
 
 const transport = createStaticChatTransport({
-  async resolveMessages(context) {
-    // ...
+  async *mockResponse(context) {
+    yield { type: "text", text: "Hello!" };
+    yield { type: "text", text: " How are you?" };
   },
 });
 ```
 
+## Usage examples
+
+### Tool calling
+
+You can simulate tool calls by yielding tool parts. Here's an example inspired by the [AI SDK tool calling documentation](https://v6.ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling):
+
+```ts
+import { StaticChatTransport } from "@loremllm/transport";
+import { useChat } from "ai/react";
+
+const transport = new StaticChatTransport({
+  async *mockResponse({ messages }) {
+    const userMessage = messages[messages.length - 1];
+    const userText =
+      userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+
+    // Check if user asked about weather
+    if (userText.toLowerCase().includes("weather")) {
+      const locationMatch = userText.match(/weather in (.+?)(?:\?|$)/i);
+      const location = locationMatch?.[1]?.trim() ?? "San Francisco";
+
+      // Yield a tool call
+      yield {
+        type: "tool-weather",
+        toolCallId: "call_123",
+        toolName: "weather",
+        state: "output-available",
+        input: { location },
+        output: {
+          location,
+          temperature: 72 + Math.floor(Math.random() * 21) - 10,
+        },
+      };
+
+      // Yield a text response with the tool result
+      yield {
+        type: "text",
+        text: `The weather in ${location} is sunny with a temperature of 68°F.`,
+      };
+    } else {
+      yield { type: "text", text: "How can I help you today?" };
+    }
+  },
+});
+
+export const WeatherChat = () => {
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    id: "weather-demo",
+    transport,
+  });
+
+  // render messages + form
+};
+```
+
+### Custom data streams
+
+Use custom `data-*` parts to stream application-specific data that your UI can handle. This is useful for widgets, charts, or other interactive components:
+
+```ts
+import { StaticChatTransport } from "@loremllm/transport";
+import { useChat } from "ai/react";
+
+const transport = new StaticChatTransport({
+  async *mockResponse({ messages }) {
+    const userMessage = messages[messages.length - 1];
+    const userText =
+      userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+
+    // Stream a chart widget
+    if (userText.includes("chart")) {
+      yield {
+        type: "data-chart",
+        data: {
+          type: "line",
+          data: [
+            { x: "Jan", y: 65 },
+            { x: "Feb", y: 72 },
+            { x: "Mar", y: 68 },
+          ],
+        },
+      };
+    }
+
+    // Stream a notification
+    yield {
+      type: "data-notification",
+      id: "notif-1",
+      data: {
+        message: "Data has been processed",
+        severity: "success",
+      },
+      transient: true, // This data won't persist in message history
+    };
+
+    yield {
+      type: "text",
+      text: "I've created a chart for you.",
+    };
+  },
+});
+
+export const DataStreamChat = () => {
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    id: "data-demo",
+    transport,
+    onData: (dataPart) => {
+      // Handle custom data parts
+      if (dataPart.type === "data-chart") {
+        // Render your chart component
+        console.log("Chart data:", dataPart.data);
+      } else if (dataPart.type === "data-notification") {
+        // Show notification
+        console.log("Notification:", dataPart.data);
+      }
+    },
+  });
+
+  // render messages + form
+};
+```
+
+### MCP dynamic tools
+
+For [Model Context Protocol (MCP)](https://v6.ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling#mcp-tools) dynamic tools, use the `dynamic-tool` type:
+
+```ts
+import { StaticChatTransport } from "@loremllm/transport";
+import { useChat } from "ai/react";
+
+const transport = new StaticChatTransport({
+  async *mockResponse({ messages }) {
+    // Simulate a dynamic tool from an MCP server
+    yield {
+      type: "dynamic-tool",
+      toolCallId: "call_mcp_123",
+      toolName: "mcp-file-read",
+      state: "output-available",
+      input: {
+        path: "/path/to/file.txt",
+      },
+      output: {
+        content: "File contents here...",
+        size: 1024,
+      },
+    };
+
+    yield {
+      type: "text",
+      text: "I've read the file using the MCP tool.",
+    };
+  },
+});
+
+export const MCPChat = () => {
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    id: "mcp-demo",
+    transport,
+  });
+
+  // render messages + form
+};
+```
+
 ## Abort & reconnect support
 
-- Requests respect `AbortController` signals and surface aborts as the same `AbortError` the AI SDK expects.  
+- Requests respect `AbortController` signals and surface aborts as the same `AbortError` the AI SDK expects.
 - The transport caches the last assistant message per `chatId` so `reconnectToStream` can replay the existing response.
 
 ## Supported message parts
@@ -77,18 +236,34 @@ The stream builder currently supports:
 - `text`, `reasoning`
 - `file`
 - `source-url`, `source-document`
+- `tool-*` parts (e.g., `tool-search`, `tool-booking`) and `dynamic-tool`
 - Custom `data-*` parts
 
-Encountering an unsupported part (e.g. tool invocations) throws so the UI can flag the issue. Extend `createChunksFromMessage` if you need more chunk types.
+Tool parts automatically emit the appropriate chunks (`tool-input-available`, `tool-output-available`, or `tool-output-error`) based on the part's `state` and properties.
 
-## Customising chunk timing
+Encountering an unsupported part type throws so the UI can flag the issue. Extend `createChunksFromMessage` if you need more chunk types.
 
-`chunkDelayMs` accepts either:
+## Customizing chunk timing
+
+`chunkDelayMs` accepts:
 
 ```ts
-chunkDelayMs: 50; // constant delay for every chunk
-// or
+// Constant delay for every chunk
+chunkDelayMs: 50;
+
+// Random delay between min and max (inclusive)
+chunkDelayMs: [20, 100]; // random delay between 20ms and 100ms
+
+// Function that returns a delay per chunk
 chunkDelayMs: async (chunk) => (chunk.type === "text-delta" ? 20 : 0);
+
+// Function that returns a tuple for random delay per chunk
+chunkDelayMs: async (chunk) => {
+  if (chunk.type === "text-delta") {
+    return [10, 50]; // random delay between 10ms and 50ms for text deltas
+  }
+  return 0; // no delay for other chunks
+};
 ```
 
 Return `undefined` or `0` to emit the next chunk immediately.
