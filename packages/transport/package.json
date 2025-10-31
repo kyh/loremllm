@@ -5,6 +5,21 @@
   "publishConfig": {
     "access": "public"
   },
+  "keywords": [
+    "ai",
+    "ai-sdk",
+    "vercel-ai-sdk",
+    "chat",
+    "transport",
+    "streaming",
+    "ui-message",
+    "chatbot",
+    "llm",
+    "demo",
+    "testing",
+    "mock",
+    "static-chat"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.js",
