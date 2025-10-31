@@ -19,7 +19,7 @@
     "typecheck": "turbo run typecheck",
     "gen:ui": "pnpm -F ui gen:ui",
     "changeset": "changeset",
-    "publish-packages": "changeset version && changeset publish"
+    "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

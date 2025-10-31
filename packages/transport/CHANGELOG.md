@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.3.0
+
+### Minor Changes
+
+- d78973e: Update call signature to be generator
+
 ## 0.2.0
 
 ### Minor Changes
