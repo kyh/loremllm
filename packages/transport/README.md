@@ -1,6 +1,6 @@
 # @loremllm/transport
 
-A lightweight transport implementation for the [Vercel AI SDK UI layer](https://ai-sdk.dev/docs/ai-sdk-ui/transport).  
+A lightweight transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport).  
 It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack.
 
 > **When to use it**
