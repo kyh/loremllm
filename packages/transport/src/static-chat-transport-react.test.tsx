@@ -6,7 +6,7 @@
 
 import type { UIMessage, UIMessageChunk } from "ai";
 import { describe, expect, it } from "vitest";
-import { createStaticChatTransport } from "./index";
+import { StaticChatTransport } from "./index";
 
 // Helper to simulate how useChat processes the stream
 async function processStream(
@@ -31,7 +31,7 @@ async function processStream(
 
 describe("StaticChatTransport integration (useChat-like usage)", () => {
   it("streams chunked text word-by-word as useChat would receive it", async () => {
-    const transport = createStaticChatTransport({
+    const transport = new StaticChatTransport({
       async *mockResponse() {
         yield { type: "text", text: "Hello world from integration test" };
       },
@@ -71,7 +71,7 @@ describe("StaticChatTransport integration (useChat-like usage)", () => {
   });
 
   it("handles aborting mid-stream as useChat.stop() would", async () => {
-    const transport = createStaticChatTransport({
+    const transport = new StaticChatTransport({
       async *mockResponse() {
         yield {
           type: "text",
@@ -139,7 +139,7 @@ describe("StaticChatTransport integration (useChat-like usage)", () => {
   });
 
   it("works with autoChunkText disabled as useChat would receive", async () => {
-    const transport = createStaticChatTransport({
+    const transport = new StaticChatTransport({
       async *mockResponse() {
         yield { type: "text", text: "Complete message without chunking" };
       },
@@ -178,7 +178,7 @@ describe("StaticChatTransport integration (useChat-like usage)", () => {
   });
 
   it("handles reasoning and text chunks together as useChat processes them", async () => {
-    const transport = createStaticChatTransport({
+    const transport = new StaticChatTransport({
       async *mockResponse() {
         yield {
           type: "reasoning",

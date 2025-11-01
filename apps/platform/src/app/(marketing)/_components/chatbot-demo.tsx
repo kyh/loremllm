@@ -2,7 +2,6 @@
 
 import { Fragment, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { isToolPart } from "@loremllm/transport";
 import {
   Conversation,
   ConversationContent,
@@ -37,15 +36,16 @@ import {
   ToolOutput,
 } from "@repo/ui/ai-elements/tool";
 import { BlockLoader } from "@repo/ui/block-loader";
+import { getToolOrDynamicToolName, isToolOrDynamicToolUIPart } from "ai";
 
-import type { createStaticChatTransport } from "@loremllm/transport";
+import type { StaticChatTransport } from "@loremllm/transport";
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
 type ChatBotDemoProps = {
   mode: string;
   placeholder?: string;
   preset?: string;
-  transport?: ReturnType<typeof createStaticChatTransport>;
+  transport?: StaticChatTransport;
 };
 
 export const ChatBotDemo = ({
@@ -148,14 +148,15 @@ export const ChatBotDemo = ({
                     );
                   default:
                     // Check if it's a tool part
-                    if (isToolPart(part)) {
-                      // part is now narrowed to UIMessage["parts"][number] & ToolPart
+                    if (isToolOrDynamicToolUIPart(part)) {
+                      // part is now narrowed to ToolUIPart
+                      const toolName = getToolOrDynamicToolName(part);
                       return (
                         <Tool key={`${message.id}-tool-${part.toolCallId}`}>
                           <ToolHeader
-                            title={part.toolName}
+                            title={toolName}
                             type={part.type as `tool-${string}`}
-                            state={part.state ?? "input-available"}
+                            state={part.state}
                           />
                           <ToolContent>
                             {part.input !== undefined && (

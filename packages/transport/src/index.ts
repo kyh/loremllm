@@ -1,6 +1,7 @@
 import type {
   ChatRequestOptions,
   ChatTransport,
+  ToolUIPart,
   UIMessage,
   UIMessageChunk,
 } from "ai";
@@ -8,71 +9,26 @@ import type {
 type MaybePromise<T> = T | Promise<T>;
 
 /**
- * Tool state values supported by the transport
+ * Tool state values supported by the transport.
+ * This type is derived from ToolUIPart["state"] to match the AI SDK's tool state values.
  */
-export type ToolState =
-  | "input-streaming"
-  | "input-available"
-  | "output-available"
-  | "output-error";
+export type ToolState = ToolUIPart["state"];
 
 /**
  * Tool part that can be yielded in mockResponse.
  * Represents a tool invocation with its parameters and results.
+ * This type extends ToolUIPart with optional properties for mockResponse usage.
  */
-export type ToolPart = {
+export type ToolPart = ToolUIPart & {
   /**
-   * Tool type identifier. Can be a specific tool name (e.g., "tool-weather") or "dynamic-tool" for dynamic tools.
-   */
-  type: `tool-${string}` | "dynamic-tool";
-  /**
-   * Unique identifier for this tool call instance
-   */
-  toolCallId: string;
-  /**
-   * Human-readable name of the tool
+   * Human-readable name of the tool (optional, for better UX)
    */
   toolName?: string;
   /**
-   * Current state of the tool execution
-   * - "input-streaming": Tool input is being prepared (shows as "Pending")
-   * - "input-available": Tool is executing (shows as "Running")
-   * - "output-available": Tool execution completed successfully (shows as "Completed")
-   * - "output-error": Tool execution failed (shows as "Error")
-   */
-  state?: ToolState;
-  /**
-   * Input parameters passed to the tool
-   */
-  input?: unknown;
-  /**
-   * Output result from the tool (required when state is "output-available")
-   */
-  output?: unknown;
-  /**
-   * Error message if the tool execution failed (required when state is "output-error")
-   */
-  errorText?: string;
-  /**
-   * Provider-specific metadata
+   * Provider-specific metadata (optional)
    */
   providerMetadata?: unknown;
 };
-
-/**
- * Type guard to check if a message part is a tool part.
- * Narrowed type will include all properties of ToolPart plus any additional UIMessage part properties.
- */
-export function isToolPart(
-  part: UIMessage["parts"][number],
-): part is UIMessage["parts"][number] & ToolPart {
-  return (
-    typeof part.type === "string" &&
-    (part.type.startsWith("tool-") || part.type === "dynamic-tool") &&
-    "toolCallId" in part &&
-    typeof (part as { toolCallId: unknown }).toolCallId === "string"
-  );
-}
 
 export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
   id: string;
@@ -325,14 +281,6 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     });
   }
 }
-
-export const createStaticChatTransport = <
-  UI_MESSAGE extends UIMessage = UIMessage,
->(
-  options: StaticChatTransportInit<UI_MESSAGE>,
-): StaticChatTransport<UI_MESSAGE> => {
-  return new StaticChatTransport(options);
-};
 
 function createTextLikeChunks(
   chunks: UIMessageChunk[],

@@ -25,12 +25,8 @@ import { useChat } from "ai/react";
 
 const transport = new StaticChatTransport({
   chunkDelayMs: 25,
-  async *mockResponse({ messages }) {
-    const userMessage = messages[messages.length - 1];
-    const userText =
-      userMessage?.parts.find((p) => p.type === "text")?.text ?? "…";
-
-    yield { type: "text", text: `You said: ${userText}` };
+  async *mockResponse() {
+    yield { type: "text", text: "Hello! How can I help you today?" };
   },
 });
 
@@ -47,18 +43,51 @@ export const DemoChat = () => {
 Provide a `mockResponse` async generator function that yields `UIMessagePart` objects.  
 All yielded parts are collected into a single assistant message with an auto-generated ID and streamed back to the UI.
 
-Prefer factory helpers? Use the convenience wrapper:
+## Options
+
+| Option               | Type                                                                                                        | Required | Default     | Description                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `mockResponse`       | `(context: StaticTransportContext) => AsyncGenerator<UIMessagePart>`                                        | Yes      | -           | Async generator that yields message parts. All yielded parts are collected into a single assistant message. |
+| `chunkDelayMs`       | `number \| [number, number] \| (chunk: UIMessageChunk) => Promise<number \| [number, number] \| undefined>` | No       | `undefined` | Delay between chunk emissions to simulate streaming. See "Customizing chunk timing" section.                |
+| `autoChunkText`      | `boolean \| RegExp`                                                                                         | No       | `true`      | Whether to chunk text parts. `true` = word-by-word, `false` = single chunk, `RegExp` = custom pattern.      |
+| `autoChunkReasoning` | `boolean \| RegExp`                                                                                         | No       | `true`      | Whether to chunk reasoning parts. `true` = word-by-word, `false` = single chunk, `RegExp` = custom pattern. |
+
+## Context
+
+The `mockResponse` function receives a `StaticTransportContext` parameter with the following properties:
+
+| Property          | Type                                       | Description                                                             |
+| ----------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| `id`              | `string`                                   | The chat ID for this conversation.                                      |
+| `messages`        | `UIMessage[]`                              | Array of all messages in the conversation history.                      |
+| `requestMetadata` | `unknown`                                  | Metadata passed from the `useChat` hook's `body` or `metadata` options. |
+| `trigger`         | `"submit-message" \| "regenerate-message"` | Whether this is a new message or a regeneration.                        |
+| `messageId`       | `string \| undefined`                      | The ID of the message being generated, if provided.                     |
+
+## Customizing chunk timing
+
+`chunkDelayMs` accepts:
 
 ```ts
-import { createStaticChatTransport } from "@loremllm/transport";
+// Constant delay for every chunk
+chunkDelayMs: 50;
 
-const transport = createStaticChatTransport({
-  async *mockResponse(context) {
-    yield { type: "text", text: "Hello!" };
-    yield { type: "text", text: " How are you?" };
-  },
-});
+// Random delay between min and max (inclusive)
+chunkDelayMs: [20, 100]; // random delay between 20ms and 100ms
+
+// Function that returns a delay per chunk
+chunkDelayMs: async (chunk) => (chunk.type === "text-delta" ? 20 : 0);
+
+// Function that returns a tuple for random delay per chunk
+chunkDelayMs: async (chunk) => {
+  if (chunk.type === "text-delta") {
+    return [10, 50]; // random delay between 10ms and 50ms for text deltas
+  }
+  return 0; // no delay for other chunks
+};
 ```
+
+Return `undefined` or `0` to emit the next chunk immediately.
 
 ## Usage examples
 
@@ -124,25 +153,19 @@ import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "ai/react";
 
 const transport = new StaticChatTransport({
-  async *mockResponse({ messages }) {
-    const userMessage = messages[messages.length - 1];
-    const userText =
-      userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
-
+  async *mockResponse() {
     // Stream a chart widget
-    if (userText.includes("chart")) {
-      yield {
-        type: "data-chart",
-        data: {
-          type: "line",
-          data: [
-            { x: "Jan", y: 65 },
-            { x: "Feb", y: 72 },
-            { x: "Mar", y: 68 },
-          ],
-        },
-      };
-    }
+    yield {
+      type: "data-chart",
+      data: {
+        type: "line",
+        data: [
+          { x: "Jan", y: 65 },
+          { x: "Feb", y: 72 },
+          { x: "Mar", y: 68 },
+        ],
+      },
+    };
 
     // Stream a notification
     yield {
@@ -191,7 +214,7 @@ import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "ai/react";
 
 const transport = new StaticChatTransport({
-  async *mockResponse({ messages }) {
+  async *mockResponse() {
     // Simulate a dynamic tool from an MCP server
     yield {
       type: "dynamic-tool",
@@ -242,31 +265,6 @@ The stream builder currently supports:
 Tool parts automatically emit the appropriate chunks (`tool-input-available`, `tool-output-available`, or `tool-output-error`) based on the part's `state` and properties.
 
 Encountering an unsupported part type throws so the UI can flag the issue. Extend `createChunksFromMessage` if you need more chunk types.
-
-## Customizing chunk timing
-
-`chunkDelayMs` accepts:
-
-```ts
-// Constant delay for every chunk
-chunkDelayMs: 50;
-
-// Random delay between min and max (inclusive)
-chunkDelayMs: [20, 100]; // random delay between 20ms and 100ms
-
-// Function that returns a delay per chunk
-chunkDelayMs: async (chunk) => (chunk.type === "text-delta" ? 20 : 0);
-
-// Function that returns a tuple for random delay per chunk
-chunkDelayMs: async (chunk) => {
-  if (chunk.type === "text-delta") {
-    return [10, 50]; // random delay between 10ms and 50ms for text deltas
-  }
-  return 0; // no delay for other chunks
-};
-```
-
-Return `undefined` or `0` to emit the next chunk immediately.
 
 ## Extending the transport
 

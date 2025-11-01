@@ -2,7 +2,7 @@
 
 import type { UIMessage } from "ai";
 import { useState } from "react";
-import { createStaticChatTransport } from "@loremllm/transport";
+import { StaticChatTransport } from "@loremllm/transport";
 import { Avatar, AvatarFallback } from "@repo/ui/avatar";
 import { Divider } from "@repo/ui/divider";
 import { SidebarLayout } from "@repo/ui/sidebar-layout";
@@ -16,7 +16,7 @@ type Demo = {
   title: string;
   description: string;
   preset?: string;
-  transport?: ReturnType<typeof createStaticChatTransport>;
+  transport?: StaticChatTransport;
 };
 
 const platformDemos: Demo[] = [
@@ -50,7 +50,7 @@ const transportDemos: Demo[] = [
     id: "transport-echo",
     title: "Echo Transport",
     description: "A simple transport that echoes lorem ipsum text.",
-    transport: createStaticChatTransport({
+    transport: new StaticChatTransport({
       chunkDelayMs: 50,
       async *mockResponse() {
         yield {
@@ -65,7 +65,7 @@ const transportDemos: Demo[] = [
     title: "Weather Tool",
     description:
       "Simulates a weather tool call with progressive loading. Try asking about the weather in a city.",
-    transport: createStaticChatTransport({
+    transport: new StaticChatTransport({
       chunkDelayMs: (chunk) => {
         // Add delay for tool output chunks to show progressive loading
         if (
@@ -135,7 +135,7 @@ const transportDemos: Demo[] = [
     title: "Reasoning Stream",
     description:
       "Demonstrates reasoning parts that can be toggled to view the AI's thought process.",
-    transport: createStaticChatTransport({
+    transport: new StaticChatTransport({
       chunkDelayMs: 30,
       async *mockResponse(context: StaticTransportContext<UIMessage>) {
         const userMessage = context.messages[context.messages.length - 1];
@@ -161,7 +161,7 @@ const transportDemos: Demo[] = [
     title: "Progressive Tool Loading",
     description:
       "Demonstrates a tool call with multiple loading steps. Shows input-streaming → input-available → output-available states.",
-    transport: createStaticChatTransport({
+    transport: new StaticChatTransport({
       chunkDelayMs: (chunk) => {
         // Add delays to show progressive loading
         if (chunk.type === "tool-output-available") {
