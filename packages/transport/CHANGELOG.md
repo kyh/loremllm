@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.4.1
+
+### Patch Changes
+
+- fix tool call ordering
+
 ## 0.4.0
 
 ### Minor Changes
