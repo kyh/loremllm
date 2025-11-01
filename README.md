@@ -1,6 +1,6 @@
 # LoremLLM
 
-LoremLLM is a collection of tools that help developers mock LLM responses.
+> LoremLLM is a collection of tools that help developers mock LLM responses.
 
 ## When to Use LoremLLM
 
