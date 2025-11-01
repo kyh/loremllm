@@ -2,9 +2,7 @@
 
 > LoremLLM is a collection of tools that help developers mock LLM responses.
 
-## When to Use LoremLLM
-
-Use LoremLLM when you need:
+## When to Use LoremLLM
 
 - **Development/Prototyping** - Build AI-powered UIs before your backend is ready
 - **Testing** - Create consistent test cases and validate edge cases
