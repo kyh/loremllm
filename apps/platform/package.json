@@ -1,5 +1,5 @@
 {
-  "name": "@loremllm/app",
+  "name": "@loremllm/platform",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,8 @@
   },
   "prettier": "@kyh/prettier-config",
   "dependencies": {
-    "@ai-sdk/react": "^2.0.81",
+    "@ai-sdk/react": "^2.0.86",
+    "@loremllm/transport": "workspace:^",
     "@repo/api": "workspace:^",
     "@repo/db": "workspace:^",
     "@repo/ui": "workspace:^",

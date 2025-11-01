@@ -38,6 +38,20 @@ export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
    * - A function that returns a delay (or tuple) per chunk
    */
   chunkDelayMs?: ChunkDelayResolver;
+  /**
+   * Whether to automatically chunk text parts into words for streaming.
+   * - `true` (default): splits text by whitespace (word-by-word)
+   * - `false`: sends text as a single chunk
+   * - `RegExp`: splits text using the provided regex pattern
+   */
+  autoChunkText?: boolean | RegExp;
+  /**
+   * Whether to automatically chunk reasoning parts into words for streaming.
+   * - `true` (default): splits reasoning by whitespace (word-by-word)
+   * - `false`: sends reasoning as a single chunk
+   * - `RegExp`: splits reasoning using the provided regex pattern
+   */
+  autoChunkReasoning?: boolean | RegExp;
 };
 
 class AbortTransportError extends Error {
@@ -74,11 +88,15 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     context: StaticTransportContext<UI_MESSAGE>,
   ) => AsyncGenerator<UI_MESSAGE["parts"][number], void, unknown>;
   private readonly chunkDelayMs?: ChunkDelayResolver;
+  private readonly autoChunkText: boolean | RegExp;
+  private readonly autoChunkReasoning: boolean | RegExp;
   private readonly lastResponses = new Map<string, UI_MESSAGE>();
 
   constructor(options: StaticChatTransportInit<UI_MESSAGE>) {
     this.mockResponseOption = options.mockResponse;
     this.chunkDelayMs = options.chunkDelayMs;
+    this.autoChunkText = options.autoChunkText ?? true;
+    this.autoChunkReasoning = options.autoChunkReasoning ?? true;
   }
 
   async sendMessages(
@@ -95,7 +113,11 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     };
 
     const assistantMessage = await this.resolveMessages(context);
-    const chunks = createChunksFromMessage(assistantMessage);
+    const chunks = createChunksFromMessage(
+      assistantMessage,
+      this.autoChunkText,
+      this.autoChunkReasoning,
+    );
     const stream = this.createStreamFromChunks(chunks, abortSignal);
 
     // Cache for reconnectToStream
@@ -103,17 +125,22 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     return stream;
   }
 
-  async reconnectToStream({
+  reconnectToStream({
     chatId,
   }: {
     chatId: string;
   }): Promise<ReadableStream<UIMessageChunk> | null> {
     const lastMessage = this.lastResponses.get(chatId);
     if (!lastMessage) {
-      return null;
+      return Promise.resolve(null);
     }
-    const chunks = createChunksFromMessage(lastMessage);
-    return this.createStreamFromChunks(chunks);
+
+    const chunks = createChunksFromMessage(
+      lastMessage,
+      this.autoChunkText,
+      this.autoChunkReasoning,
+    );
+    return Promise.resolve(this.createStreamFromChunks(chunks));
   }
 
   protected async resolveMessages(
@@ -147,7 +174,6 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     chunks: UIMessageChunk[],
     abortSignal?: AbortSignal,
   ): ReadableStream<UIMessageChunk> {
-    const chunkDelayMs = this.chunkDelayMs;
     let aborted = false;
 
     const isAborted = () => aborted || abortSignal?.aborted === true;
@@ -155,23 +181,26 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     const resolveDelay = async (
       chunk: UIMessageChunk,
     ): Promise<number | undefined> => {
+      const { chunkDelayMs } = this;
       if (chunkDelayMs == null) {
         return undefined;
       }
+
       if (typeof chunkDelayMs === "number") {
         return chunkDelayMs;
       }
+
       if (Array.isArray(chunkDelayMs)) {
         return randomDelay(chunkDelayMs[0], chunkDelayMs[1]);
       }
+
+      // Function resolver
       const result = await chunkDelayMs(chunk);
       if (result == null) {
         return undefined;
       }
-      if (Array.isArray(result)) {
-        return randomDelay(result[0], result[1]);
-      }
-      return result;
+
+      return Array.isArray(result) ? randomDelay(result[0], result[1]) : result;
     };
 
     return new ReadableStream<UIMessageChunk>({
@@ -191,15 +220,24 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
             if (isAborted()) {
               throw new AbortTransportError();
             }
-            controller.enqueue(chunk);
 
-            const delay = await resolveDelay(chunk);
-            if (delay && delay > 0) {
-              await sleep(delay);
-              if (isAborted()) {
-                throw new AbortTransportError();
+            const isDeltaChunk =
+              chunk.type === "text-delta" || chunk.type === "reasoning-delta";
+
+            // Only delay on delta chunks (actual content chunks)
+            // Control chunks (start, end, text-start, etc.) are sent immediately
+            // Delay happens BEFORE enqueueing the delta chunk
+            if (isDeltaChunk) {
+              const delay = await resolveDelay(chunk);
+              if (delay && delay > 0) {
+                await sleep(delay);
+                if (isAborted()) {
+                  throw new AbortTransportError();
+                }
               }
             }
+
+            controller.enqueue(chunk);
           }
           if (isAborted()) {
             throw new AbortTransportError();
@@ -230,6 +268,7 @@ function createTextLikeChunks(
   type: "text" | "reasoning",
   id: string,
   part: { text: string; providerMetadata?: unknown },
+  autoChunk: boolean | RegExp,
 ): void {
   const prefix = type === "text" ? "text" : "reasoning";
   chunks.push({
@@ -237,14 +276,55 @@ function createTextLikeChunks(
     id,
     providerMetadata: part.providerMetadata,
   } as UIMessageChunk);
-  if (part.text.length > 0) {
-    chunks.push({
-      type: `${prefix}-delta` as const,
-      id,
-      delta: part.text,
-      providerMetadata: part.providerMetadata,
-    } as UIMessageChunk);
+
+  if (part.text.length === 0) {
+    return;
   }
+
+  // Helper to push a delta chunk
+  const pushDelta = (delta: string) => {
+    if (delta.length > 0) {
+      chunks.push({
+        type: `${prefix}-delta` as const,
+        id,
+        delta,
+        providerMetadata: part.providerMetadata,
+      } as UIMessageChunk);
+    }
+  };
+
+  // No chunking - send entire text as single delta
+  if (autoChunk === false) {
+    pushDelta(part.text);
+  } else {
+    // Determine the regex pattern
+    const matchPattern =
+      autoChunk === true
+        ? /(\S+|\s+)/g // Default: word-by-word (words and spaces)
+        : autoChunk.global
+          ? autoChunk
+          : new RegExp(autoChunk.source, autoChunk.flags + "g");
+
+    // Check if regex has capturing groups (matches content) vs separators (splits on)
+    const hasCapturingGroups = matchPattern.source.includes("(");
+
+    if (hasCapturingGroups) {
+      // Match content pattern (e.g., /(\S+|\s+)/g)
+      for (const match of part.text.matchAll(matchPattern)) {
+        pushDelta(match[0]);
+      }
+    } else {
+      // Split pattern (e.g., /[,.]/g) - add capturing group to preserve separators
+      const splitPattern = new RegExp(
+        `(${matchPattern.source})`,
+        matchPattern.flags,
+      );
+      for (const segment of part.text.split(splitPattern)) {
+        pushDelta(segment);
+      }
+    }
+  }
+
   chunks.push({
     type: `${prefix}-end` as const,
     id,
@@ -316,6 +396,8 @@ function createDataChunks(
 
 function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
   message: UI_MESSAGE,
+  autoChunkText: boolean | RegExp,
+  autoChunkReasoning: boolean | RegExp,
 ): UIMessageChunk[] {
   const chunks: UIMessageChunk[] = [];
   chunks.push({
@@ -349,13 +431,19 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
       case "text": {
         openStepIfNeeded();
         const textId = `text-${++nextTextId}`;
-        createTextLikeChunks(chunks, "text", textId, part);
+        createTextLikeChunks(chunks, "text", textId, part, autoChunkText);
         break;
       }
       case "reasoning": {
         openStepIfNeeded();
         const reasoningId = `reasoning-${++nextReasoningId}`;
-        createTextLikeChunks(chunks, "reasoning", reasoningId, part);
+        createTextLikeChunks(
+          chunks,
+          "reasoning",
+          reasoningId,
+          part,
+          autoChunkReasoning,
+        );
         break;
       }
       case "step-start": {

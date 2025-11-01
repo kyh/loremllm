@@ -36,9 +36,10 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "peerDependencies": {
-    "ai": "^5.0.81"
+    "ai": "^5.x.x"
   },
   "devDependencies": {
+    "@ai-sdk/react": "^2.0.86",
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",

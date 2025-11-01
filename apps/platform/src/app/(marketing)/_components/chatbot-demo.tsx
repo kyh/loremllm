@@ -30,18 +30,28 @@ import {
 } from "@repo/ui/ai-elements/sources";
 import { BlockLoader } from "@repo/ui/block-loader";
 
+import type { createStaticChatTransport } from "@loremllm/transport";
 import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
 
-type ChatMode = "demo" | "lorem" | "markdown";
-
 type ChatBotDemoProps = {
-  mode: ChatMode;
+  mode: string;
+  placeholder?: string;
   preset?: string;
+  transport?: ReturnType<typeof createStaticChatTransport>;
 };
 
-export const ChatBotDemo = ({ mode, preset }: ChatBotDemoProps) => {
+export const ChatBotDemo = ({
+  mode,
+  placeholder,
+  preset,
+  transport,
+}: ChatBotDemoProps) => {
   const [input, setInput] = useState(() => preset ?? "");
-  const { messages, sendMessage, status } = useChat({});
+  const { messages, sendMessage, status } = useChat({
+    transport,
+  });
+
+  console.log("messages", messages);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text?.trim();
@@ -60,21 +70,23 @@ export const ChatBotDemo = ({ mode, preset }: ChatBotDemoProps) => {
     setInput(preset ?? "");
   };
 
-  const placeholder = (() => {
-    switch (mode) {
-      case "demo":
-        return "Ask the demo collection a question";
-      case "lorem":
-        return "Describe the lorem ipsum you'd like";
-      case "markdown":
-        return "Paste markdown to stream it back";
-    }
-  })();
-
   return (
     <div className="flex flex-1 flex-col">
       <Conversation className="h-full">
         <ConversationContent className="h-[300px]">
+          {/* <header className="flex flex-col gap-2">
+                <span className="text-muted-foreground text-xs uppercase">
+                  {activeDemo.id === "demo"
+                    ? "Collection"
+                    : activeDemo.id === "lorem"
+                      ? "Generator"
+                      : "Streaming"}
+                </span>
+                <h1 className="text-xl font-semibold">{activeDemo.title}</h1>
+                <p className="text-muted-foreground text-sm">
+                  {activeDemo.description}
+                </p>
+              </header> */}
           {messages.map((message) => (
             <div key={message.id}>
               {message.role === "assistant" &&

@@ -54,6 +54,7 @@ describe("StaticChatTransport", () => {
       async *mockResponse() {
         yield { type: "text", text: "Hi there!" };
       },
+      autoChunkText: false,
     });
 
     const stream = await transport.sendMessages({
@@ -259,6 +260,7 @@ describe("StaticChatTransport", () => {
         // Use the provided messageId for regeneration
         yield { type: "text", text: "Fresh response" };
       },
+      autoChunkText: false,
     });
 
     const chunks = await readAllChunks(
@@ -272,11 +274,12 @@ describe("StaticChatTransport", () => {
       }),
     );
 
-    const textChunk = chunks.find(
+    const textChunks = chunks.filter(
       (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
         chunk.type === "text-delta",
     );
-    expect(textChunk?.delta).toBe("Fresh response");
+    const fullText = textChunks.map((chunk) => chunk.delta).join("");
+    expect(fullText).toBe("Fresh response");
   });
 
   it("yields multiple parts in sequence", async () => {
@@ -287,6 +290,7 @@ describe("StaticChatTransport", () => {
         yield { type: "text", text: "Response one" };
         yield { type: "text", text: "Response two" };
       },
+      autoChunkText: false,
     });
 
     const stream = await transport.sendMessages({
@@ -675,6 +679,7 @@ describe("StaticChatTransport", () => {
           } as UIMessage["parts"][number];
           yield { type: "text", text: "Here are the results!" };
         },
+        autoChunkText: false,
       });
 
       const chunks = await readAllChunks(
@@ -732,6 +737,378 @@ describe("StaticChatTransport", () => {
         "tool-output-available",
         "finish",
       ]);
+    });
+  });
+
+  describe("auto-chunking", () => {
+    it("chunks text word-by-word by default", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello world test" };
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltaChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      // Should be chunked into words and spaces
+      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      // Collect all deltas to verify the complete text
+      const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
+      expect(fullText).toBe("Hello world test");
+    });
+
+    it("chunks reasoning word-by-word by default", async () => {
+      const userMessage = createUserMessage("Think");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "reasoning", text: "Let me think about this carefully" };
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reasoningDeltaChunks = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+
+      expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
+      const fullText = reasoningDeltaChunks
+        .map((chunk) => chunk.delta)
+        .join("");
+      expect(fullText).toBe("Let me think about this carefully");
+    });
+
+    it("sends text as single chunk when autoChunkText is false", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello world test" };
+        },
+        autoChunkText: false,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltaChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      // Should be a single chunk
+      expect(textDeltaChunks).toHaveLength(1);
+      expect(textDeltaChunks[0]?.delta).toBe("Hello world test");
+    });
+
+    it("sends reasoning as single chunk when autoChunkReasoning is false", async () => {
+      const userMessage = createUserMessage("Think");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "reasoning", text: "Let me think about this" };
+        },
+        autoChunkReasoning: false,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reasoningDeltaChunks = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+
+      expect(reasoningDeltaChunks).toHaveLength(1);
+      expect(reasoningDeltaChunks[0]?.delta).toBe("Let me think about this");
+    });
+
+    it("uses custom regex pattern for text chunking", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello,world.test" };
+        },
+        autoChunkText: /[,.]/g,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltaChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      // Should split on commas and periods
+      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
+      expect(fullText).toBe("Hello,world.test");
+    });
+
+    it("uses custom regex pattern for reasoning chunking", async () => {
+      const userMessage = createUserMessage("Think");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "reasoning", text: "Step1.Step2.Step3" };
+        },
+        autoChunkReasoning: /\./g,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reasoningDeltaChunks = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+
+      expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
+      const fullText = reasoningDeltaChunks
+        .map((chunk) => chunk.delta)
+        .join("");
+      expect(fullText).toBe("Step1.Step2.Step3");
+    });
+
+    it("respects chunk delay when auto-chunking text", async () => {
+      const userMessage = createUserMessage("Hello");
+      const chunkDelays: number[] = [];
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "One two three" };
+        },
+        chunkDelayMs: (chunk) => {
+          if (chunk.type === "text-delta") {
+            chunkDelays.push(10);
+            return 10;
+          }
+          return 0;
+        },
+      });
+
+      const start = Date.now();
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+      const duration = Date.now() - start;
+
+      // Should have delays for each word chunk
+      expect(chunkDelays.length).toBeGreaterThan(1);
+      // Should take some time due to delays
+      expect(duration).toBeGreaterThanOrEqual(10);
+    });
+
+    it("aborts text streaming halfway through when auto-chunking", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "text",
+            text: "This is a long message that will be chunked word by word",
+          };
+        },
+        chunkDelayMs: 50, // Delay between chunks
+      });
+
+      const abortController = new AbortController();
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: abortController.signal,
+      });
+
+      const reader = stream.getReader();
+      const chunks: UIMessageChunk[] = [];
+
+      // Read a few chunks, then abort
+      let chunkCount = 0;
+      const maxChunks = 5;
+
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          chunkCount++;
+
+          // Abort after reading a few chunks
+          if (chunkCount >= maxChunks) {
+            abortController.abort();
+          }
+        }
+      } catch (error) {
+        // Expected to throw on abort
+        expect(error).toBeDefined();
+      }
+
+      // Should have read some chunks before aborting
+      expect(chunks.length).toBeGreaterThan(0);
+      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 1);
+
+      // Verify we got some text-delta chunks before abort
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      expect(textDeltas.length).toBeGreaterThan(0);
+    });
+
+    it("aborts reasoning streaming halfway through when auto-chunking", async () => {
+      const userMessage = createUserMessage("Think");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "reasoning",
+            text: "First I need to think about this problem carefully step by step",
+          };
+        },
+        chunkDelayMs: 50,
+      });
+
+      const abortController = new AbortController();
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: abortController.signal,
+      });
+
+      const reader = stream.getReader();
+      const chunks: UIMessageChunk[] = [];
+      let chunkCount = 0;
+      const maxChunks = 4;
+
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          chunkCount++;
+
+          if (chunkCount >= maxChunks) {
+            abortController.abort();
+          }
+        }
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
+
+      expect(chunks.length).toBeGreaterThan(0);
+      const reasoningDeltas = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+      expect(reasoningDeltas.length).toBeGreaterThan(0);
+    });
+
+    it("handles empty text with auto-chunking enabled", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "" };
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltaChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      // Empty text should result in no delta chunks
+      expect(textDeltaChunks).toHaveLength(0);
+    });
+
+    it("replays chunked messages via reconnectToStream", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello world" };
+        },
+      });
+
+      // First stream
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      // Reconnect
+      const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
+      expect(reconnect).not.toBeNull();
+
+      const chunks = await readAllChunks(reconnect!);
+      const textDeltaChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      // Should still be chunked on replay
+      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
+      expect(fullText).toBe("Hello world");
     });
   });
 });
