@@ -7,6 +7,73 @@ import type {
 
 type MaybePromise<T> = T | Promise<T>;
 
+/**
+ * Tool state values supported by the transport
+ */
+export type ToolState =
+  | "input-streaming"
+  | "input-available"
+  | "output-available"
+  | "output-error";
+
+/**
+ * Tool part that can be yielded in mockResponse.
+ * Represents a tool invocation with its parameters and results.
+ */
+export type ToolPart = {
+  /**
+   * Tool type identifier. Can be a specific tool name (e.g., "tool-weather") or "dynamic-tool" for dynamic tools.
+   */
+  type: `tool-${string}` | "dynamic-tool";
+  /**
+   * Unique identifier for this tool call instance
+   */
+  toolCallId: string;
+  /**
+   * Human-readable name of the tool
+   */
+  toolName?: string;
+  /**
+   * Current state of the tool execution
+   * - "input-streaming": Tool input is being prepared (shows as "Pending")
+   * - "input-available": Tool is executing (shows as "Running")
+   * - "output-available": Tool execution completed successfully (shows as "Completed")
+   * - "output-error": Tool execution failed (shows as "Error")
+   */
+  state?: ToolState;
+  /**
+   * Input parameters passed to the tool
+   */
+  input?: unknown;
+  /**
+   * Output result from the tool (required when state is "output-available")
+   */
+  output?: unknown;
+  /**
+   * Error message if the tool execution failed (required when state is "output-error")
+   */
+  errorText?: string;
+  /**
+   * Provider-specific metadata
+   */
+  providerMetadata?: unknown;
+};
+
+/**
+ * Type guard to check if a message part is a tool part.
+ * Narrowed type will include all properties of ToolPart plus any additional UIMessage part properties.
+ */
+export function isToolPart(
+  part: UIMessage["parts"][number],
+): part is UIMessage["parts"][number] & ToolPart {
+  return (
+    typeof part.type === "string" &&
+    (part.type.startsWith("tool-") || part.type === "dynamic-tool") &&
+    "toolCallId" in part &&
+    typeof (part as { toolCallId: unknown }).toolCallId === "string"
+  );
+}
+
 export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
   id: string;
   messages: UI_MESSAGE[];
@@ -223,11 +290,15 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
 
             const isDeltaChunk =
               chunk.type === "text-delta" || chunk.type === "reasoning-delta";
+            const isToolChunk =
+              chunk.type === "tool-input-available" ||
+              chunk.type === "tool-output-available" ||
+              chunk.type === "tool-output-error";
 
-            // Only delay on delta chunks (actual content chunks)
+            // Delay on delta chunks (actual content chunks) and tool chunks
             // Control chunks (start, end, text-start, etc.) are sent immediately
-            // Delay happens BEFORE enqueueing the delta chunk
-            if (isDeltaChunk) {
+            // Delay happens BEFORE enqueueing the chunk
+            if (isDeltaChunk || isToolChunk) {
               const delay = await resolveDelay(chunk);
               if (delay && delay > 0) {
                 await sleep(delay);
@@ -332,50 +403,6 @@ function createTextLikeChunks(
   } as UIMessageChunk);
 }
 
-function createToolChunks(
-  chunks: UIMessageChunk[],
-  part: { type: string; [key: string]: unknown },
-): void {
-  const toolPart = part as {
-    type: `tool-${string}` | "dynamic-tool";
-    toolCallId: string;
-    toolName?: string;
-    state?: string;
-    input?: unknown;
-    output?: unknown;
-    errorText?: string;
-    providerMetadata?: unknown;
-  };
-
-  chunks.push({
-    type: "tool-input-available",
-    toolCallId: toolPart.toolCallId,
-    toolName: toolPart.toolName ?? "tool",
-    input: toolPart.input ?? {},
-    providerMetadata: toolPart.providerMetadata,
-  } as UIMessageChunk);
-
-  const finalState = toolPart.state;
-  if (finalState === "output-error" || toolPart.errorText) {
-    chunks.push({
-      type: "tool-output-error",
-      toolCallId: toolPart.toolCallId,
-      errorText: toolPart.errorText ?? "An unknown tool error occurred.",
-      providerMetadata: toolPart.providerMetadata,
-    } as UIMessageChunk);
-  } else if (
-    finalState === "output-available" ||
-    toolPart.output !== undefined
-  ) {
-    chunks.push({
-      type: "tool-output-available",
-      toolCallId: toolPart.toolCallId,
-      output: toolPart.output ?? null,
-      providerMetadata: toolPart.providerMetadata,
-    } as UIMessageChunk);
-  }
-}
-
 function createDataChunks(
   chunks: UIMessageChunk[],
   part: { type: string; [key: string]: unknown },
@@ -425,6 +452,19 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
       isStepOpen = false;
     }
   };
+
+  // Track tool parts to emit progressive states
+  // We need to process parts in order to preserve progressive loading states
+  const toolPartStateMap = new Map<
+    string,
+    {
+      hasEmittedInput: boolean;
+      lastInput?: unknown;
+      lastState?: string;
+      lastOutput?: unknown;
+      lastErrorText?: string;
+    }
+  >();
 
   for (const part of message.parts) {
     switch (part.type) {
@@ -487,7 +527,66 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
           (typeof part.type === "string" && part.type.startsWith("tool-")) ||
           part.type === "dynamic-tool"
         ) {
-          createToolChunks(chunks, part);
+          const toolPart = part as {
+            type: `tool-${string}` | "dynamic-tool";
+            toolCallId: string;
+            toolName?: string;
+            state?: string;
+            input?: unknown;
+            output?: unknown;
+            errorText?: string;
+            providerMetadata?: unknown;
+          };
+          const toolState = toolPartStateMap.get(toolPart.toolCallId);
+          const currentState = toolPart.state;
+
+          // Emit tool-input-available only on first occurrence
+          if (!toolState?.hasEmittedInput) {
+            chunks.push({
+              type: "tool-input-available",
+              toolCallId: toolPart.toolCallId,
+              toolName: toolPart.toolName ?? "tool",
+              input: toolPart.input ?? {},
+              providerMetadata: toolPart.providerMetadata,
+            } as UIMessageChunk);
+          }
+
+          // Emit output chunks only when state changes from a non-output state to an output state
+          // or when transitioning between output states (e.g., error to success)
+          if (currentState === "output-error") {
+            // Only emit if we haven't already emitted an error, or if transitioning from output-available
+            if (
+              toolState?.lastState !== "output-error" &&
+              toolState?.lastState !== "output-available"
+            ) {
+              chunks.push({
+                type: "tool-output-error",
+                toolCallId: toolPart.toolCallId,
+                errorText:
+                  toolPart.errorText ?? "An unknown tool error occurred.",
+                providerMetadata: toolPart.providerMetadata,
+              } as UIMessageChunk);
+            }
+          } else if (currentState === "output-available") {
+            // Only emit if we haven't already emitted output-available
+            if (toolState?.lastState !== "output-available") {
+              chunks.push({
+                type: "tool-output-available",
+                toolCallId: toolPart.toolCallId,
+                output: toolPart.output ?? null,
+                providerMetadata: toolPart.providerMetadata,
+              } as UIMessageChunk);
+            }
+          }
+
+          // Update state tracking
+          toolPartStateMap.set(toolPart.toolCallId, {
+            hasEmittedInput: true,
+            lastInput: toolPart.input,
+            lastState: currentState,
+            lastOutput: toolPart.output,
+            lastErrorText: toolPart.errorText,
+          });
           break;
         }
         if (part.type.startsWith("data-")) {

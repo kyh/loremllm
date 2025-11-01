@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { isToolPart } from "@loremllm/transport";
 import {
   Conversation,
   ConversationContent,
@@ -28,6 +29,13 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@repo/ui/ai-elements/sources";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@repo/ui/ai-elements/tool";
 import { BlockLoader } from "@repo/ui/block-loader";
 
 import type { createStaticChatTransport } from "@loremllm/transport";
@@ -139,6 +147,30 @@ export const ChatBotDemo = ({
                       </Reasoning>
                     );
                   default:
+                    // Check if it's a tool part
+                    if (isToolPart(part)) {
+                      // part is now narrowed to UIMessage["parts"][number] & ToolPart
+                      return (
+                        <Tool key={`${message.id}-tool-${part.toolCallId}`}>
+                          <ToolHeader
+                            title={part.toolName}
+                            type={part.type as `tool-${string}`}
+                            state={part.state ?? "input-available"}
+                          />
+                          <ToolContent>
+                            {part.input !== undefined && (
+                              <ToolInput input={part.input} />
+                            )}
+                            {(part.output !== undefined || part.errorText) && (
+                              <ToolOutput
+                                output={part.output}
+                                errorText={part.errorText}
+                              />
+                            )}
+                          </ToolContent>
+                        </Tool>
+                      );
+                    }
                     return null;
                 }
               })}

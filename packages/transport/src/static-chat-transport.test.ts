@@ -705,6 +705,423 @@ describe("StaticChatTransport", () => {
       ]);
     });
 
+    it("handles progressive tool loading with input-available then output-available states", async () => {
+      const userMessage = createUserMessage("Get weather");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // First yield: tool in loading state
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather_1",
+            toolName: "weather",
+            state: "input-available",
+            input: { location: "San Francisco" },
+          } as UIMessage["parts"][number];
+
+          // Simulate delay (in real usage this would be an async operation)
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Second yield: tool with output
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather_1",
+            toolName: "weather",
+            state: "output-available",
+            input: { location: "San Francisco" },
+            output: { temperature: 72, condition: "sunny" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      // Should emit input chunk first, then output chunk
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      expect(toolChunks).toHaveLength(2);
+
+      const inputChunk = toolChunks[0] as Extract<
+        UIMessageChunk,
+        { type: "tool-input-available" }
+      >;
+      expect(inputChunk.type).toBe("tool-input-available");
+      expect(inputChunk.toolCallId).toBe("call_weather_1");
+      expect(inputChunk.toolName).toBe("weather");
+      expect(inputChunk.input).toEqual({ location: "San Francisco" });
+
+      const outputChunk = toolChunks[1] as Extract<
+        UIMessageChunk,
+        { type: "tool-output-available" }
+      >;
+      expect(outputChunk.type).toBe("tool-output-available");
+      expect(outputChunk.toolCallId).toBe("call_weather_1");
+      expect(outputChunk.output).toEqual({
+        temperature: 72,
+        condition: "sunny",
+      });
+    });
+
+    it("handles progressive tool loading with multiple state transitions", async () => {
+      const userMessage = createUserMessage("Search for something");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // Step 1: input-streaming
+          yield {
+            type: "tool-search",
+            toolCallId: "call_search_1",
+            toolName: "search",
+            state: "input-streaming",
+            input: { query: "example" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Step 2: input-available
+          yield {
+            type: "tool-search",
+            toolCallId: "call_search_1",
+            toolName: "search",
+            state: "input-available",
+            input: { query: "example" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Step 3: output-available
+          yield {
+            type: "tool-search",
+            toolCallId: "call_search_1",
+            toolName: "search",
+            state: "output-available",
+            input: { query: "example" },
+            output: { results: [{ title: "Result 1" }] },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      // Should emit input chunk once, then output chunk
+      expect(toolChunks).toHaveLength(2);
+      expect(toolChunks[0].type).toBe("tool-input-available");
+      expect(toolChunks[1].type).toBe("tool-output-available");
+    });
+
+    it("preserves order of tool calls and text parts in progressive loading", async () => {
+      const userMessage = createUserMessage("Get weather then summarize");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // Tool call start
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather_2",
+            toolName: "weather",
+            state: "input-available",
+            input: { location: "NYC" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Tool call complete
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather_2",
+            toolName: "weather",
+            state: "output-available",
+            input: { location: "NYC" },
+            output: { temperature: 68 },
+          } as UIMessage["parts"][number];
+
+          // Text response after tool
+          yield {
+            type: "text",
+            text: "The weather is nice.",
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const chunkTypes = chunks.map((chunk) => chunk.type);
+      
+      // Tool chunks are emitted before steps (steps are only for text/reasoning)
+      // Verify the key chunks are in the right order
+      const toolInputIndex = chunkTypes.indexOf("tool-input-available");
+      const toolOutputIndex = chunkTypes.indexOf("tool-output-available");
+      const startStepIndex = chunkTypes.indexOf("start-step");
+      const textStartIndex = chunkTypes.indexOf("text-start");
+
+      // Verify tool chunks come before text chunks
+      expect(toolInputIndex).toBeLessThan(toolOutputIndex);
+      expect(toolOutputIndex).toBeLessThan(startStepIndex);
+      expect(startStepIndex).toBeLessThan(textStartIndex);
+
+      // Verify the structure: start -> tool chunks -> step -> text chunks -> step end -> finish
+      expect(chunkTypes[0]).toBe("start");
+      expect(chunkTypes[chunkTypes.length - 1]).toBe("finish");
+      expect(chunkTypes).toContain("tool-input-available");
+      expect(chunkTypes).toContain("tool-output-available");
+      expect(chunkTypes).toContain("start-step");
+      expect(chunkTypes).toContain("text-start");
+      expect(chunkTypes).toContain("text-end");
+      expect(chunkTypes).toContain("finish-step");
+    });
+
+    it("does not emit duplicate chunks for unchanged tool state", async () => {
+      const userMessage = createUserMessage("Process data");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // First occurrence
+          yield {
+            type: "tool-process",
+            toolCallId: "call_process_1",
+            state: "input-available",
+            input: { data: "test" },
+          } as UIMessage["parts"][number];
+
+          // Second occurrence with same state (should not emit duplicate input chunk)
+          yield {
+            type: "tool-process",
+            toolCallId: "call_process_1",
+            state: "input-available",
+            input: { data: "test" }, // Same input
+          } as UIMessage["parts"][number];
+
+          // Third occurrence with output (should emit output chunk)
+          yield {
+            type: "tool-process",
+            toolCallId: "call_process_1",
+            state: "output-available",
+            input: { data: "test" },
+            output: { result: "processed" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      // Should only emit input once, then output once
+      expect(toolChunks).toHaveLength(2);
+      expect(toolChunks[0].type).toBe("tool-input-available");
+      expect(toolChunks[1].type).toBe("tool-output-available");
+    });
+
+    it("handles multiple progressive tool calls with different IDs", async () => {
+      const userMessage = createUserMessage("Run multiple tools");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // Tool 1: start
+          yield {
+            type: "tool-search",
+            toolCallId: "call_1",
+            state: "input-available",
+            input: { query: "test1" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Tool 2: start
+          yield {
+            type: "tool-map",
+            toolCallId: "call_2",
+            state: "input-available",
+            input: { origin: "A" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Tool 1: complete
+          yield {
+            type: "tool-search",
+            toolCallId: "call_1",
+            state: "output-available",
+            input: { query: "test1" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Tool 2: complete
+          yield {
+            type: "tool-map",
+            toolCallId: "call_2",
+            state: "output-available",
+            input: { origin: "A" },
+            output: { route: "A->B" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      expect(toolChunks).toHaveLength(4);
+
+      // Verify order: call_1 input, call_2 input, call_1 output, call_2 output
+      expect((toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>).toolCallId).toBe("call_1");
+      expect((toolChunks[1] as Extract<UIMessageChunk, { type: "tool-input-available" }>).toolCallId).toBe("call_2");
+      expect((toolChunks[2] as Extract<UIMessageChunk, { type: "tool-output-available" }>).toolCallId).toBe("call_1");
+      expect((toolChunks[3] as Extract<UIMessageChunk, { type: "tool-output-available" }>).toolCallId).toBe("call_2");
+    });
+
+    it("handles tool error state in progressive loading", async () => {
+      const userMessage = createUserMessage("Process with error");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // Tool starts
+          yield {
+            type: "tool-process",
+            toolCallId: "call_error_1",
+            state: "input-available",
+            input: { data: "test" },
+          } as UIMessage["parts"][number];
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          // Tool fails
+          yield {
+            type: "tool-process",
+            toolCallId: "call_error_1",
+            state: "output-error",
+            input: { data: "test" },
+            errorText: "Processing failed",
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-error",
+      );
+
+      expect(toolChunks).toHaveLength(2);
+      expect(toolChunks[0].type).toBe("tool-input-available");
+      expect(toolChunks[1].type).toBe("tool-output-error");
+
+      const errorChunk = toolChunks[1] as Extract<
+        UIMessageChunk,
+        { type: "tool-output-error" }
+      >;
+      expect(errorChunk.toolCallId).toBe("call_error_1");
+      expect(errorChunk.errorText).toBe("Processing failed");
+    });
+
+    it("applies chunk delays to tool chunks", async () => {
+      const userMessage = createUserMessage("Delayed tool");
+
+      const delaySpy = vi.fn();
+
+      const transport = new StaticChatTransport({
+        chunkDelayMs: (chunk) => {
+          delaySpy(chunk.type);
+          if (
+            chunk.type === "tool-input-available" ||
+            chunk.type === "tool-output-available"
+          ) {
+            return 10; // 10ms delay for tool chunks
+          }
+          return 0;
+        },
+        async *mockResponse() {
+          yield {
+            type: "tool-test",
+            toolCallId: "call_delayed",
+            state: "input-available",
+            input: { test: true },
+          } as UIMessage["parts"][number];
+
+          yield {
+            type: "tool-test",
+            toolCallId: "call_delayed",
+            state: "output-available",
+            input: { test: true },
+            output: { result: "done" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const startTime = Date.now();
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+      const endTime = Date.now();
+
+      // Verify delays were applied
+      expect(delaySpy).toHaveBeenCalledWith("tool-input-available");
+      expect(delaySpy).toHaveBeenCalledWith("tool-output-available");
+
+      // Verify chunks were still emitted
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+      expect(toolChunks).toHaveLength(2);
+    });
+
     it("replays tool calls via reconnectToStream", async () => {
       const userMessage = createUserMessage("Search");
 

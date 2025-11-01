@@ -1,6 +1,6 @@
 {
   "name": "@loremllm/transport",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -29,7 +29,7 @@
   "scripts": {
     "build": "pkgroll",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "dev": "tsc --watch",
+    "dev": "pkgroll --watch",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "lint": "eslint",
     "test": "vitest run",

@@ -64,9 +64,18 @@ const transportDemos: Demo[] = [
     id: "transport-weather",
     title: "Weather Tool",
     description:
-      "Simulates a weather tool call. Try asking about the weather in a city.",
+      "Simulates a weather tool call with progressive loading. Try asking about the weather in a city.",
     transport: createStaticChatTransport({
-      chunkDelayMs: [20, 60],
+      chunkDelayMs: (chunk) => {
+        // Add delay for tool output chunks to show progressive loading
+        if (
+          chunk.type === "tool-output-available" ||
+          chunk.type === "tool-output-error"
+        ) {
+          return 1000; // 1 second delay to show tool running
+        }
+        return [20, 60]; // Random delay for other chunks
+      },
       async *mockResponse(context: StaticTransportContext<UIMessage>) {
         const userMessage = context.messages[context.messages.length - 1];
         const userText =
@@ -77,30 +86,45 @@ const transportDemos: Demo[] = [
           const locationMatch = /weather in (.+?)(?:\?|$)/i.exec(userText);
           const location = locationMatch?.[1]?.trim() ?? "San Francisco";
 
-          // Yield a tool call
+          const toolCallId = `call_${Date.now()}`;
+
+          // Yield tool call in "input-available" state (shows as "Running")
           yield {
             type: "tool-weather",
-            toolCallId: `call_${Date.now()}`,
+            toolCallId,
+            toolName: "weather",
+            state: "input-available",
+            input: { location },
+          };
+
+          // Simulate tool execution delay
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
+          const temperature = 72 + Math.floor(Math.random() * 21) - 10;
+
+          // Yield tool call with "output-available" state (shows as "Completed")
+          yield {
+            type: "tool-weather",
+            toolCallId,
             toolName: "weather",
             state: "output-available",
             input: { location },
             output: {
               location,
-              temperature: 72 + Math.floor(Math.random() * 21) - 10,
+              temperature,
               condition: "sunny",
             },
           };
 
           // Yield a text response with the tool result
-          const temp = 72 + Math.floor(Math.random() * 21) - 10;
           yield {
             type: "text",
-            text: `The weather in ${location} is sunny with a temperature of ${temp}°F.`,
+            text: `The weather in ${location} is sunny with a temperature of ${temperature}°F.`,
           };
         } else {
           yield {
             type: "text",
-            text: "Try asking about the weather!",
+            text: "Try asking about the weather in a city!",
           };
         }
       },
@@ -128,6 +152,71 @@ const transportDemos: Demo[] = [
         yield {
           type: "text",
           text: `Based on your question about "${userText}", here's my response with some reasoning that you can toggle above.`,
+        };
+      },
+    }),
+  },
+  {
+    id: "transport-progressive",
+    title: "Progressive Tool Loading",
+    description:
+      "Demonstrates a tool call with multiple loading steps. Shows input-streaming → input-available → output-available states.",
+    transport: createStaticChatTransport({
+      chunkDelayMs: (chunk) => {
+        // Add delays to show progressive loading
+        if (chunk.type === "tool-output-available") {
+          return 1500; // 1.5s delay before showing output
+        }
+        return 50; // Small delay for other chunks
+      },
+      async *mockResponse(context: StaticTransportContext<UIMessage>) {
+        const userMessage = context.messages[context.messages.length - 1];
+        const userText =
+          userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+
+        const toolCallId = `call_${Date.now()}`;
+
+        // Step 1: Tool input streaming (shows as "Pending")
+        yield {
+          type: "tool-search",
+          toolCallId,
+          toolName: "search",
+          state: "input-streaming",
+          input: { query: userText || "example query" },
+        };
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Step 2: Tool input available (shows as "Running")
+        yield {
+          type: "tool-search",
+          toolCallId,
+          toolName: "search",
+          state: "input-available",
+          input: { query: userText || "example query" },
+        };
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Step 3: Tool output available (shows as "Completed")
+        yield {
+          type: "tool-search",
+          toolCallId,
+          toolName: "search",
+          state: "output-available",
+          input: { query: userText || "example query" },
+          output: {
+            results: [
+              { title: "Result 1", url: "https://example.com/1" },
+              { title: "Result 2", url: "https://example.com/2" },
+            ],
+          },
+        };
+
+        // Yield a text response
+        yield {
+          type: "text",
+          text: `I found ${2} results for "${userText || "your query"}".`,
         };
       },
     }),

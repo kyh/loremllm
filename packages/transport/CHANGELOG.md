@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.4.0
+
+### Minor Changes
+
+- add in auto text chunking
+
 ## 0.3.0
 
 ### Minor Changes
