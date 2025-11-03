@@ -9,7 +9,7 @@ import { SidebarLayout } from "@repo/ui/sidebar-layout";
 import { cn } from "@repo/ui/utils";
 
 import type { StaticTransportContext } from "@loremllm/transport";
-import { ChatBotDemo } from "./_components/chatbot-demo";
+import { ChatBotDemo } from "../_components/chatbot-demo";
 
 type Demo = {
   id: string;

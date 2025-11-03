@@ -250,11 +250,13 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
               chunk.type === "tool-input-available" ||
               chunk.type === "tool-output-available" ||
               chunk.type === "tool-output-error";
+            const isDataChunk =
+              typeof chunk.type === "string" && chunk.type.startsWith("data-");
 
-            // Delay on delta chunks (actual content chunks) and tool chunks
+            // Delay on delta chunks (actual content chunks), tool chunks, and data chunks
             // Control chunks (start, end, text-start, etc.) are sent immediately
             // Delay happens BEFORE enqueueing the chunk
-            if (isDeltaChunk || isToolChunk) {
+            if (isDeltaChunk || isToolChunk || isDataChunk) {
               const delay = await resolveDelay(chunk);
               if (delay && delay > 0) {
                 await sleep(delay);
