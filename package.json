@@ -1,7 +1,7 @@
 {
   "name": "loremllm",
   "private": true,
-  "packageManager": "pnpm@10.19.0",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
@@ -15,6 +15,7 @@
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint:ws",
+    "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "gen:ui": "pnpm -F ui gen:ui",
     "changeset": "changeset",
@@ -23,11 +24,11 @@
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
     "@kyh/prettier-config": "catalog:",
-    "dotenv-cli": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
     "pkgroll": "^2.20.1",
     "prettier": "catalog:",
     "tsx": "^4.20.6",
-    "turbo": "^2.5.8",
+    "turbo": "^2.6.0",
     "typescript": "catalog:"
   },
   "prettier": "@kyh/prettier-config",

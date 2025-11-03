@@ -43,11 +43,11 @@
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
-    "ai": "^5.0.81",
+    "ai": "^5.0.86",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.6"
   },
   "prettier": "@kyh/prettier-config"
 }
