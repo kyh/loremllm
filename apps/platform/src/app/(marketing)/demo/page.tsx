@@ -97,9 +97,6 @@ const transportDemos: Demo[] = [
             input: { location },
           };
 
-          // Simulate tool execution delay
-          await new Promise((resolve) => setTimeout(resolve, 800));
-
           const temperature = 72 + Math.floor(Math.random() * 21) - 10;
 
           // Yield tool call with "output-available" state (shows as "Completed")
@@ -137,7 +134,7 @@ const transportDemos: Demo[] = [
       "Demonstrates reasoning parts that can be toggled to view the AI's thought process.",
     transport: new StaticChatTransport({
       chunkDelayMs: 30,
-      async *mockResponse(context: StaticTransportContext<UIMessage>) {
+      async *mockResponse(context) {
         const userMessage = context.messages[context.messages.length - 1];
         const userText =
           userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
@@ -152,71 +149,6 @@ const transportDemos: Demo[] = [
         yield {
           type: "text",
           text: `Based on your question about "${userText}", here's my response with some reasoning that you can toggle above.`,
-        };
-      },
-    }),
-  },
-  {
-    id: "transport-progressive",
-    title: "Progressive Tool Loading",
-    description:
-      "Demonstrates a tool call with multiple loading steps. Shows input-streaming → input-available → output-available states.",
-    transport: new StaticChatTransport({
-      chunkDelayMs: (chunk) => {
-        // Add delays to show progressive loading
-        if (chunk.type === "tool-output-available") {
-          return 1500; // 1.5s delay before showing output
-        }
-        return 50; // Small delay for other chunks
-      },
-      async *mockResponse(context: StaticTransportContext<UIMessage>) {
-        const userMessage = context.messages[context.messages.length - 1];
-        const userText =
-          userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
-
-        const toolCallId = `call_${Date.now()}`;
-
-        // Step 1: Tool input streaming (shows as "Pending")
-        yield {
-          type: "tool-search",
-          toolCallId,
-          toolName: "search",
-          state: "input-streaming",
-          input: { query: userText || "example query" },
-        };
-
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Step 2: Tool input available (shows as "Running")
-        yield {
-          type: "tool-search",
-          toolCallId,
-          toolName: "search",
-          state: "input-available",
-          input: { query: userText || "example query" },
-        };
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Step 3: Tool output available (shows as "Completed")
-        yield {
-          type: "tool-search",
-          toolCallId,
-          toolName: "search",
-          state: "output-available",
-          input: { query: userText || "example query" },
-          output: {
-            results: [
-              { title: "Result 1", url: "https://example.com/1" },
-              { title: "Result 2", url: "https://example.com/2" },
-            ],
-          },
-        };
-
-        // Yield a text response
-        yield {
-          type: "text",
-          text: `I found ${2} results for "${userText || "your query"}".`,
         };
       },
     }),
@@ -236,8 +168,8 @@ const Page = () => {
         isShowingHandle
         sidebar={
           <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-semibold">Platform</h2>
-            {platformDemos.map((demo) => (
+            <h2 className="mt-2 text-sm uppercase">AI SDK Transport</h2>
+            {transportDemos.map((demo) => (
               <div key={demo.id}>
                 <button
                   className={cn(
@@ -265,8 +197,8 @@ const Page = () => {
                 </button>
               </div>
             ))}
-            <h2 className="text-lg font-semibold">AI SDK Transport</h2>
-            {transportDemos.map((demo) => (
+            <h2 className="mt-2 text-sm uppercase">Platform</h2>
+            {platformDemos.map((demo) => (
               <div key={demo.id}>
                 <button
                   className={cn(

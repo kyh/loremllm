@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.4.3
+
+### Patch Changes
+
+- 96c40a8: fix tool calling delay
+
 ## 0.4.2
 
 ### Patch Changes
