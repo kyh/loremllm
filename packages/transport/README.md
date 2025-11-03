@@ -1,13 +1,11 @@
 # @loremllm/transport
 
-A lightweight transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport).  
-It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack.
+A lightweight transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack or incurring any llm fees.
 
-> **When to use it**
->
-> - Building demos or stories where the response is known ahead of time.
-> - Faking AI interactions offline or in tests.
-> - Wrapping bespoke backends that already output `UIMessage` objects.
+## When to use it
+- Building demos or stories where the response is known ahead of time.
+- Faking AI interactions offline or in tests.
+- Wrapping bespoke backends that already output `UIMessage` objects.
 
 ## Installation
 
@@ -15,7 +13,7 @@ It lets you describe the exact `UIMessage[]` the UI should display and streams t
 pnpm add @loremllm/transport
 ```
 
-The package declares a peer dependency on `ai@^5.0.81`; make sure it is available in your workspace.
+The package declares a peer dependency on `ai@5.x.x`; make sure it is available in your workspace.
 
 ## Quick start
 

@@ -1,6 +1,8 @@
 # LoremLLM
 
-> LoremLLM is a collection of tools that help developers mock LLM responses.
+LoremLLM is a collection of tools that help developers mock LLM responses.
+
+> aka worlds most overengineered lorem ipsum generator
 
 ## When to Use LoremLLM
 
@@ -35,3 +37,4 @@
 ## License
 
 See [LICENSE](./LICENSE) for details.
+
