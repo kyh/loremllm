@@ -12,8 +12,13 @@ export const Header = () => {
 
   return (
     <header className="flex items-center justify-end pt-4">
-      <Logo />
-      <div className="flex flex-1 justify-end">
+      <Link href="/">
+        <Logo />
+      </Link>
+      <div className="flex flex-1 items-center justify-end gap-4">
+        <Link className="bg-transparent text-sm uppercase" href="/demo">
+          Demo
+        </Link>
         {isPending ? (
           <span
             className={cn(

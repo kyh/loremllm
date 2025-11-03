@@ -47,11 +47,11 @@ const platformDemos: Demo[] = [
 
 const transportDemos: Demo[] = [
   {
-    id: "transport-echo",
-    title: "Echo Transport",
-    description: "A simple transport that echoes lorem ipsum text.",
+    id: "transport-default",
+    title: "Simple Text Response",
+    description: "A simple response that echoes lorem ipsum text.",
     transport: new StaticChatTransport({
-      chunkDelayMs: 50,
+      chunkDelayMs: [50, 120],
       async *mockResponse() {
         yield {
           type: "text",
@@ -157,7 +157,7 @@ const transportDemos: Demo[] = [
 
 const Page = () => {
   const [activeDemo, setActiveDemo] = useState<Demo | undefined>(
-    platformDemos[0],
+    transportDemos[0],
   );
 
   return (
@@ -168,7 +168,7 @@ const Page = () => {
         isShowingHandle
         sidebar={
           <div className="flex flex-col gap-2">
-            <h2 className="mt-2 text-sm uppercase">AI SDK Transport</h2>
+            <h2 className="mt-2 text-xs uppercase">AI SDK Transport</h2>
             {transportDemos.map((demo) => (
               <div key={demo.id}>
                 <button
@@ -197,7 +197,7 @@ const Page = () => {
                 </button>
               </div>
             ))}
-            <h2 className="mt-2 text-sm uppercase">Platform</h2>
+            <h2 className="mt-2 text-xs uppercase">Platform</h2>
             {platformDemos.map((demo) => (
               <div key={demo.id}>
                 <button

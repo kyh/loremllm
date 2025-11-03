@@ -6,7 +6,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "./utils";
 
 const badgeVariants = cva(
-  "m-0 inline-block min-h-[calc(var(--theme-line-height-base)*var(--font-size))] border-0 bg-[var(--theme-border)] px-[1ch] text-center align-top font-[var(--font-family-mono)] font-normal uppercase outline-0 transition-all duration-200 ease-in-out",
+  "m-0 inline-flex min-h-[calc(var(--theme-line-height-base)*var(--font-size))] border-0 bg-[var(--theme-border)] px-[1ch] text-center align-top font-[var(--font-family-mono)] font-normal uppercase outline-0 transition-all duration-200 ease-in-out",
   {
     variants: {
       variant: {

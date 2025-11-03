@@ -194,22 +194,6 @@
       format("woff2");
   }
 
-  a {
-    background: var(--theme-border-subdued);
-    color: var(--theme-text);
-
-    &:hover {
-      background: var(--theme-focused-foreground);
-      color: var(--theme-text);
-    }
-
-    &:focus {
-      background: var(--theme-focused-foreground);
-      color: var(--theme-text);
-      outline: 0;
-    }
-  }
-
   ul {
     list-style-position: inside;
     list-style-type: "▪";
