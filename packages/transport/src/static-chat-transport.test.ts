@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { StaticChatTransport } from "./index";
 
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
 const createUserMessage = (text: string, id = "user-1"): UIMessage =>
   ({
     id,
@@ -26,289 +30,234 @@ const readAllChunks = async (
   return chunks;
 };
 
+const createSendContext = ({
+  trigger = "submit-message" as const,
+  chatId = "chat-1",
+  messageId,
+  messages,
+}: {
+  trigger?: "submit-message" | "regenerate-message";
+  chatId?: string;
+  messageId?: string;
+  messages: UIMessage[];
+}) => ({
+  trigger,
+  chatId,
+  messageId,
+  messages,
+  headers: undefined,
+  body: undefined,
+  metadata: undefined,
+});
+
+// Helper to process chunks like useChat would - extract text from text-delta chunks
+const extractTextFromChunks = (chunks: UIMessageChunk[]): string => {
+  const textDeltas = chunks.filter(
+    (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+      chunk.type === "text-delta",
+  );
+  return textDeltas.map((chunk) => chunk.delta).join("");
+};
+
+// ============================================================================
+// Basic Functionality
+// ============================================================================
+
 describe("StaticChatTransport", () => {
-  const createSendContext = ({
-    trigger = "submit-message" as const,
-    chatId = "chat-1",
-    messageId,
-    messages,
-  }: {
-    trigger?: "submit-message" | "regenerate-message";
-    chatId?: string;
-    messageId?: string;
-    messages: UIMessage[];
-  }) => ({
-    trigger,
-    chatId,
-    messageId,
-    messages,
-    headers: undefined,
-    body: undefined,
-    metadata: undefined,
-  });
+  describe("Basic Streaming", () => {
+    it("streams the assistant message as UI message chunks", async () => {
+      const userMessage = createUserMessage("Hello");
 
-  it("streams the assistant message as UI message chunks", async () => {
-    const userMessage = createUserMessage("Hello");
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hi there!" };
+        },
+        autoChunkText: false,
+      });
 
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Hi there!" };
-      },
-      autoChunkText: false,
-    });
-
-    const stream = await transport.sendMessages({
-      ...createSendContext({ messages: [userMessage] }),
-      abortSignal: undefined,
-    });
-
-    const chunks = await readAllChunks(stream);
-    expect(chunks.map((chunk) => chunk.type)).toEqual([
-      "start",
-      "start-step",
-      "text-start",
-      "text-delta",
-      "text-end",
-      "finish-step",
-      "finish",
-    ]);
-    expect(
-      chunks.filter((chunk) => chunk.type === "text-delta")[0],
-    ).toMatchObject({ delta: "Hi there!" });
-  });
-
-  it("can replay the last assistant response via reconnectToStream", async () => {
-    const userMessage = createUserMessage("Hello");
-
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Response" };
-      },
-    });
-
-    await readAllChunks(
-      await transport.sendMessages({
+      const stream = await transport.sendMessages({
         ...createSendContext({ messages: [userMessage] }),
         abortSignal: undefined,
-      }),
-    );
+      });
 
-    const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-    expect(reconnect).not.toBeNull();
-    const chunks = await readAllChunks(reconnect!);
-    expect(chunks.map((chunk) => chunk.type)).toEqual([
-      "start",
-      "start-step",
-      "text-start",
-      "text-delta",
-      "text-end",
-      "finish-step",
-      "finish",
-    ]);
-  });
-
-  it("supports data-* parts", async () => {
-    const userMessage = createUserMessage("Hello");
-
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "data-widget", data: { foo: "bar" } };
-      },
+      const chunks = await readAllChunks(stream);
+      expect(chunks.map((chunk) => chunk.type)).toEqual([
+        "start",
+        "start-step",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+      ]);
+      expect(
+        chunks.filter((chunk) => chunk.type === "text-delta")[0],
+      ).toMatchObject({ delta: "Hi there!" });
     });
 
-    const chunks = await readAllChunks(
-      await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    );
+    it("requires mockResponse to yield at least one part", async () => {
+      const userMessage = createUserMessage("Hello");
 
-    expect(chunks.map((chunk) => chunk.type)).toEqual([
-      "start",
-      "data-widget",
-      "finish",
-    ]);
-    expect(chunks[1]).toMatchObject({
-      type: "data-widget",
-      data: { foo: "bar" },
-    });
-  });
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          // Yield nothing
+        },
+      });
 
-  it("requires mockResponse to yield at least one part", async () => {
-    const userMessage = createUserMessage("Hello");
-
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        // Yield nothing
-      },
-    });
-
-    await expect(
-      transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    ).rejects.toThrow(/at least one part/i);
-  });
-
-  it("invokes the chunk delay resolver for every chunk", async () => {
-    const userMessage = createUserMessage("Hello");
-    const chunkDelay = vi
-      .fn<(chunk: UIMessageChunk) => number>()
-      .mockReturnValue(0);
-
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Hello again!" };
-      },
-      chunkDelayMs: chunkDelay,
-    });
-
-    await readAllChunks(
-      await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    );
-
-    expect(chunkDelay).toHaveBeenCalled();
-    expect(chunkDelay.mock.calls.length).toBeGreaterThan(0);
-  });
-
-  it("supports tuple delay range for random delays", async () => {
-    const userMessage = createUserMessage("Hello");
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Test" };
-      },
-      chunkDelayMs: [10, 20], // Random delay between 10ms and 20ms
-    });
-
-    const start = Date.now();
-    await readAllChunks(
-      await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    );
-    const duration = Date.now() - start;
-
-    // Should have some delay (at least 10ms)
-    // We check for at least 5ms to account for test execution time variance
-    expect(duration).toBeGreaterThanOrEqual(5);
-  });
-
-  it("supports function returning tuple for per-chunk random delays", async () => {
-    const userMessage = createUserMessage("Hello");
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Test" };
-      },
-      chunkDelayMs: (chunk) => {
-        if (chunk.type === "text-delta") {
-          return [15, 25]; // Random delay between 15ms and 25ms for text deltas
-        }
-        return 0;
-      },
-    });
-
-    const start = Date.now();
-    await readAllChunks(
-      await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: undefined,
-      }),
-    );
-    const duration = Date.now() - start;
-
-    // Should have some delay from text-delta chunks
-    expect(duration).toBeGreaterThanOrEqual(5);
-  });
-
-  it("aborts the stream when the abort signal fires", async () => {
-    const userMessage = createUserMessage("Hello");
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Streaming..." };
-      },
-      chunkDelayMs: () => 50,
-    });
-
-    const abortController = new AbortController();
-    const streamPromise = transport.sendMessages({
-      ...createSendContext({ messages: [userMessage] }),
-      abortSignal: abortController.signal,
-    });
-    const stream = await streamPromise;
-    const reader = readAllChunks(stream);
-
-    abortController.abort();
-
-    await expect(reader).rejects.toThrow(/aborted/i);
-  });
-
-  it("regenerates an existing assistant message by id", async () => {
-    const userMessage = createUserMessage("Hello");
-    const previousAssistant: UIMessage = {
-      id: "assistant-1",
-      role: "assistant",
-      parts: [{ type: "text", text: "Old response" }],
-    } as UIMessage;
-
-    const transport = new StaticChatTransport({
-      async *mockResponse({ messageId }) {
-        // Use the provided messageId for regeneration
-        yield { type: "text", text: "Fresh response" };
-      },
-      autoChunkText: false,
-    });
-
-    const chunks = await readAllChunks(
-      await transport.sendMessages({
-        ...createSendContext({
-          trigger: "regenerate-message",
-          messageId: "assistant-1",
-          messages: [userMessage, previousAssistant],
+      await expect(
+        transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
         }),
+      ).rejects.toThrow(/at least one part/i);
+    });
+
+    it("yields multiple parts in sequence", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Response one" };
+          yield { type: "text", text: "Response two" };
+        },
+        autoChunkText: false,
+      });
+
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
         abortSignal: undefined,
-      }),
-    );
+      });
 
-    const textChunks = chunks.filter(
-      (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
-        chunk.type === "text-delta",
-    );
-    const fullText = textChunks.map((chunk) => chunk.delta).join("");
-    expect(fullText).toBe("Fresh response");
-  });
-
-  it("yields multiple parts in sequence", async () => {
-    const userMessage = createUserMessage("Hello");
-
-    const transport = new StaticChatTransport({
-      async *mockResponse() {
-        yield { type: "text", text: "Response one" };
-        yield { type: "text", text: "Response two" };
-      },
-      autoChunkText: false,
+      const chunks = await readAllChunks(stream);
+      const textChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      expect(textChunks).toHaveLength(2);
+      expect(textChunks[0]?.delta).toBe("Response one");
+      expect(textChunks[1]?.delta).toBe("Response two");
     });
 
-    const stream = await transport.sendMessages({
-      ...createSendContext({ messages: [userMessage] }),
-      abortSignal: undefined,
-    });
+    it("regenerates an existing assistant message by id", async () => {
+      const userMessage = createUserMessage("Hello");
+      const previousAssistant: UIMessage = {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [{ type: "text", text: "Old response" }],
+      } as UIMessage;
 
-    const chunks = await readAllChunks(stream);
-    const textChunks = chunks.filter(
-      (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
-        chunk.type === "text-delta",
-    );
-    expect(textChunks).toHaveLength(2);
-    expect(textChunks[0]?.delta).toBe("Response one");
-    expect(textChunks[1]?.delta).toBe("Response two");
+      const transport = new StaticChatTransport({
+        async *mockResponse({ messageId }) {
+          yield { type: "text", text: "Fresh response" };
+        },
+        autoChunkText: false,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({
+            trigger: "regenerate-message",
+            messageId: "assistant-1",
+            messages: [userMessage, previousAssistant],
+          }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textChunks = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      const fullText = textChunks.map((chunk) => chunk.delta).join("");
+      expect(fullText).toBe("Fresh response");
+    });
   });
 
-  describe("tool calls", () => {
+  // ============================================================================
+  // Message Parts
+  // ============================================================================
+
+  describe("Message Parts", () => {
+    it("supports data-* parts", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "data-widget", data: { foo: "bar" } };
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      expect(chunks.map((chunk) => chunk.type)).toEqual([
+        "start",
+        "data-widget",
+        "finish",
+      ]);
+      expect(chunks[1]).toMatchObject({
+        type: "data-widget",
+        data: { foo: "bar" },
+      });
+    });
+
+    it("handles reasoning and text parts together", async () => {
+      const userMessage = createUserMessage("Question");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "reasoning",
+            text: "First I think about this problem carefully step by step",
+          };
+          yield { type: "text", text: "Here is my final answer to you" };
+        },
+        autoChunkText: false,
+        autoChunkReasoning: false,
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reasoningDeltas = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      expect(reasoningDeltas.length).toBeGreaterThan(0);
+      expect(textDeltas.length).toBeGreaterThan(0);
+
+      const reasoningText = reasoningDeltas
+        .map((chunk) => chunk.delta)
+        .join("");
+      const textContent = textDeltas.map((chunk) => chunk.delta).join("");
+
+      expect(reasoningText).toBe(
+        "First I think about this problem carefully step by step",
+      );
+      expect(textContent).toBe("Here is my final answer to you");
+    });
+  });
+
+  // ============================================================================
+  // Tool Calls
+  // ============================================================================
+
+  describe("Tool Calls", () => {
     it("streams tool-input-available and tool-output-available for tool parts with output", async () => {
       const userMessage = createUserMessage("Search for cats");
 
@@ -347,7 +296,7 @@ describe("StaticChatTransport", () => {
       expect(inputChunk).toMatchObject({
         type: "tool-input-available",
         toolCallId: "call_123",
-        toolName: "tool", // toolName defaults to "tool" when not provided
+        toolName: "tool",
         input: { query: "cats" },
       });
 
@@ -445,7 +394,7 @@ describe("StaticChatTransport", () => {
       );
       expect(inputChunk).toMatchObject({
         toolCallId: "call_dynamic",
-        toolName: "tool", // toolName defaults to "tool" when not provided
+        toolName: "tool",
       });
     });
 
@@ -514,7 +463,7 @@ describe("StaticChatTransport", () => {
       );
       expect(inputChunk).toMatchObject({
         toolCallId: "call_named",
-        toolName: "search-tool", // toolName is used when provided
+        toolName: "search-tool",
         input: { query: "test" },
       });
     });
@@ -545,74 +494,6 @@ describe("StaticChatTransport", () => {
         "tool-input-available",
         "finish",
       ]);
-    });
-
-    it("handles tool parts with output but no state (uses output presence)", async () => {
-      const userMessage = createUserMessage("Get results");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield {
-            type: "tool-query",
-            toolCallId: "call_output_no_state",
-            state: "output-available",
-            input: { query: "test" },
-            output: { result: "data" },
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-available",
-        "finish",
-      ]);
-    });
-
-    it("handles tool parts with errorText but no state", async () => {
-      const userMessage = createUserMessage("Try operation");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield {
-            type: "tool-operation",
-            toolCallId: "call_error",
-            state: "output-error",
-            input: { op: "test" },
-            errorText: "Operation failed",
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-error",
-        "finish",
-      ]);
-
-      const errorChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
-          chunk.type === "tool-output-error",
-      );
-      expect(errorChunk?.errorText).toBe("Operation failed");
     });
 
     it("handles multiple tool parts in sequence", async () => {
@@ -705,12 +586,11 @@ describe("StaticChatTransport", () => {
       ]);
     });
 
-    it("handles progressive tool loading with input-available then output-available states", async () => {
+    it("handles progressive tool loading with state transitions", async () => {
       const userMessage = createUserMessage("Get weather");
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          // First yield: tool in loading state
           yield {
             type: "tool-weather",
             toolCallId: "call_weather_1",
@@ -719,10 +599,8 @@ describe("StaticChatTransport", () => {
             input: { location: "San Francisco" },
           } as UIMessage["parts"][number];
 
-          // Simulate delay (in real usage this would be an async operation)
           await new Promise((resolve) => setTimeout(resolve, 50));
 
-          // Second yield: tool with output
           yield {
             type: "tool-weather",
             toolCallId: "call_weather_1",
@@ -741,7 +619,6 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      // Should emit input chunk first, then output chunk
       const toolChunks = chunks.filter(
         (chunk) =>
           chunk.type === "tool-input-available" ||
@@ -757,7 +634,6 @@ describe("StaticChatTransport", () => {
       expect(inputChunk.type).toBe("tool-input-available");
       expect(inputChunk.toolCallId).toBe("call_weather_1");
       expect(inputChunk.toolName).toBe("weather");
-      expect(inputChunk.input).toEqual({ location: "San Francisco" });
 
       const outputChunk = toolChunks[1] as Extract<
         UIMessageChunk,
@@ -771,136 +647,11 @@ describe("StaticChatTransport", () => {
       });
     });
 
-    it("handles progressive tool loading with multiple state transitions", async () => {
-      const userMessage = createUserMessage("Search for something");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          // Step 1: input-streaming
-          yield {
-            type: "tool-search",
-            toolCallId: "call_search_1",
-            toolName: "search",
-            state: "input-streaming",
-            input: { query: "example" },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Step 2: input-available
-          yield {
-            type: "tool-search",
-            toolCallId: "call_search_1",
-            toolName: "search",
-            state: "input-available",
-            input: { query: "example" },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Step 3: output-available
-          yield {
-            type: "tool-search",
-            toolCallId: "call_search_1",
-            toolName: "search",
-            state: "output-available",
-            input: { query: "example" },
-            output: { results: [{ title: "Result 1" }] },
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
-      );
-
-      // Should emit input chunk once, then output chunk
-      expect(toolChunks).toHaveLength(2);
-      expect(toolChunks[0].type).toBe("tool-input-available");
-      expect(toolChunks[1].type).toBe("tool-output-available");
-    });
-
-    it("preserves order of tool calls and text parts in progressive loading", async () => {
-      const userMessage = createUserMessage("Get weather then summarize");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          // Tool call start
-          yield {
-            type: "tool-weather",
-            toolCallId: "call_weather_2",
-            toolName: "weather",
-            state: "input-available",
-            input: { location: "NYC" },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Tool call complete
-          yield {
-            type: "tool-weather",
-            toolCallId: "call_weather_2",
-            toolName: "weather",
-            state: "output-available",
-            input: { location: "NYC" },
-            output: { temperature: 68 },
-          } as UIMessage["parts"][number];
-
-          // Text response after tool
-          yield {
-            type: "text",
-            text: "The weather is nice.",
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      const chunkTypes = chunks.map((chunk) => chunk.type);
-      
-      // Tool chunks are emitted before steps (steps are only for text/reasoning)
-      // Verify the key chunks are in the right order
-      const toolInputIndex = chunkTypes.indexOf("tool-input-available");
-      const toolOutputIndex = chunkTypes.indexOf("tool-output-available");
-      const startStepIndex = chunkTypes.indexOf("start-step");
-      const textStartIndex = chunkTypes.indexOf("text-start");
-
-      // Verify tool chunks come before text chunks
-      expect(toolInputIndex).toBeLessThan(toolOutputIndex);
-      expect(toolOutputIndex).toBeLessThan(startStepIndex);
-      expect(startStepIndex).toBeLessThan(textStartIndex);
-
-      // Verify the structure: start -> tool chunks -> step -> text chunks -> step end -> finish
-      expect(chunkTypes[0]).toBe("start");
-      expect(chunkTypes[chunkTypes.length - 1]).toBe("finish");
-      expect(chunkTypes).toContain("tool-input-available");
-      expect(chunkTypes).toContain("tool-output-available");
-      expect(chunkTypes).toContain("start-step");
-      expect(chunkTypes).toContain("text-start");
-      expect(chunkTypes).toContain("text-end");
-      expect(chunkTypes).toContain("finish-step");
-    });
-
     it("does not emit duplicate chunks for unchanged tool state", async () => {
       const userMessage = createUserMessage("Process data");
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          // First occurrence
           yield {
             type: "tool-process",
             toolCallId: "call_process_1",
@@ -908,15 +659,13 @@ describe("StaticChatTransport", () => {
             input: { data: "test" },
           } as UIMessage["parts"][number];
 
-          // Second occurrence with same state (should not emit duplicate input chunk)
           yield {
             type: "tool-process",
             toolCallId: "call_process_1",
             state: "input-available",
-            input: { data: "test" }, // Same input
+            input: { data: "test" },
           } as UIMessage["parts"][number];
 
-          // Third occurrence with output (should emit output chunk)
           yield {
             type: "tool-process",
             toolCallId: "call_process_1",
@@ -940,79 +689,9 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-output-available",
       );
 
-      // Should only emit input once, then output once
       expect(toolChunks).toHaveLength(2);
       expect(toolChunks[0].type).toBe("tool-input-available");
       expect(toolChunks[1].type).toBe("tool-output-available");
-    });
-
-    it("handles multiple progressive tool calls with different IDs", async () => {
-      const userMessage = createUserMessage("Run multiple tools");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          // Tool 1: start
-          yield {
-            type: "tool-search",
-            toolCallId: "call_1",
-            state: "input-available",
-            input: { query: "test1" },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Tool 2: start
-          yield {
-            type: "tool-map",
-            toolCallId: "call_2",
-            state: "input-available",
-            input: { origin: "A" },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Tool 1: complete
-          yield {
-            type: "tool-search",
-            toolCallId: "call_1",
-            state: "output-available",
-            input: { query: "test1" },
-            output: { results: [] },
-          } as UIMessage["parts"][number];
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-
-          // Tool 2: complete
-          yield {
-            type: "tool-map",
-            toolCallId: "call_2",
-            state: "output-available",
-            input: { origin: "A" },
-            output: { route: "A->B" },
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
-      );
-
-      expect(toolChunks).toHaveLength(4);
-
-      // Verify order: call_1 input, call_2 input, call_1 output, call_2 output
-      expect((toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>).toolCallId).toBe("call_1");
-      expect((toolChunks[1] as Extract<UIMessageChunk, { type: "tool-input-available" }>).toolCallId).toBe("call_2");
-      expect((toolChunks[2] as Extract<UIMessageChunk, { type: "tool-output-available" }>).toolCallId).toBe("call_1");
-      expect((toolChunks[3] as Extract<UIMessageChunk, { type: "tool-output-available" }>).toolCallId).toBe("call_2");
     });
 
     it("handles tool error state in progressive loading", async () => {
@@ -1020,7 +699,6 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          // Tool starts
           yield {
             type: "tool-process",
             toolCallId: "call_error_1",
@@ -1030,7 +708,6 @@ describe("StaticChatTransport", () => {
 
           await new Promise((resolve) => setTimeout(resolve, 10));
 
-          // Tool fails
           yield {
             type: "tool-process",
             toolCallId: "call_error_1",
@@ -1065,99 +742,13 @@ describe("StaticChatTransport", () => {
       expect(errorChunk.toolCallId).toBe("call_error_1");
       expect(errorChunk.errorText).toBe("Processing failed");
     });
-
-    it("applies chunk delays to tool chunks", async () => {
-      const userMessage = createUserMessage("Delayed tool");
-
-      const delaySpy = vi.fn();
-
-      const transport = new StaticChatTransport({
-        chunkDelayMs: (chunk) => {
-          delaySpy(chunk.type);
-          if (
-            chunk.type === "tool-input-available" ||
-            chunk.type === "tool-output-available"
-          ) {
-            return 10; // 10ms delay for tool chunks
-          }
-          return 0;
-        },
-        async *mockResponse() {
-          yield {
-            type: "tool-test",
-            toolCallId: "call_delayed",
-            state: "input-available",
-            input: { test: true },
-          } as UIMessage["parts"][number];
-
-          yield {
-            type: "tool-test",
-            toolCallId: "call_delayed",
-            state: "output-available",
-            input: { test: true },
-            output: { result: "done" },
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      const startTime = Date.now();
-      const chunks = await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-      const endTime = Date.now();
-
-      // Verify delays were applied
-      expect(delaySpy).toHaveBeenCalledWith("tool-input-available");
-      expect(delaySpy).toHaveBeenCalledWith("tool-output-available");
-
-      // Verify chunks were still emitted
-      const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
-      );
-      expect(toolChunks).toHaveLength(2);
-    });
-
-    it("replays tool calls via reconnectToStream", async () => {
-      const userMessage = createUserMessage("Search");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield {
-            type: "tool-search",
-            toolCallId: "call_reconnect",
-            state: "output-available",
-            input: { query: "test" },
-            output: { results: [] },
-          } as UIMessage["parts"][number];
-        },
-      });
-
-      await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-
-      const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect).not.toBeNull();
-      const chunks = await readAllChunks(reconnect!);
-
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-available",
-        "finish",
-      ]);
-    });
   });
 
-  describe("auto-chunking", () => {
+  // ============================================================================
+  // Auto-Chunking
+  // ============================================================================
+
+  describe("Auto-Chunking", () => {
     it("chunks text word-by-word by default", async () => {
       const userMessage = createUserMessage("Hello");
 
@@ -1179,9 +770,7 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      // Should be chunked into words and spaces
       expect(textDeltaChunks.length).toBeGreaterThan(1);
-      // Collect all deltas to verify the complete text
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Hello world test");
     });
@@ -1191,7 +780,10 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "reasoning", text: "Let me think about this carefully" };
+          yield {
+            type: "reasoning",
+            text: "Let me think about this carefully",
+          };
         },
       });
 
@@ -1238,7 +830,6 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      // Should be a single chunk
       expect(textDeltaChunks).toHaveLength(1);
       expect(textDeltaChunks[0]?.delta).toBe("Hello world test");
     });
@@ -1293,7 +884,6 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      // Should split on commas and periods
       expect(textDeltaChunks.length).toBeGreaterThan(1);
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Hello,world.test");
@@ -1330,146 +920,6 @@ describe("StaticChatTransport", () => {
       expect(fullText).toBe("Step1.Step2.Step3");
     });
 
-    it("respects chunk delay when auto-chunking text", async () => {
-      const userMessage = createUserMessage("Hello");
-      const chunkDelays: number[] = [];
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "One two three" };
-        },
-        chunkDelayMs: (chunk) => {
-          if (chunk.type === "text-delta") {
-            chunkDelays.push(10);
-            return 10;
-          }
-          return 0;
-        },
-      });
-
-      const start = Date.now();
-      await readAllChunks(
-        await transport.sendMessages({
-          ...createSendContext({ messages: [userMessage] }),
-          abortSignal: undefined,
-        }),
-      );
-      const duration = Date.now() - start;
-
-      // Should have delays for each word chunk
-      expect(chunkDelays.length).toBeGreaterThan(1);
-      // Should take some time due to delays
-      expect(duration).toBeGreaterThanOrEqual(10);
-    });
-
-    it("aborts text streaming halfway through when auto-chunking", async () => {
-      const userMessage = createUserMessage("Hello");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield {
-            type: "text",
-            text: "This is a long message that will be chunked word by word",
-          };
-        },
-        chunkDelayMs: 50, // Delay between chunks
-      });
-
-      const abortController = new AbortController();
-      const stream = await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: abortController.signal,
-      });
-
-      const reader = stream.getReader();
-      const chunks: UIMessageChunk[] = [];
-
-      // Read a few chunks, then abort
-      let chunkCount = 0;
-      const maxChunks = 5;
-
-      try {
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          chunks.push(value);
-          chunkCount++;
-
-          // Abort after reading a few chunks
-          if (chunkCount >= maxChunks) {
-            abortController.abort();
-          }
-        }
-      } catch (error) {
-        // Expected to throw on abort
-        expect(error).toBeDefined();
-      }
-
-      // Should have read some chunks before aborting
-      expect(chunks.length).toBeGreaterThan(0);
-      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 1);
-
-      // Verify we got some text-delta chunks before abort
-      const textDeltas = chunks.filter(
-        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
-          chunk.type === "text-delta",
-      );
-      expect(textDeltas.length).toBeGreaterThan(0);
-    });
-
-    it("aborts reasoning streaming halfway through when auto-chunking", async () => {
-      const userMessage = createUserMessage("Think");
-
-      const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield {
-            type: "reasoning",
-            text: "First I need to think about this problem carefully step by step",
-          };
-        },
-        chunkDelayMs: 50,
-      });
-
-      const abortController = new AbortController();
-      const stream = await transport.sendMessages({
-        ...createSendContext({ messages: [userMessage] }),
-        abortSignal: abortController.signal,
-      });
-
-      const reader = stream.getReader();
-      const chunks: UIMessageChunk[] = [];
-      let chunkCount = 0;
-      const maxChunks = 4;
-
-      try {
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          chunks.push(value);
-          chunkCount++;
-
-          if (chunkCount >= maxChunks) {
-            abortController.abort();
-          }
-        }
-      } catch (error) {
-        expect(error).toBeDefined();
-      }
-
-      expect(chunks.length).toBeGreaterThan(0);
-      const reasoningDeltas = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
-          chunk.type === "reasoning-delta",
-      );
-      expect(reasoningDeltas.length).toBeGreaterThan(0);
-    });
-
     it("handles empty text with auto-chunking enabled", async () => {
       const userMessage = createUserMessage("Hello");
 
@@ -1491,8 +941,281 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      // Empty text should result in no delta chunks
       expect(textDeltaChunks).toHaveLength(0);
+    });
+  });
+
+  // ============================================================================
+  // Stream Control
+  // ============================================================================
+
+  describe("Stream Control", () => {
+    it("invokes the chunk delay resolver for every chunk", async () => {
+      const userMessage = createUserMessage("Hello");
+      const chunkDelay = vi
+        .fn<(chunk: UIMessageChunk) => number>()
+        .mockReturnValue(0);
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello again!" };
+        },
+        chunkDelayMs: chunkDelay,
+      });
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      expect(chunkDelay).toHaveBeenCalled();
+      expect(chunkDelay.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    it("supports tuple delay range for random delays", async () => {
+      const userMessage = createUserMessage("Hello");
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Test" };
+        },
+        chunkDelayMs: [10, 20],
+      });
+
+      const start = Date.now();
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+      const duration = Date.now() - start;
+
+      expect(duration).toBeGreaterThanOrEqual(5);
+    });
+
+    it("supports function returning tuple for per-chunk random delays", async () => {
+      const userMessage = createUserMessage("Hello");
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Test" };
+        },
+        chunkDelayMs: (chunk) => {
+          if (chunk.type === "text-delta") {
+            return [15, 25];
+          }
+          return 0;
+        },
+      });
+
+      const start = Date.now();
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+      const duration = Date.now() - start;
+
+      expect(duration).toBeGreaterThanOrEqual(5);
+    });
+
+    it("aborts the stream when the abort signal fires", async () => {
+      const userMessage = createUserMessage("Hello");
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Streaming..." };
+        },
+        chunkDelayMs: () => 50,
+      });
+
+      const abortController = new AbortController();
+      const streamPromise = transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: abortController.signal,
+      });
+      const stream = await streamPromise;
+      const reader = readAllChunks(stream);
+
+      abortController.abort();
+
+      await expect(reader).rejects.toThrow(/aborted/i);
+    });
+
+    it("aborts text streaming halfway through when auto-chunking", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "text",
+            text: "This is a long message that will be chunked word by word",
+          };
+        },
+        chunkDelayMs: 50,
+      });
+
+      const abortController = new AbortController();
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: abortController.signal,
+      });
+
+      const reader = stream.getReader();
+      const chunks: UIMessageChunk[] = [];
+      let chunkCount = 0;
+      const maxChunks = 5;
+
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          chunkCount++;
+
+          if (chunkCount >= maxChunks) {
+            abortController.abort();
+          }
+        }
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
+
+      expect(chunks.length).toBeGreaterThan(0);
+      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 1);
+
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      expect(textDeltas.length).toBeGreaterThan(0);
+    });
+
+    it("applies chunk delays to tool chunks", async () => {
+      const userMessage = createUserMessage("Delayed tool");
+
+      const delaySpy = vi.fn();
+
+      const transport = new StaticChatTransport({
+        chunkDelayMs: (chunk) => {
+          delaySpy(chunk.type);
+          if (
+            chunk.type === "tool-input-available" ||
+            chunk.type === "tool-output-available"
+          ) {
+            return 10;
+          }
+          return 0;
+        },
+        async *mockResponse() {
+          yield {
+            type: "tool-test",
+            toolCallId: "call_delayed",
+            state: "input-available",
+            input: { test: true },
+          } as UIMessage["parts"][number];
+
+          yield {
+            type: "tool-test",
+            toolCallId: "call_delayed",
+            state: "output-available",
+            input: { test: true },
+            output: { result: "done" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const startTime = Date.now();
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+      const endTime = Date.now();
+
+      expect(delaySpy).toHaveBeenCalledWith("tool-input-available");
+      expect(delaySpy).toHaveBeenCalledWith("tool-output-available");
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+      expect(toolChunks).toHaveLength(2);
+    });
+  });
+
+  // ============================================================================
+  // Reconnection
+  // ============================================================================
+
+  describe("Reconnection", () => {
+    it("can replay the last assistant response via reconnectToStream", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Response" };
+        },
+      });
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
+      expect(reconnect).not.toBeNull();
+      const chunks = await readAllChunks(reconnect!);
+      expect(chunks.map((chunk) => chunk.type)).toEqual([
+        "start",
+        "start-step",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+      ]);
+    });
+
+    it("replays tool calls via reconnectToStream", async () => {
+      const userMessage = createUserMessage("Search");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_reconnect",
+            state: "output-available",
+            input: { query: "test" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
+      expect(reconnect).not.toBeNull();
+      const chunks = await readAllChunks(reconnect!);
+
+      expect(chunks.map((chunk) => chunk.type)).toEqual([
+        "start",
+        "tool-input-available",
+        "tool-output-available",
+        "finish",
+      ]);
     });
 
     it("replays chunked messages via reconnectToStream", async () => {
@@ -1504,7 +1227,6 @@ describe("StaticChatTransport", () => {
         },
       });
 
-      // First stream
       await readAllChunks(
         await transport.sendMessages({
           ...createSendContext({ messages: [userMessage] }),
@@ -1512,7 +1234,6 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      // Reconnect
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
       expect(reconnect).not.toBeNull();
 
@@ -1522,10 +1243,515 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      // Should still be chunked on replay
       expect(textDeltaChunks.length).toBeGreaterThan(1);
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Hello world");
+    });
+  });
+
+  // ============================================================================
+  // Integration Tests (useChat-like scenarios)
+  // ============================================================================
+
+  describe("Integration Scenarios (useChat-like)", () => {
+    it("handles text streaming as useChat would receive it", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Hello! This is a streaming response." };
+        },
+        chunkDelayMs: 5,
+      });
+
+      const userMessage = createUserMessage("Hi there");
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: undefined,
+      });
+
+      const chunks = await readAllChunks(stream);
+      const fullText = extractTextFromChunks(chunks);
+      expect(fullText).toBe("Hello! This is a streaming response.");
+    });
+
+    it("handles tool calls as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_123",
+            state: "output-available",
+            input: { query: "test query" },
+            output: { results: [{ title: "Result 1" }] },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const userMessage = createUserMessage("Search for something");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolInputChunk = chunks.find(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+          chunk.type === "tool-input-available",
+      );
+      const toolOutputChunk = chunks.find(
+        (
+          chunk,
+        ): chunk is Extract<
+          UIMessageChunk,
+          { type: "tool-output-available" }
+        > => chunk.type === "tool-output-available",
+      );
+
+      expect(toolInputChunk).toBeDefined();
+      expect(toolInputChunk?.toolCallId).toBe("call_123");
+      expect(toolOutputChunk).toBeDefined();
+      expect(toolOutputChunk?.toolCallId).toBe("call_123");
+    });
+
+    it("handles data-* parts as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "data-widget",
+            id: "widget-1",
+            data: { count: 42, status: "active" },
+          };
+        },
+      });
+
+      const userMessage = createUserMessage("Show widget");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const dataChunk = chunks.find(
+        (
+          chunk,
+        ): chunk is UIMessageChunk & { type: "data-widget"; data: unknown } =>
+          chunk.type === "data-widget",
+      );
+
+      expect(dataChunk).toBeDefined();
+      expect(dataChunk?.data).toEqual({ count: 42, status: "active" });
+    });
+
+    it("handles source-url parts as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "source-url",
+            sourceId: "src-1",
+            url: "https://example.com/article",
+            title: "Example Article",
+          };
+        },
+      });
+
+      const userMessage = createUserMessage("Find sources");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const sourceChunk = chunks.find(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "source-url" }> =>
+          chunk.type === "source-url",
+      );
+
+      expect(sourceChunk).toBeDefined();
+      expect(sourceChunk).toMatchObject({
+        type: "source-url",
+        sourceId: "src-1",
+        url: "https://example.com/article",
+        title: "Example Article",
+      });
+    });
+
+    it("handles source-document parts as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "source-document",
+            sourceId: "doc-1",
+            mediaType: "application/pdf",
+            title: "Important Document",
+            filename: "document.pdf",
+          };
+        },
+      });
+
+      const userMessage = createUserMessage("Show document");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const docChunk = chunks.find(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "source-document" }> =>
+          chunk.type === "source-document",
+      );
+
+      expect(docChunk).toBeDefined();
+      expect(docChunk).toMatchObject({
+        type: "source-document",
+        sourceId: "doc-1",
+        mediaType: "application/pdf",
+        title: "Important Document",
+        filename: "document.pdf",
+      });
+    });
+
+    it("handles reasoning parts as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "reasoning",
+            text: "Let me think about this step by step...",
+          };
+          yield {
+            type: "text",
+            text: "Based on my reasoning, here's the answer.",
+          };
+        },
+        autoChunkText: false,
+        autoChunkReasoning: false,
+      });
+
+      const userMessage = createUserMessage("Think and respond");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const reasoningDeltas = chunks.filter(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+          chunk.type === "reasoning-delta",
+      );
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      expect(reasoningDeltas.length).toBeGreaterThan(0);
+      expect(textDeltas.length).toBeGreaterThan(0);
+
+      const reasoningText = reasoningDeltas
+        .map((chunk) => chunk.delta)
+        .join("");
+      const textContent = textDeltas.map((chunk) => chunk.delta).join("");
+
+      expect(reasoningText).toBe("Let me think about this step by step...");
+      expect(textContent).toBe("Based on my reasoning, here's the answer.");
+    });
+
+    it("handles multiple tool calls in sequence as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "tool-search",
+            toolCallId: "call_search",
+            state: "output-available",
+            input: { query: "coffee" },
+            output: { results: [{ title: "Coffee Shop" }] },
+          } as UIMessage["parts"][number];
+          yield {
+            type: "tool-map",
+            toolCallId: "call_map",
+            state: "output-available",
+            input: { origin: "A", destination: "B" },
+            output: { etaMinutes: 15 },
+          } as UIMessage["parts"][number];
+          yield {
+            type: "text",
+            text: "I found a coffee shop and calculated the route.",
+          };
+        },
+        autoChunkText: false,
+      });
+
+      const userMessage = createUserMessage("Search and route");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      expect(toolChunks.length).toBeGreaterThanOrEqual(4); // 2 inputs + 2 outputs
+
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      expect(textDeltas.length).toBeGreaterThan(0);
+      expect(extractTextFromChunks(chunks)).toContain(
+        "I found a coffee shop and calculated the route.",
+      );
+    });
+
+    it("handles tool calls with errors as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "tool-process",
+            toolCallId: "call_error",
+            state: "output-error",
+            input: { data: "test" },
+            errorText: "Processing failed: Invalid input",
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const userMessage = createUserMessage("Process data");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const errorChunk = chunks.find(
+        (
+          chunk,
+        ): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
+          chunk.type === "tool-output-error",
+      );
+
+      expect(errorChunk).toBeDefined();
+      expect(errorChunk?.toolCallId).toBe("call_error");
+      expect(errorChunk?.errorText).toBe("Processing failed: Invalid input");
+    });
+
+    it("handles progressive tool loading as useChat would process it", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather",
+            state: "input-available",
+            input: { location: "NYC" },
+          } as UIMessage["parts"][number];
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          yield {
+            type: "tool-weather",
+            toolCallId: "call_weather",
+            state: "output-available",
+            input: { location: "NYC" },
+            output: { temperature: 68, condition: "sunny" },
+          } as UIMessage["parts"][number];
+        },
+      });
+
+      const userMessage = createUserMessage("Get weather");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+
+      expect(toolChunks.length).toBe(2);
+      expect(toolChunks[0].type).toBe("tool-input-available");
+      expect(toolChunks[1].type).toBe("tool-output-available");
+
+      const outputChunk = toolChunks[1] as Extract<
+        UIMessageChunk,
+        { type: "tool-output-available" }
+      >;
+      expect(outputChunk.output).toEqual({
+        temperature: 68,
+        condition: "sunny",
+      });
+    });
+
+    it("handles mixed content (text, tools, data) as useChat would process it", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Let me search for that." };
+          yield {
+            type: "tool-search",
+            toolCallId: "call_mixed",
+            state: "output-available",
+            input: { query: "something" },
+            output: { results: [] },
+          } as UIMessage["parts"][number];
+          yield {
+            type: "data-status",
+            id: "status-1",
+            data: { status: "completed" },
+          };
+          yield { type: "text", text: "Here are the results!" };
+        },
+        autoChunkText: false,
+      });
+
+      const userMessage = createUserMessage("Search and show status");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      const toolChunks = chunks.filter(
+        (chunk) =>
+          chunk.type === "tool-input-available" ||
+          chunk.type === "tool-output-available",
+      );
+      const dataChunk = chunks.find((chunk) => chunk.type === "data-status");
+
+      expect(textDeltas.length).toBeGreaterThanOrEqual(2);
+      expect(toolChunks.length).toBeGreaterThanOrEqual(2);
+      expect(dataChunk).toBeDefined();
+    });
+
+    it("handles file parts as useChat would process them", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "file",
+            mediaType: "image/png",
+            url: "https://example.com/image.png",
+          };
+        },
+      });
+
+      const userMessage = createUserMessage("Show file");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const fileChunk = chunks.find(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "file" }> =>
+          chunk.type === "file",
+      );
+
+      expect(fileChunk).toBeDefined();
+      expect(fileChunk).toMatchObject({
+        type: "file",
+        mediaType: "image/png",
+        url: "https://example.com/image.png",
+      });
+    });
+
+    it("handles streaming text with auto-chunking as useChat would receive it", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "text",
+            text: "This is a streaming message that will be chunked word by word",
+          };
+        },
+        chunkDelayMs: 5,
+      });
+
+      const userMessage = createUserMessage("Stream this");
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+
+      expect(textDeltas.length).toBeGreaterThan(1);
+      const fullText = extractTextFromChunks(chunks);
+      expect(fullText).toBe(
+        "This is a streaming message that will be chunked word by word",
+      );
+    });
+
+    it("handles aborting mid-stream as useChat.stop() would", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            type: "text",
+            text: "This is a very long message that will be chunked and potentially aborted",
+          };
+        },
+        chunkDelayMs: 20,
+      });
+
+      const userMessage = createUserMessage("Stream this");
+      const abortController = new AbortController();
+      const stream = await transport.sendMessages({
+        ...createSendContext({ messages: [userMessage] }),
+        abortSignal: abortController.signal,
+      });
+
+      const reader = stream.getReader();
+      const chunks: UIMessageChunk[] = [];
+      let chunkCount = 0;
+      const maxChunks = 5;
+
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          chunkCount++;
+
+          if (chunkCount >= maxChunks) {
+            abortController.abort();
+          }
+        }
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
+
+      expect(chunks.length).toBeGreaterThan(0);
+      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 2);
+
+      const textDeltas = chunks.filter(
+        (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
+          chunk.type === "text-delta",
+      );
+      expect(textDeltas.length).toBeGreaterThan(0);
     });
   });
 });

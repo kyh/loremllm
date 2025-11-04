@@ -486,57 +486,68 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
             output?: unknown;
             errorText?: string;
             providerMetadata?: unknown;
+            [key: string]: unknown;
           };
-          const toolState = toolPartStateMap.get(toolPart.toolCallId);
-          const currentState = toolPart.state;
 
-          // Emit tool-input-available only on first occurrence
-          if (!toolState?.hasEmittedInput) {
-            chunks.push({
-              type: "tool-input-available",
-              toolCallId: toolPart.toolCallId,
-              toolName: toolPart.toolName ?? "tool",
-              input: toolPart.input ?? {},
-              providerMetadata: toolPart.providerMetadata,
-            } as UIMessageChunk);
-          }
+          // Skip state-based processing for special tool parts that don't follow the standard pattern
+          // (e.g., tool-approval-request, which has approvalId instead of state)
+          const hasStandardState =
+            "state" in toolPart && toolPart.state !== undefined;
 
-          // Emit output chunks only when state changes from a non-output state to an output state
-          // or when transitioning between output states (e.g., error to success)
-          if (currentState === "output-error") {
-            // Only emit if we haven't already emitted an error, or if transitioning from output-available
-            if (
-              toolState?.lastState !== "output-error" &&
-              toolState?.lastState !== "output-available"
-            ) {
+          if (hasStandardState) {
+            const toolState = toolPartStateMap.get(toolPart.toolCallId);
+            const currentState = toolPart.state;
+
+            // Emit tool-input-available only on first occurrence
+            if (!toolState?.hasEmittedInput) {
               chunks.push({
-                type: "tool-output-error",
+                type: "tool-input-available",
                 toolCallId: toolPart.toolCallId,
-                errorText:
-                  toolPart.errorText ?? "An unknown tool error occurred.",
+                toolName: toolPart.toolName ?? "tool",
+                input: toolPart.input ?? {},
                 providerMetadata: toolPart.providerMetadata,
               } as UIMessageChunk);
             }
-          } else if (currentState === "output-available") {
-            // Only emit if we haven't already emitted output-available
-            if (toolState?.lastState !== "output-available") {
-              chunks.push({
-                type: "tool-output-available",
-                toolCallId: toolPart.toolCallId,
-                output: toolPart.output ?? null,
-                providerMetadata: toolPart.providerMetadata,
-              } as UIMessageChunk);
-            }
-          }
 
-          // Update state tracking
-          toolPartStateMap.set(toolPart.toolCallId, {
-            hasEmittedInput: true,
-            lastInput: toolPart.input,
-            lastState: currentState,
-            lastOutput: toolPart.output,
-            lastErrorText: toolPart.errorText,
-          });
+            // Emit output chunks only when state changes from a non-output state to an output state
+            // or when transitioning between output states (e.g., error to success)
+            if (currentState === "output-error") {
+              // Only emit if we haven't already emitted an error, or if transitioning from output-available
+              if (
+                toolState?.lastState !== "output-error" &&
+                toolState?.lastState !== "output-available"
+              ) {
+                chunks.push({
+                  type: "tool-output-error",
+                  toolCallId: toolPart.toolCallId,
+                  errorText:
+                    toolPart.errorText ?? "An unknown tool error occurred.",
+                  providerMetadata: toolPart.providerMetadata,
+                } as UIMessageChunk);
+              }
+            } else if (currentState === "output-available") {
+              // Only emit if we haven't already emitted output-available
+              if (toolState?.lastState !== "output-available") {
+                chunks.push({
+                  type: "tool-output-available",
+                  toolCallId: toolPart.toolCallId,
+                  output: toolPart.output ?? null,
+                  providerMetadata: toolPart.providerMetadata,
+                } as UIMessageChunk);
+              }
+            }
+
+            // Update state tracking
+            toolPartStateMap.set(toolPart.toolCallId, {
+              hasEmittedInput: true,
+              lastInput: toolPart.input,
+              lastState: currentState,
+              lastOutput: toolPart.output,
+              lastErrorText: toolPart.errorText,
+            });
+          }
+          // For special tool parts without state (like tool-approval-request),
+          // we skip the standard processing to avoid type errors
           break;
         }
         if (part.type.startsWith("data-")) {
