@@ -3,6 +3,7 @@
 A lightweight transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack or incurring any llm fees.
 
 ## When to use it
+
 - Building demos or stories where the response is known ahead of time.
 - Faking AI interactions offline or in tests.
 - Wrapping bespoke backends that already output `UIMessage` objects.
@@ -268,3 +269,16 @@ Encountering an unsupported part type throws so the UI can flag the issue. Exten
 
 `StaticChatTransport` exposes the raw class if you want to subclass it, override `createStreamFromChunks`, or plug your own caching layer.  
 For complex real transports, consider implementing `ChatTransport` directly so you can forward the stream from your backend without converting to `UIMessage` first.
+
+## Copy messages to clipboard
+
+The `copyMessagesToClipboard` function can be used to copy a real llm response to the clipboard as a static transport template.
+
+```ts
+import { copyMessagesToClipboard } from "@loremllm/transport";
+import { useChat } from "ai/react";
+
+const { messages, sendMessage, status, error } = useChat({
+  onFinish: copyMessagesToClipboard,
+});
+```
