@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.4.5
+
+### Patch Changes
+
+- more tool part typing fixes
+
 ## 0.4.4
 
 ### Patch Changes

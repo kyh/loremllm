@@ -1,6 +1,6 @@
 {
   "name": "@loremllm/transport",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -24,6 +24,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./copy-messages-to-clipboard": {
+      "import": "./dist/copy-messages-to-clipboard.js",
+      "types": "./dist/copy-messages-to-clipboard.d.ts"
     }
   },
   "scripts": {

@@ -30,6 +30,17 @@ export type ToolPart = ToolUIPart & {
   providerMetadata?: unknown;
 };
 
+/**
+ * Special tool part type for tool parts that don't follow the standard state pattern
+ * (e.g., tool-approval-request). These parts are supported but will be skipped during
+ * standard tool processing since they don't have a `state` property.
+ */
+export type SpecialToolPart = {
+  type: `tool-${string}`;
+  toolCallId: string;
+  [key: string]: unknown;
+};
+
 export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
   id: string;
   messages: UI_MESSAGE[];
@@ -49,10 +60,17 @@ export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
   /**
    * Async generator function that yields UIMessagePart objects.
    * All yielded parts will be collected into a single assistant message.
+   *
+   * Special tool parts (like tool-approval-request) that don't follow the standard
+   * state pattern are supported and will be skipped during processing.
    */
   mockResponse: (
     context: StaticTransportContext<UI_MESSAGE>,
-  ) => AsyncGenerator<UI_MESSAGE["parts"][number], void, unknown>;
+  ) => AsyncGenerator<
+    UI_MESSAGE["parts"][number] | SpecialToolPart,
+    void,
+    unknown
+  >;
   /**
    * Optional delay (in milliseconds) to wait between chunk emissions to simulate streaming.
    * Accepts:
@@ -109,7 +127,11 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
 {
   private readonly mockResponseOption: (
     context: StaticTransportContext<UI_MESSAGE>,
-  ) => AsyncGenerator<UI_MESSAGE["parts"][number], void, unknown>;
+  ) => AsyncGenerator<
+    UI_MESSAGE["parts"][number] | SpecialToolPart,
+    void,
+    unknown
+  >;
   private readonly chunkDelayMs?: ChunkDelayResolver;
   private readonly autoChunkText: boolean | RegExp;
   private readonly autoChunkReasoning: boolean | RegExp;
@@ -173,7 +195,9 @@ export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
     const generator = this.mockResponseOption(context);
 
     for await (const part of generator) {
-      parts.push(part);
+      // Special tool parts (like tool-approval-request) are cast to parts array type
+      // They'll be handled specially during chunk processing (skipped if no state)
+      parts.push(part as UI_MESSAGE["parts"][number]);
     }
 
     if (parts.length === 0) {
