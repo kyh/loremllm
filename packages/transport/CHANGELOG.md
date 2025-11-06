@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.4.6
+
+### Patch Changes
+
+- add copy to clipboard helper
+
 ## 0.4.5
 
 ### Patch Changes
