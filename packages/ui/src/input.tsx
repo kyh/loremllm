@@ -92,7 +92,6 @@ export function useOverlayMirrorStyles<T extends HTMLElement>(
       fontVariant: cs.fontVariant,
       lineHeight: cs.lineHeight,
       letterSpacing: cs.letterSpacing,
-      color: cs.color,
       width: cs.width,
       whiteSpace: (cs.whiteSpace as any) || undefined,
     });

@@ -17,7 +17,17 @@ type CopyMessagesOptions<UI_MESSAGE extends UIMessage = UIMessage> = {
 };
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown clipboard error.";
+  if (error instanceof Error) {
+    // Handle DOMException (clipboard API errors)
+    if (error.name === "NotAllowedError" || error.name === "SecurityError") {
+      return "Clipboard access denied. Please grant clipboard permissions.";
+    }
+    if (error.name === "NotFoundError") {
+      return "Clipboard not available.";
+    }
+    return error.message;
+  }
+  return "Unknown clipboard error.";
 }
 
 function handleCopyError(runtime: RuntimeGlobal, error: unknown): void {
@@ -28,40 +38,42 @@ function handleCopyError(runtime: RuntimeGlobal, error: unknown): void {
 export function copyMessagesToClipboard<
   UI_MESSAGE extends UIMessage = UIMessage,
 >(options: CopyMessagesOptions<UI_MESSAGE>): void {
-  // Get all assistant messages and deduplicate by message ID
-  const seenIds = new Set<string>();
-  const assistantMessages = options.messages.filter(
-    (message): message is UI_MESSAGE => {
-      if (message.role !== "assistant") {
-        return false;
-      }
-      if (seenIds.has(message.id)) {
-        return false;
-      }
-      seenIds.add(message.id);
-      return true;
-    },
-  );
-
   const runtime = globalThis as RuntimeGlobal;
 
-  if (assistantMessages.length === 0) {
-    notify(runtime, "No assistant messages were found to copy.");
-    return;
-  }
-
-  const template = buildStaticTransportTemplate(assistantMessages);
-  const writeText = runtime.navigator?.clipboard?.writeText;
-
-  if (typeof writeText !== "function") {
-    const errorMessage =
-      "Clipboard access is not available in this environment.";
-    notify(runtime, errorMessage);
-    throw new Error(errorMessage);
-  }
-
   try {
-    const result = writeText(template);
+    // Get all assistant messages and deduplicate by message ID
+    const seenIds = new Set<string>();
+    const assistantMessages = options.messages.filter(
+      (message): message is UI_MESSAGE => {
+        if (message.role !== "assistant") {
+          return false;
+        }
+        if (seenIds.has(message.id)) {
+          return false;
+        }
+        seenIds.add(message.id);
+        return true;
+      },
+    );
+
+    if (assistantMessages.length === 0) {
+      notify(runtime, "No assistant messages were found to copy.");
+      return;
+    }
+
+    const template = buildStaticTransportTemplate(assistantMessages);
+    const clipboard = runtime.navigator?.clipboard;
+
+    if (!clipboard || typeof clipboard.writeText !== "function") {
+      const errorMessage =
+        "Clipboard access is not available in this environment.";
+      notify(runtime, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Call writeText directly on clipboard object to preserve 'this' context
+    // and avoid "illegal invocation" error
+    const result = clipboard.writeText(template);
     if (result instanceof Promise) {
       void result
         .then(() => {
@@ -74,8 +86,15 @@ export function copyMessagesToClipboard<
       notify(runtime, SUCCESS_MESSAGE);
     }
   } catch (error) {
+    // Only handle and throw for truly unrecoverable errors (like clipboard not available)
+    // For other errors, handle them but don't throw to avoid breaking callbacks
+    if (
+      error instanceof Error &&
+      error.message.includes("Clipboard access is not available")
+    ) {
+      throw error;
+    }
     handleCopyError(runtime, error);
-    throw error;
   }
 }
 

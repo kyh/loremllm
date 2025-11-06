@@ -32,7 +32,6 @@ const Page = () => {
 
       // Send message with empty body to trigger lorem endpoint
       await sendMessage({ text: trimmedInput }, { body: {} });
-      e.currentTarget.reset();
     },
     [sendMessage],
   );
