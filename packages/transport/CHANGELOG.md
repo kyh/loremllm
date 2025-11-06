@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.5.0
+
+### Minor Changes
+
+- error handling and copy function
+
 ## 0.4.6
 
 ### Patch Changes
