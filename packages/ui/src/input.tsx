@@ -221,7 +221,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className,
           )}
           autoComplete="off"
-          style={{ caretColor: "transparent", background: "transparent" }}
+          style={{
+            caretColor: "transparent",
+            background: "transparent",
+            color: "transparent",
+          }}
           {...props}
         />
         <div

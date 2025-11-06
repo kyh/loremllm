@@ -110,7 +110,7 @@ const Page = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <Input
             name="message"
             placeholder="Type your message..."
@@ -118,6 +118,7 @@ const Page = () => {
             className="flex-1"
           />
           <Button
+            className="self-end"
             type="submit"
             disabled={status === "submitted" || status === "streaming"}
           >
