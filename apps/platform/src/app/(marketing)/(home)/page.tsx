@@ -1,7 +1,9 @@
+import { HomeTerminal } from "../_components/home-terminal";
+
 const Home = () => {
   return (
-    <main className="flex flex-1 items-center justify-center">
-      [COMING SOON]
+    <main className="flex h-screen w-screen overflow-hidden bg-slate-950">
+      <HomeTerminal />
     </main>
   );
 };
