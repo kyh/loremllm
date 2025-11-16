@@ -27,7 +27,7 @@
     "@xenova/transformers": "^2.17.2",
     "ai": "^5.0.93",
     "lorem-ipsum": "^2.0.8",
-    "msw": "^2.12.1",
+    "msw": "^2.12.2",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
