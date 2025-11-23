@@ -89,8 +89,8 @@ type LayoutProps = {
 const RootLayout = (props: LayoutProps) => {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="theme-light antialiased">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <body className="antialiased">
+        <ThemeProvider attribute="class">
           <TooltipProvider>
             <TRPCReactProvider>{props.children}</TRPCReactProvider>
             <GlobalToaster />

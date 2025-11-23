@@ -245,7 +245,7 @@
     display: block;
   }
 
-  body.theme-blue {
+  .theme-blue {
     --theme-overlay: var(--color-blue-20-5);
     --theme-background: var(--color-blue-80);
     --theme-background-modal: var(--color-blue-70);
@@ -262,7 +262,7 @@
     --theme-focused-foreground-subdued: var(--color-blue-50-5);
   }
 
-  body.theme-light {
+  .theme-light {
     --theme-overlay: var(--color-black-100-4);
     --theme-background: var(--color-white);
     --theme-background-modal: var(--color-gray-20);
@@ -279,7 +279,7 @@
     --theme-focused-foreground-subdued: var(--color-neon-green-50-5);
   }
 
-  body.theme-dark {
+  .theme-dark {
     --theme-overlay: var(--color-black-100-4);
     --theme-background: var(--color-black-100);
     --theme-background-modal: var(--color-gray-80);
@@ -296,7 +296,7 @@
     --theme-focused-foreground-subdued: var(--color-daybreak-10-5);
   }
 
-  body.theme-green {
+  .theme-green {
     --theme-overlay: var(--color-neon-green-100-4);
     --theme-background: rgba(44, 255, 5);
     --theme-background-modal: var(--color-neon-green-50);
@@ -313,7 +313,7 @@
     --theme-focused-foreground-subdued: rgba(255, 82, 243, 0.5);
   }
 
-  body.theme-black-red {
+  .theme-black-red {
     --theme-overlay: var(--color-red-100-4);
     --theme-background: var(--color-black-100);
     --theme-background-modal: var(--color-red-70);
@@ -330,7 +330,7 @@
     --theme-focused-foreground-subdued: var(--color-red-70-4);
   }
 
-  body.theme-black-teal {
+  .theme-black-teal {
     --theme-overlay: var(--color-teal-100-4);
     --theme-background: var(--color-black-100);
     --theme-background-modal: var(--color-teal-70);
@@ -347,7 +347,7 @@
     --theme-focused-foreground-subdued: var(--color-teal-70-4);
   }
 
-  body.theme-black-green {
+  .theme-black-green {
     --theme-overlay: var(--color-black-100-4);
     --theme-background: var(--color-black-100);
     --theme-background-modal: var(--color-gray-90);
@@ -364,45 +364,45 @@
     --theme-focused-foreground-subdued: var(--color-gray-40);
   }
 
-  body.font-use-berkeley-mono {
+  .font-use-berkeley-mono {
     --font-family-mono: "TX02Mono-Regular", sans-serif;
   }
 
-  body.font-use-commit-mono {
+  .font-use-commit-mono {
     --font-family-mono: "CommitMono-Regular", sans-serif;
   }
 
-  body.font-use-departure-mono {
+  .font-use-departure-mono {
     --font-family-mono: "DepartureMono-Regular", sans-serif;
   }
 
-  body.font-use-fira-code {
+  .font-use-fira-code {
     --font-family-mono: "FiraCode-Regular", sans-serif;
   }
 
-  body.font-use-fragment-mono {
+  .font-use-fragment-mono {
     --font-family-mono: "FragmentMono-Regular", sans-serif;
   }
 
-  body.font-use-iosevka-term {
+  .font-use-iosevka-term {
     --font-family-mono: "IosevkaTerm-Regular", sans-serif;
   }
 
-  body.font-use-jet-brains-mono {
+  .font-use-jet-brains-mono {
     --font-family-mono: "JetBrainsMono-Regular", sans-serif;
   }
 
-  body.font-use-server-mono {
+  .font-use-server-mono {
     --font-family-mono: "ServerMono", sans-serif;
   }
 
-  body.font-use-sfmono-square {
+  .font-use-sfmono-square {
     --font-family-mono: "SFMonoSquare-Regular", sans-serif;
   }
 
   #__next {
   }
-
+  /* 
   html,
   body {
     --color-black-100: rgba(0, 0, 0, 1);
@@ -574,4 +574,5 @@
       background: var(--theme-border);
     }
   }
+  */
 }
