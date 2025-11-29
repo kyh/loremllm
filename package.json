@@ -1,7 +1,7 @@
 {
   "name": "loremllm",
   "private": true,
-  "packageManager": "pnpm@10.23.0",
+  "packageManager": "pnpm@10.24.0",
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
@@ -22,7 +22,7 @@
     "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
+    "@changesets/cli": "^2.29.8",
     "@kyh/prettier-config": "catalog:",
     "dotenv-cli": "^11.0.0",
     "pkgroll": "^2.21.3",
