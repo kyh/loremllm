@@ -80,7 +80,7 @@ export const MessageAction = ({
   children,
   label,
   variant = "ghost",
-  size = "icon-sm",
+  size = "icon",
   ...props
 }: MessageActionProps) => {
   const button = (
@@ -249,7 +249,7 @@ export const MessageBranchPrevious = ({
       aria-label="Previous branch"
       disabled={totalBranches <= 1}
       onClick={goToPrevious}
-      size="icon-sm"
+      size="icon"
       type="button"
       variant="ghost"
       {...props}
@@ -273,7 +273,7 @@ export const MessageBranchNext = ({
       aria-label="Next branch"
       disabled={totalBranches <= 1}
       onClick={goToNext}
-      size="icon-sm"
+      size="icon"
       type="button"
       variant="ghost"
       {...props}
@@ -327,12 +327,12 @@ export type MessageAttachmentProps = HTMLAttributes<HTMLDivElement> & {
   onRemove?: () => void;
 };
 
-export function MessageAttachment({
+export const MessageAttachment = ({
   data,
   className,
   onRemove,
   ...props
-}: MessageAttachmentProps) {
+}: MessageAttachmentProps) => {
   const filename = data.filename || "";
   const mediaType =
     data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
@@ -407,11 +407,11 @@ export function MessageAttachment({
 
 export type MessageAttachmentsProps = ComponentProps<"div">;
 
-export function MessageAttachments({
+export const MessageAttachments = ({
   children,
   className,
   ...props
-}: MessageAttachmentsProps) {
+}: MessageAttachmentsProps) => {
   if (!children) {
     return null;
   }
