@@ -1,6 +1,5 @@
-import type { Experimental_GeneratedImage } from "ai";
-
 import { cn } from "../utils";
+import type { Experimental_GeneratedImage } from "ai";
 
 export type ImageProps = Experimental_GeneratedImage & {
   className?: string;
@@ -18,7 +17,7 @@ export const Image = ({
     alt={props.alt}
     className={cn(
       "h-auto max-w-full overflow-hidden rounded-md",
-      props.className,
+      props.className
     )}
     src={`data:${mediaType};base64,${base64}`}
   />

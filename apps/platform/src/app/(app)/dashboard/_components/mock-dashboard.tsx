@@ -66,8 +66,14 @@ const formatOutputToHtml = (content: string) =>
       '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
     )
     .replace(/^# (.*$)/gm, '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>')
-    .replace(/^## (.*$)/gm, '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>')
-    .replace(/^### (.*$)/gm, '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>')
+    .replace(
+      /^## (.*$)/gm,
+      '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
+    )
+    .replace(
+      /^### (.*$)/gm,
+      '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
+    )
     .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
     .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
     .replace(/\n\n/g, '</p><p class="mb-2">')
@@ -293,7 +299,7 @@ export const MockDashboard = () => {
                 rows={3}
               />
             </div>
-            <div className="sm:col-span-2 flex justify-end">
+            <div className="flex justify-end sm:col-span-2">
               <Button type="submit" disabled={createCollection.isPending}>
                 Create collection
               </Button>
@@ -375,7 +381,7 @@ export const MockDashboard = () => {
                 rows={3}
               />
             </div>
-            <div className="sm:col-span-2 flex justify-end">
+            <div className="flex justify-end sm:col-span-2">
               <Button type="submit" disabled={updateCollection.isPending}>
                 Update collection
               </Button>
@@ -466,7 +472,7 @@ export const MockDashboard = () => {
                 Supports markdown formatting for richer answers.
               </p>
             </div>
-            <div className="md:col-span-2 flex justify-end">
+            <div className="flex justify-end md:col-span-2">
               <Button type="submit" disabled={createInteraction.isPending}>
                 Save mock response
               </Button>
@@ -496,8 +502,8 @@ export const MockDashboard = () => {
               <TableBody>
                 {collection.interactions.map((interaction) => (
                   <TableRow key={interaction.id}>
-                    <TableCell className="whitespace-normal align-top">
-                      <div className="font-medium leading-6">
+                    <TableCell className="align-top whitespace-normal">
+                      <div className="leading-6 font-medium">
                         {interaction.title}
                       </div>
                       {interaction.description ? (
@@ -507,22 +513,20 @@ export const MockDashboard = () => {
                       ) : null}
                       <div className="text-muted-foreground mt-2 flex items-center gap-2 text-[0.7rem]">
                         <span>Response schema:</span>
-                        <span className="rounded bg-muted px-2 py-0.5 font-mono">
+                        <span className="bg-muted rounded px-2 py-0.5 font-mono">
                           {interaction.responseSchema}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-pre-wrap align-top text-xs leading-5 text-muted-foreground">
+                    <TableCell className="text-muted-foreground align-top text-xs leading-5 whitespace-pre-wrap">
                       {interaction.input}
                     </TableCell>
-                    <TableCell className="whitespace-normal align-top">
+                    <TableCell className="align-top whitespace-normal">
                       <div className="flex flex-col gap-2">
-                        <Badge className="w-fit">
-                          Response
-                        </Badge>
+                        <Badge className="w-fit">Response</Badge>
                         {typeof interaction.output === "string" ? (
                           <div
-                            className="prose prose-sm max-w-none whitespace-pre-wrap text-sm"
+                            className="prose prose-sm max-w-none text-sm whitespace-pre-wrap"
                             dangerouslySetInnerHTML={{
                               __html: formatOutputToHtml(interaction.output),
                             }}
@@ -534,7 +538,7 @@ export const MockDashboard = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="align-top text-right">
+                    <TableCell className="text-right align-top">
                       <Button
                         variant="ghost"
                         size="sm"

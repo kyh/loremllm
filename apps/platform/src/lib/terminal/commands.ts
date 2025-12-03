@@ -1,6 +1,6 @@
 import type { ExtendedTerminal } from "./types";
 import { _DIRS, _FILES, _filesHere, _FULL_PATHS, getFileContents } from "./fs";
-import { colorText } from "./terminal-ext";
+import { colorText } from "./terminal-core";
 
 let killed = false;
 
@@ -9,6 +9,7 @@ const help = {
   "%whoami%": "learn about LoremLLM",
   "%twitter%": "twitter account",
   "%github%": "github repository",
+  "%demo%": "navigate to the demo page",
   "%other%": "try your fav commands (e.g. %ls%, %groups%, %su%)",
 };
 
@@ -45,6 +46,11 @@ export const commands = {
 
   twitter: function (args: string[], term: ExtendedTerminal) {
     term.displayURL("https://twitter.com/kaiyuhsu");
+  },
+
+  demo: function (args: string[], term: ExtendedTerminal) {
+    term.stylePrint("Navigating to demo page...");
+    term.navigate("/demo");
   },
 
   other: function (args: string[], term: ExtendedTerminal) {

@@ -3,6 +3,8 @@ import { GlobalAlertDialog } from "@repo/ui/alert-dialog";
 import { ThemeProvider } from "@repo/ui/theme";
 import { GlobalToaster } from "@repo/ui/toast";
 import { TooltipProvider } from "@repo/ui/tooltip";
+import { cn } from "@repo/ui/utils";
+import { GeistMono } from "geist/font/mono";
 
 import { siteConfig } from "@/lib/site-config";
 import { TRPCReactProvider } from "@/trpc/react";
@@ -89,8 +91,13 @@ type LayoutProps = {
 const RootLayout = (props: LayoutProps) => {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
-        <ThemeProvider attribute="class">
+      <body
+        className={cn(
+          GeistMono.variable,
+          "text-foreground bg-background font-mono antialiased",
+        )}
+      >
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <TooltipProvider>
             <TRPCReactProvider>{props.children}</TRPCReactProvider>
             <GlobalToaster />

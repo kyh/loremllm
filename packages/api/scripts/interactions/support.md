@@ -5,11 +5,13 @@ We're here to help! Multiple ways to get support:
 ## 📚 Self-Service Resources
 
 **Documentation**
+
 - Comprehensive guides: [docs.loremllm.com](https://docs.loremllm.com)
 - API reference and examples
 - Video tutorials and walkthroughs
 
 **Community**
+
 - Discord server: [discord.gg/loremllm](https://discord.gg/loremllm)
 - GitHub discussions
 - Community-contributed examples
@@ -17,16 +19,19 @@ We're here to help! Multiple ways to get support:
 ## 💬 Direct Support
 
 **Email Support**
+
 - support@loremllm.com
 - Response time: 24-48 hours (Free tier)
 - Response time: 4-8 hours (Pro tier)
 - Response time: <2 hours (Enterprise tier)
 
 **Live Chat**
+
 - Available in dashboard (Pro and Enterprise)
 - Business hours: Mon-Fri, 9am-5pm PT
 
 **Priority Support** (Enterprise only)
+
 - Dedicated Slack channel
 - Phone support
 - Assigned customer success manager

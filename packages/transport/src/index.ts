@@ -122,9 +122,9 @@ type SendMessagesOptions<UI_MESSAGE extends UIMessage> = {
   abortSignal: AbortSignal | undefined;
 } & ChatRequestOptions;
 
-export class StaticChatTransport<UI_MESSAGE extends UIMessage = UIMessage>
-  implements ChatTransport<UI_MESSAGE>
-{
+export class StaticChatTransport<
+  UI_MESSAGE extends UIMessage = UIMessage,
+> implements ChatTransport<UI_MESSAGE> {
   private readonly mockResponseOption: (
     context: StaticTransportContext<UI_MESSAGE>,
   ) => AsyncGenerator<

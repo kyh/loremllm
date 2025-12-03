@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { CircleIcon } from "lucide-react";
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 
 import { cn } from "./utils";
 
@@ -12,7 +13,7 @@ const RadioGroup = ({
   return (
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
-      className={cn("grid gap-0", className)}
+      className={cn("grid gap-3", className)}
       {...props}
     />
   );
@@ -20,35 +21,24 @@ const RadioGroup = ({
 
 const RadioGroupItem = ({
   className,
-  children,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Item> & {
-  children?: React.ReactNode;
-}) => {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) => {
   return (
-    <div className="relative flex items-start justify-between">
-      <RadioGroupPrimitive.Item
-        data-slot="radio-group-item"
-        className={cn(
-          "inline-flex h-[calc(var(--font-size)*var(--theme-line-height-base))] w-[3ch] flex-shrink-0 cursor-pointer items-center justify-center bg-[var(--theme-button-foreground)] text-[var(--theme-text)] transition-all duration-200 ease-in-out outline-none focus:bg-[var(--theme-focused-foreground)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[var(--theme-text)]",
-          className,
-        )}
-        {...props}
+    <RadioGroupPrimitive.Item
+      data-slot="radio-group-item"
+      className={cn(
+        "border-input text-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 aspect-square size-4 shrink-0 rounded-full border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      <RadioGroupPrimitive.Indicator
+        data-slot="radio-group-indicator"
+        className="relative flex items-center justify-center"
       >
-        <RadioGroupPrimitive.Indicator
-          data-slot="radio-group-indicator"
-          className="flex items-center justify-center"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-block h-[1ch] w-[1ch] rotate-45 bg-[var(--theme-background)]"
-          />
-        </RadioGroupPrimitive.Indicator>
-      </RadioGroupPrimitive.Item>
-      <div className="w-full min-w-[10%] self-stretch bg-[var(--theme-button-background)] pb-[calc(8px*var(--theme-line-height-base))] shadow-[inset_0_1px_0_0_var(--theme-border-subdued)]">
-        &nbsp;&nbsp;{children}
-      </div>
-    </div>
+        <CircleIcon className="fill-primary absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2" />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
   );
 };
 

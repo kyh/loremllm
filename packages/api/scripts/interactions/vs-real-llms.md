@@ -23,11 +23,11 @@ LoremLLM and real LLMs serve different purposes! Here's when to use each:
 ## 🎨 Best Practice: Use Both!
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
-const model = isDevelopment 
-  ? loremllmModel  // Fast, free, predictable
-  : openaiModel;   // Smart, dynamic, production-ready
+const model = isDevelopment
+  ? loremllmModel // Fast, free, predictable
+  : openaiModel; // Smart, dynamic, production-ready
 ```
 
 **Pro tip:** Start with LoremLLM for development, then gradually introduce real LLMs as you validate your use case!

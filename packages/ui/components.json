@@ -4,14 +4,21 @@
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "config": "./tailwind.config.ts",
-    "css": "unused.css",
-    "baseColor": "zinc",
-    "cssVariables": true
+    "config": "",
+    "css": "../../apps/nextjs/src/app/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
-    "utils": "@repo/ui/utils",
-    "components": "src/",
-    "ui": "src/"
+    "components": "src",
+    "utils": "src",
+    "ui": "src",
+    "lib": "src",
+    "hooks": "src"
+  },
+  "registries": {
+    "@ai-elements": "https://registry.ai-sdk.dev/{name}.json"
   }
 }

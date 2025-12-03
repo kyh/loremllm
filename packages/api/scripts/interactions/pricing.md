@@ -3,6 +3,7 @@
 We offer flexible pricing to suit teams of all sizes:
 
 ## 🆓 Free Tier
+
 - Up to 3 collections
 - 50 interactions per collection
 - 10,000 API calls per month
@@ -10,6 +11,7 @@ We offer flexible pricing to suit teams of all sizes:
 - Perfect for personal projects and prototypes!
 
 ## 💼 Pro - $29/month
+
 - Unlimited collections
 - Unlimited interactions
 - 100,000 API calls per month
@@ -18,6 +20,7 @@ We offer flexible pricing to suit teams of all sizes:
 - Team collaboration (up to 5 members)
 
 ## 🏢 Enterprise - Custom Pricing
+
 - Everything in Pro
 - Unlimited API calls
 - SLA guarantees

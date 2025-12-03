@@ -1,10 +1,12 @@
 "use client";
 
-import type { ComponentProps } from "react";
-
 import { Button } from "../button";
-import { ScrollArea, ScrollBar } from "../scroll-area";
+import {
+  ScrollArea,
+  ScrollBar,
+} from "../scroll-area";
 import { cn } from "../utils";
+import type { ComponentProps } from "react";
 
 export type SuggestionsProps = ComponentProps<typeof ScrollArea>;
 

@@ -1,5 +1,5 @@
-import { parse as parseYaml } from "yaml";
 import type { ToolUIPart, UIMessage } from "ai";
+import { parse as parseYaml } from "yaml";
 
 /**
  * Extract the user query from the messages array
@@ -81,7 +81,10 @@ const parseToolFenceInfo = (
 
       if (["name", "tool", "toolname"].includes(key) && !headerToolName) {
         headerToolName = value;
-      } else if (["id", "toolcallid", "call", "callid"].includes(key) && !headerToolCallId) {
+      } else if (
+        ["id", "toolcallid", "call", "callid"].includes(key) &&
+        !headerToolCallId
+      ) {
         headerToolCallId = value;
       }
 
@@ -98,9 +101,7 @@ const parseToolFenceInfo = (
   return { headerToolName, headerToolCallId };
 };
 
-const isValidToolState = (
-  value: unknown,
-): ToolInvocationState | undefined => {
+const isValidToolState = (value: unknown): ToolInvocationState | undefined => {
   if (typeof value !== "string") {
     return undefined;
   }
@@ -300,7 +301,10 @@ export const createStreamChunks = (
         toolCallId: chunk.toolCallId,
         errorText: chunk.errorText ?? "An unknown tool error occurred.",
       });
-    } else if (finalState === "output-available" || chunk.output !== undefined) {
+    } else if (
+      finalState === "output-available" ||
+      chunk.output !== undefined
+    ) {
       events.push({
         type: "tool-output-available" as const,
         toolCallId: chunk.toolCallId,

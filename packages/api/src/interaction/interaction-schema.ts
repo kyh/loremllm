@@ -17,4 +17,3 @@ export const queryInteractionInput = z.object({
   query: z.string().min(1, "Query is required"),
   limit: z.number().min(1).max(10).optional(),
 });
-

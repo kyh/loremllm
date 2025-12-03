@@ -225,4 +225,3 @@ export const collectionRouter = createTRPCRouter({
       return { success: true } as const;
     }),
 });
-

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as AvatarPrimitive from "@radix-ui/react-avatar";
+import { Avatar as AvatarPrimitive } from "radix-ui";
 
 import { cn } from "./utils";
 
@@ -13,7 +13,7 @@ const Avatar = ({
     <AvatarPrimitive.Root
       data-slot="avatar"
       className={cn(
-        "relative inline-block h-[calc(var(--font-size)*var(--theme-line-height-base)*2)] w-[4ch] flex-shrink-0 bg-[var(--theme-border)] bg-cover bg-center bg-no-repeat align-bottom hover:before:pointer-events-none hover:before:absolute hover:before:top-0 hover:before:right-0 hover:before:bottom-0 hover:before:left-0 hover:before:bg-[var(--theme-focused-foreground)] hover:before:opacity-50 hover:before:content-['']",
+        "relative flex size-8 shrink-0 overflow-hidden rounded-full",
         className,
       )}
       {...props}
@@ -28,7 +28,7 @@ const AvatarImage = ({
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
-      className={cn("h-full w-full object-cover", className)}
+      className={cn("aspect-square size-full", className)}
       {...props}
     />
   );
@@ -42,7 +42,7 @@ const AvatarFallback = ({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex h-full w-full items-center justify-center bg-[var(--theme-border)]",
+        "bg-muted flex size-full items-center justify-center rounded-full",
         className,
       )}
       {...props}
@@ -51,3 +51,26 @@ const AvatarFallback = ({
 };
 
 export { Avatar, AvatarImage, AvatarFallback };
+
+type ProfileAvatarProps = {
+  className?: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+};
+
+export const ProfileAvatar = ({
+  className,
+  displayName,
+  avatarUrl,
+}: ProfileAvatarProps) => {
+  const initials = displayName?.slice(0, 1);
+
+  return (
+    <Avatar className={cn("size-9", className)}>
+      <AvatarImage src={avatarUrl ?? undefined} />
+      <AvatarFallback className="animate-in fade-in uppercase">
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
+};

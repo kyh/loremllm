@@ -29,6 +29,7 @@ export type ExtendedTerminal = XTermTerminal & {
   printLogoType: () => void;
   openURL: (url: string, newWindow?: boolean) => void;
   displayURL: (url: string) => void;
+  navigate: (path: string) => void;
   command: (line: string) => number | void;
   resizeListener: () => void;
   init: (user?: string, preserveHistory?: boolean) => void;

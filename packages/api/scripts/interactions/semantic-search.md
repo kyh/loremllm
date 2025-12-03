@@ -6,7 +6,7 @@ Our smart matching uses **semantic search** to find the best response for user q
 
 1. **Embedding Generation**
    - When you create an interaction, we generate an embedding (vector) of the input
-   - Embeddings capture the *meaning* of text, not just keywords
+   - Embeddings capture the _meaning_ of text, not just keywords
 
 2. **Similarity Matching**
    - When a user query comes in, we generate its embedding
@@ -20,6 +20,7 @@ Our smart matching uses **semantic search** to find the best response for user q
 ## ✨ Benefits
 
 **Handles Variations:**
+
 ```
 Input: "What is LoremLLM?"
 Also matches:
@@ -29,6 +30,7 @@ Also matches:
 ```
 
 **Different Phrasing:**
+
 ```
 Input: "How much does it cost?"
 Also matches:
