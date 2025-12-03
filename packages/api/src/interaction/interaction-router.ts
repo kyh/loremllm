@@ -1,6 +1,6 @@
+import { eq, sql } from "@repo/db";
 import { mockCollection, mockInteraction } from "@repo/db/drizzle-schema";
 import { TRPCError } from "@trpc/server";
-import { eq, sql } from "drizzle-orm";
 
 import type { AuthenticatedSession, TRPCContext } from "../trpc";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";

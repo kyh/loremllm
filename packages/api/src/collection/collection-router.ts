@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "@repo/db";
 import { mockCollection } from "@repo/db/drizzle-schema";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
 
 import type { AuthenticatedSession, TRPCContext } from "../trpc";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
