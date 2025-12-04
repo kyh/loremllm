@@ -8,6 +8,7 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
+    "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "dev": "tsc",
     "format": "prettier --check . --ignore-path ../../.gitignore",
@@ -24,6 +25,8 @@
     "@xenova/transformers": "^2.17.2",
     "better-auth": "^1.4.3",
     "drizzle-zod": "^0.8.3",
+    "next": "catalog:",
+    "react": "catalog:",
     "superjson": "catalog:",
     "zod": "catalog:"
   },
@@ -31,6 +34,8 @@
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
