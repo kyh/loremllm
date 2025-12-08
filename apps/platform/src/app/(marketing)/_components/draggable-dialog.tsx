@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { DialogClose, DialogPortal } from "@repo/ui/dialog";
+import { DialogClose, DialogPortal, DialogTitle } from "@repo/ui/dialog";
 import { cn } from "@repo/ui/utils";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -10,6 +10,7 @@ type DraggableDialogContentProps = {
   className?: string;
   children: React.ReactNode;
   title?: string;
+  titleEndContent?: React.ReactNode;
   isOpen: boolean;
 } & React.ComponentProps<typeof DialogPrimitive.Content>;
 
@@ -17,6 +18,7 @@ export const DraggableDialogContent = ({
   className,
   children,
   title,
+  titleEndContent = null,
   isOpen,
   ...props
 }: DraggableDialogContentProps) => {
@@ -50,6 +52,7 @@ export const DraggableDialogContent = ({
                 ease: [0.215, 0.61, 0.355, 1],
               }}
             >
+              <DialogTitle className="sr-only">{title}</DialogTitle>
               <DialogPrimitive.Content
                 data-slot="dialog-content"
                 className="relative"
@@ -58,11 +61,11 @@ export const DraggableDialogContent = ({
                 {/* Window Title Bar - Draggable Handle */}
                 <div
                   className={cn(
-                    "bg-muted/30 flex items-center justify-between rounded-t-lg border-b px-4 py-2.5 select-none",
+                    "bg-muted/30 grid grid-cols-[1fr_auto_1fr] items-center rounded-t-lg border-b px-4 py-2.5 select-none",
                     isDragging ? "cursor-grabbing" : "cursor-grab",
                   )}
                 >
-                  <div className="flex w-12 gap-1.5">
+                  <div className="flex gap-1.5 justify-self-start">
                     <DialogClose
                       data-slot="dialog-close"
                       className="size-3 cursor-pointer rounded-full bg-[#ff5f57] transition-colors hover:bg-[#ff3f37]"
@@ -74,9 +77,11 @@ export const DraggableDialogContent = ({
                   <div className="text-muted-foreground text-center text-sm font-medium">
                     {title ?? "Untitled"}
                   </div>
-                  <div className="w-12" />
+                  <div className="flex gap-1.5 justify-self-end">
+                    {titleEndContent}
+                  </div>
                 </div>
-                <div className="p-6">{children}</div>
+                <div className="flex flex-col overflow-hidden">{children}</div>
               </DialogPrimitive.Content>
             </motion.div>
           </div>

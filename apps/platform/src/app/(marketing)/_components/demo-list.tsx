@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogTitle, DialogTrigger } from "@repo/ui/dialog";
+import { Dialog, DialogTrigger } from "@repo/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/tabs";
 
 import type { Demo } from "./demo-data";
 import type { HoverTextHandle } from "./hover-text";
 import { DemoChat } from "./demo-chat";
+import { DemoCodeView } from "./demo-code-view";
 import { DraggableDialogContent } from "./draggable-dialog";
 import { HoverText } from "./hover-text";
 
@@ -118,8 +120,21 @@ const DemoItem = ({
         </li>
       </DialogTrigger>
       <DraggableDialogContent title={demo.title} isOpen={isOpen}>
-        <DialogTitle className="sr-only">{demo.title}</DialogTitle>
-        <DemoChat demo={demo} />
+        <Tabs defaultValue="preview" className="h-[70dvh]">
+          <TabsList className="border-b">
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="code">Code</TabsTrigger>
+          </TabsList>
+          <TabsContent value="preview">
+            <DemoChat demo={demo} />
+          </TabsContent>
+          <TabsContent
+            value="code"
+            className="max-w-[calc(100%-2rem)] overflow-auto sm:max-w-2xl"
+          >
+            <DemoCodeView demo={demo} />
+          </TabsContent>
+        </Tabs>
       </DraggableDialogContent>
     </Dialog>
   );

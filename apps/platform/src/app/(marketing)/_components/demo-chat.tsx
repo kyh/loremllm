@@ -69,7 +69,7 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
   };
 
   return (
-    <div className="flex h-[70dvh] flex-col">
+    <div className="flex h-full flex-col">
       <Conversation className="flex-1">
         <ConversationContent className="h-full">
           {messages.map((message) => (
@@ -83,7 +83,10 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      <PromptInput onSubmit={handleSubmit}>
+      <PromptInput
+        onSubmit={handleSubmit}
+        inputGroupClassName="border-b-0 border-x-0"
+      >
         <PromptInputBody className="h-[80px]">
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}

@@ -39,9 +39,6 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
-    better-auth:
-      specifier: ^1.4.4
-      version: 1.4.5
     eslint:
       specifier: ^9.39.1
       version: 9.39.1
@@ -101,9 +98,6 @@ importers:
       '@ai-sdk/react':
         specifier: ^2.0.104
         version: 2.0.106(react@19.2.0)(zod@4.1.13)
-      '@libsql/client':
-        specifier: ^0.15.15
-        version: 0.15.15
       '@loremllm/transport':
         specifier: workspace:^
         version: link:../../packages/transport
@@ -137,9 +131,6 @@ importers:
       ai:
         specifier: ^5.0.104
         version: 5.0.106(zod@4.1.13)
-      better-auth:
-        specifier: 'catalog:'
-        version: 1.4.5(next@16.0.6(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       geist:
         specifier: ^1.5.1
         version: 1.5.1(next@16.0.6(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))
@@ -170,9 +161,6 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.0(react@19.2.0)
-      shiki:
-        specifier: ^3.17.0
-        version: 3.19.0
       split-type:
         specifier: ^0.3.4
         version: 0.3.4
