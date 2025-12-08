@@ -43,15 +43,15 @@
     "ai": "^5.x.x"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^2.0.104",
+    "@ai-sdk/react": "^2.0.109",
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
-    "ai": "^5.0.104",
+    "ai": "^5.0.108",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.15"
   },
   "prettier": "@kyh/prettier-config"
 }
