@@ -8,9 +8,9 @@ catalog:
   "@kyh/eslint-config": ^1.1.10
   "@kyh/prettier-config": ^1.1.10
   "@kyh/tsconfig": ^1.1.10
-  "@tailwindcss/postcss": ^4.1.17
-  "@tailwindcss/vite": ^4.1.17
-  "@tanstack/react-form": ^1.27.2
+  "@tailwindcss/postcss": ^4.1.18
+  "@tailwindcss/vite": ^4.1.18
+  "@tanstack/react-form": ^1.27.3
   "@tanstack/react-query": ^5.90.12
   "@trpc/client": ^11.7.2
   "@trpc/server": ^11.7.2
@@ -21,12 +21,12 @@ catalog:
   "@vitejs/plugin-react": ^5.1.2
   better-auth: ^1.4.6
   eslint: ^9.39.1
-  next: ^16.0.8
+  next: ^16.0.10
   prettier: ^3.7.4
-  react: ^19.2.1
-  react-dom: ^19.2.1
+  react: ^19.2.3
+  react-dom: ^19.2.3
   superjson: ^2.2.6
-  tailwindcss: ^4.1.17
+  tailwindcss: ^4.1.18
   typescript: ^5.9.3
   vite: ^7.2.7
   zod: ^4.1.13
