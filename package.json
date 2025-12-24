@@ -1,7 +1,7 @@
 {
   "name": "loremllm",
   "private": true,
-  "packageManager": "pnpm@10.26.1",
+  "packageManager": "pnpm@10.26.2",
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
@@ -28,7 +28,7 @@
     "pkgroll": "^2.21.4",
     "prettier": "catalog:",
     "tsx": "^4.21.0",
-    "turbo": "^2.7.1",
+    "turbo": "^2.7.2",
     "typescript": "catalog:"
   },
   "prettier": "@kyh/prettier-config",
