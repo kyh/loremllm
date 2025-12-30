@@ -32,7 +32,7 @@
     "lorem-ipsum": "^2.0.8",
     "lucide-react": "^0.548.0",
     "motion": "^12.23.26",
-    "msw": "^2.12.4",
+    "msw": "^2.12.7",
     "next": "catalog:",
     "radix-ui": "^1.4.3",
     "react": "catalog:",
