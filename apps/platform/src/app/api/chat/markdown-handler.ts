@@ -1,5 +1,5 @@
 import { simulateReadableStream, streamText } from "ai";
-import { MockLanguageModelV2 } from "ai/test";
+import { MockLanguageModelV3 } from "ai/test";
 
 import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
 
@@ -18,7 +18,7 @@ export const handleMarkdownParsing = async (markdown: string) => {
 
   const result = streamText({
     prompt: "",
-    model: new MockLanguageModelV2({
+    model: new MockLanguageModelV3({
       doStream: async () => ({
         stream: simulateReadableStream({
           chunks: streamChunks,

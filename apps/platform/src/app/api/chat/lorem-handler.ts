@@ -1,5 +1,5 @@
 import { simulateReadableStream, streamText } from "ai";
-import { MockLanguageModelV2 } from "ai/test";
+import { MockLanguageModelV3 } from "ai/test";
 import { loremIpsum } from "lorem-ipsum";
 
 import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
@@ -38,7 +38,7 @@ export const handleLoremGeneration = async (params: LoremParams) => {
 
   const result = streamText({
     prompt: "",
-    model: new MockLanguageModelV2({
+    model: new MockLanguageModelV3({
       doStream: async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
         return {

@@ -1,4 +1,5 @@
 import type { ToolUIPart, UIMessage } from "ai";
+import type { JSONValue, LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { parse as parseYaml } from "yaml";
 
 /**
@@ -109,8 +110,11 @@ const isValidToolState = (value: unknown): ToolInvocationState | undefined => {
   const allowedStates: ToolInvocationState[] = [
     "input-streaming",
     "input-available",
+    "approval-requested",
+    "approval-responded",
     "output-available",
     "output-error",
+    "output-denied",
   ];
 
   return allowedStates.includes(value as ToolInvocationState)
@@ -267,62 +271,100 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
 /**
  * Create streaming chunks for the AI SDK
  */
+const stringifyToolInput = (input: unknown): string => {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  try {
+    return JSON.stringify(input ?? {});
+  } catch (error) {
+    console.error("Failed to serialize tool input:", error);
+    return "{}";
+  }
+};
+
+const normalizeToolResult = (output: unknown): NonNullable<JSONValue> => {
+  if (output === null || output === undefined) {
+    return {};
+  }
+
+  return output as NonNullable<JSONValue>;
+};
+
 export const createStreamChunks = (
   chunks: MarkdownChunk[],
   userQuery: string,
   output: string,
-) => [
-  { type: "text-start" as const, id: "text-1" },
-  ...chunks.flatMap((chunk) => {
+): LanguageModelV3StreamPart[] => [
+  { type: "text-start", id: "text-1" },
+  ...chunks.flatMap<LanguageModelV3StreamPart>((chunk) => {
     if (chunk.type === "text") {
       return [
         {
-          type: "text-delta" as const,
+          type: "text-delta",
           id: "text-1",
           delta: chunk.value,
         },
       ];
     }
 
-    const events: Array<Record<string, unknown>> = [
+    const events: LanguageModelV3StreamPart[] = [
       {
-        type: "tool-input-available" as const,
+        type: "tool-call",
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
-        input: chunk.input ?? {},
+        input: stringifyToolInput(chunk.input),
       },
     ];
 
     const finalState = chunk.state;
 
-    if (finalState === "output-error" || chunk.errorText) {
+    if (
+      finalState === "output-error" ||
+      finalState === "output-denied" ||
+      chunk.errorText
+    ) {
       events.push({
-        type: "tool-output-error" as const,
+        type: "tool-result",
         toolCallId: chunk.toolCallId,
-        errorText: chunk.errorText ?? "An unknown tool error occurred.",
+        toolName: chunk.toolName,
+        result: chunk.errorText ?? "An unknown tool error occurred.",
+        isError: true,
       });
     } else if (
       finalState === "output-available" ||
       chunk.output !== undefined
     ) {
       events.push({
-        type: "tool-output-available" as const,
+        type: "tool-result",
         toolCallId: chunk.toolCallId,
-        output: chunk.output ?? null,
+        toolName: chunk.toolName,
+        result: normalizeToolResult(chunk.output),
       });
     }
 
     return events;
   }),
-  { type: "text-end" as const, id: "text-1" },
+  { type: "text-end", id: "text-1" },
   {
-    type: "finish" as const,
-    finishReason: "stop" as const,
-    logprobs: undefined,
+    type: "finish",
+    finishReason: {
+      unified: "stop",
+      raw: "stop",
+    },
     usage: {
-      inputTokens: userQuery.length,
-      outputTokens: output.length,
-      totalTokens: userQuery.length + output.length,
+      inputTokens: {
+        total: userQuery.length,
+        noCache: undefined,
+        cacheRead: undefined,
+        cacheWrite: undefined,
+      },
+      outputTokens: {
+        total: output.length,
+        text: output.length,
+        reasoning: undefined,
+      },
     },
   },
 ];

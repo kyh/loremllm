@@ -8,7 +8,7 @@ import type { Demo } from "./demo-data";
 import type { HoverTextHandle } from "./hover-text";
 import { DemoChat } from "./demo-chat";
 import { DemoCodeView } from "./demo-code-view";
-import { DraggableDialogContent } from "./draggable-dialog";
+import { DraggablePanel } from "./draggable-panel";
 import { HoverText } from "./hover-text";
 
 type DemoListProps = {
@@ -119,7 +119,11 @@ const DemoItem = ({
           </HoverText>
         </li>
       </DialogTrigger>
-      <DraggableDialogContent title={demo.title} isOpen={isOpen}>
+      <DraggablePanel
+        title={demo.title}
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+      >
         <Tabs defaultValue="preview" className="h-[70dvh]">
           <TabsList className="border-b">
             <TabsTrigger value="preview">Preview</TabsTrigger>
@@ -135,7 +139,7 @@ const DemoItem = ({
             <DemoCodeView demo={demo} />
           </TabsContent>
         </Tabs>
-      </DraggableDialogContent>
+      </DraggablePanel>
     </Dialog>
   );
 };

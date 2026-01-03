@@ -1,6 +1,7 @@
 {
   "extends": "@kyh/tsconfig/base.json",
   "compilerOptions": {
+    "checkJs": false,
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "baseUrl": ".",
