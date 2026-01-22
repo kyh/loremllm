@@ -17,9 +17,5 @@ export const DemoCodeView = ({ demo }: DemoCodeViewProps) => {
     );
   }
 
-  return (
-    <div className="h-full overflow-auto">
-      <CodeBlock code={demo.code} language="typescript" showLineNumbers />
-    </div>
-  );
+  return <CodeBlock code={demo.code} language="typescript" showLineNumbers />;
 };

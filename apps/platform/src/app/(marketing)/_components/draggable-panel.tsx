@@ -285,7 +285,7 @@ export const DraggablePanel = ({
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        "bg-popover/20 fixed z-50 flex flex-col rounded-lg shadow-lg backdrop-blur-sm",
+        "bg-popover/20 border-border fixed z-50 flex flex-col rounded-lg border shadow-lg backdrop-blur-sm",
         (isResizing || isDragging) && "select-none",
         className,
       )}
@@ -297,7 +297,7 @@ export const DraggablePanel = ({
       }}
     >
       <div
-        className="bg-muted/50 flex cursor-move items-center justify-between rounded-t-lg px-3 py-2"
+        className="border-border bg-muted/50 flex cursor-move items-center justify-between rounded-t-lg border-b px-3 py-2"
         onPointerDown={handleDragStart}
       >
         <div className="flex items-center gap-2">

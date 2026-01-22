@@ -123,19 +123,17 @@ const DemoItem = ({
         title={demo.title}
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
+        initialSize={{ width: 500, height: 600 }}
       >
-        <Tabs defaultValue="preview" className="h-[70dvh]">
-          <TabsList className="border-b">
+        <Tabs defaultValue="preview" className="h-full min-h-0">
+          <TabsList className="divide-border border-b divide-x">
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="code">Code</TabsTrigger>
           </TabsList>
-          <TabsContent value="preview">
+          <TabsContent value="preview" className="min-h-0 overflow-hidden">
             <DemoChat demo={demo} />
           </TabsContent>
-          <TabsContent
-            value="code"
-            className="max-w-[calc(100%-2rem)] overflow-auto sm:max-w-2xl"
-          >
+          <TabsContent value="code" className="bg-background min-h-0 overflow-auto">
             <DemoCodeView demo={demo} />
           </TabsContent>
         </Tabs>
