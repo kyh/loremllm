@@ -3,22 +3,22 @@ packages:
   - packages/*
 
 catalog:
-  "@better-auth/cli": ^1.4.17
-  "@better-auth/expo": ^1.4.17
-  "@kyh/eslint-config": ^1.1.13
-  "@kyh/prettier-config": ^1.1.13
-  "@kyh/tsconfig": ^1.1.13
-  "@tailwindcss/postcss": ^4.1.18
-  "@tailwindcss/vite": ^4.1.18
-  "@tanstack/react-form": ^1.27.7
-  "@tanstack/react-query": ^5.90.19
-  "@trpc/client": ^11.8.1
-  "@trpc/server": ^11.8.1
-  "@trpc/tanstack-react-query": ^11.8.1
-  "@types/node": ^24.10.9
-  "@types/react": ^19.2.9
-  "@types/react-dom": ^19.2.3
-  "@vitejs/plugin-react": ^5.1.2
+  '@better-auth/cli': ^1.4.17
+  '@better-auth/expo': ^1.4.17
+  '@kyh/eslint-config': ^1.1.13
+  '@kyh/prettier-config': ^1.1.13
+  '@kyh/tsconfig': ^1.1.13
+  '@tailwindcss/postcss': ^4.1.18
+  '@tailwindcss/vite': ^4.1.18
+  '@tanstack/react-form': ^1.27.7
+  '@tanstack/react-query': ^5.90.19
+  '@trpc/client': ^11.8.1
+  '@trpc/server': ^11.8.1
+  '@trpc/tanstack-react-query': ^11.8.1
+  '@types/node': ^24.10.9
+  '@types/react': ^19.2.9
+  '@types/react-dom': ^19.2.3
+  '@vitejs/plugin-react': ^5.1.2
   better-auth: ^1.4.17
   eslint: ^9.39.2
   next: ^16.1.4
@@ -34,9 +34,9 @@ catalog:
 linkWorkspacePackages: true
 
 onlyBuiltDependencies:
-  - "@tailwindcss/oxide"
+  - '@tailwindcss/oxide'
   - esbuild
 
 publicHoistPattern:
-  - "@ianvs/prettier-plugin-sort-imports"
+  - '@ianvs/prettier-plugin-sort-imports'
   - prettier-plugin-tailwindcss
