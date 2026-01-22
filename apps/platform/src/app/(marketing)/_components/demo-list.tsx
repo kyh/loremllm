@@ -106,14 +106,14 @@ const DemoItem = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <li
-          className="grid cursor-pointer grid-cols-[50px_240px_1fr] gap-x-8 py-2 text-lg"
+          className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_180px_1fr] sm:gap-x-8 sm:text-lg"
           {...mouseHandlers}
         >
           <span>{formatCounter(index)}</span>
           <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
           <HoverText
             ref={setHoverTextRef(index, 1)}
-            className="whitespace-normal"
+            className="hidden whitespace-normal sm:block"
           >
             {demo.description}
           </HoverText>
@@ -123,7 +123,7 @@ const DemoItem = ({
         title={demo.title}
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        initialSize={{ width: 500, height: 600 }}
+        size={{ width: 500, height: 600 }}
       >
         <Tabs defaultValue="preview" className="h-full min-h-0">
           <TabsList className="divide-border border-b divide-x">

@@ -81,7 +81,7 @@ export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
   title: t.text().notNull(),
   description: t.text(),
   input: t.text().notNull(), // will be matched against the user input
-  vector: float32Array("vector", { dimensions: 384 }),
+  vector: float32Array("vector", { dimensions: 1536 }),
   output: t.text().notNull(), // Markdown response string
   responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
   metadata: t
