@@ -40,7 +40,7 @@ const Page = () => {
       </section>
       <footer className="mt-auto flex items-center justify-between gap-4 pb-5 text-sm">
         <div className="flex items-center gap-4">
-          <span>©2025 Kaiyu Hsu</span>
+          <span>©2026 Kaiyu Hsu</span>
         </div>
         <div className="flex items-center gap-4">
           <HoverText asChild>
