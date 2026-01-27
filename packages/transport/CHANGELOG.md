@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.6.0
+
+### Minor Changes
+
+- update to support ai-sdk v6
+
 ## 0.5.1
 
 ### Patch Changes
