@@ -20,11 +20,11 @@
     "backfill-vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.18",
+    "@ai-sdk/openai": "^3.0.21",
     "@better-auth/expo": "^1.4.17",
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
-    "ai": "^6.0.49",
+    "ai": "^6.0.55",
     "better-auth": "^1.4.17",
     "drizzle-zod": "^0.8.3",
     "next": "catalog:",
