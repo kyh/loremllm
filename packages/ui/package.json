@@ -19,7 +19,7 @@
     "@icons-pack/react-simple-icons": "^13.8.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@tanstack/react-table": "^8.21.3",
-    "ai": "^6.0.57",
+    "ai": "^6.0.58",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
