@@ -188,6 +188,18 @@ export class StaticChatTransport<
     return Promise.resolve(this.createStreamFromChunks(chunks));
   }
 
+  /**
+   * Clears the cached responses used for reconnectToStream.
+   * @param chatId - If provided, clears only the cache for that chat. Otherwise clears all caches.
+   */
+  clearCache(chatId?: string): void {
+    if (chatId) {
+      this.lastResponses.delete(chatId);
+    } else {
+      this.lastResponses.clear();
+    }
+  }
+
   protected async resolveMessages(
     context: StaticTransportContext<UI_MESSAGE>,
   ): Promise<UI_MESSAGE> {

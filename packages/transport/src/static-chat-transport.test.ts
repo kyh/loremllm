@@ -1247,6 +1247,75 @@ describe("StaticChatTransport", () => {
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Hello world");
     });
+
+    it("clears specific chat cache via clearCache", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Response" };
+        },
+      });
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ chatId: "chat-1", messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ chatId: "chat-2", messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      // Clear only chat-1
+      transport.clearCache("chat-1");
+
+      // chat-1 should be gone
+      const reconnect1 = await transport.reconnectToStream({ chatId: "chat-1" });
+      expect(reconnect1).toBeNull();
+
+      // chat-2 should still exist
+      const reconnect2 = await transport.reconnectToStream({ chatId: "chat-2" });
+      expect(reconnect2).not.toBeNull();
+    });
+
+    it("clears all caches via clearCache without argument", async () => {
+      const userMessage = createUserMessage("Hello");
+
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield { type: "text", text: "Response" };
+        },
+      });
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ chatId: "chat-1", messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ chatId: "chat-2", messages: [userMessage] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      // Clear all
+      transport.clearCache();
+
+      // Both should be gone
+      const reconnect1 = await transport.reconnectToStream({ chatId: "chat-1" });
+      expect(reconnect1).toBeNull();
+
+      const reconnect2 = await transport.reconnectToStream({ chatId: "chat-2" });
+      expect(reconnect2).toBeNull();
+    });
   });
 
   // ============================================================================
