@@ -146,7 +146,7 @@ export const DraggablePanel = ({
       className={cn(
         "bg-popover/20 border-border fixed z-50 flex flex-col rounded-lg border shadow-lg backdrop-blur-sm",
         isDragging && "select-none",
-        isMobile && "inset-2 !h-auto !w-auto",
+        isMobile && "inset-2",
         className,
       )}
       style={
@@ -167,11 +167,11 @@ export const DraggablePanel = ({
         )}
         onPointerDown={isMobile ? undefined : handleDragStart}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {icon}
-          <h3 className="font-mono text-sm font-semibold">{title}</h3>
+          <h3 className="truncate font-mono text-sm font-semibold">{title}</h3>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {(onPrevious || onNext) && (
             <>
               <Tooltip>
@@ -182,7 +182,7 @@ export const DraggablePanel = ({
                     onClick={onPrevious}
                     onPointerDown={(e) => e.stopPropagation()}
                     disabled={!hasPrevious}
-                    className="size-5"
+                    className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                   >
                     <ChevronLeftIcon className="size-4" />
                   </Button>
@@ -199,7 +199,7 @@ export const DraggablePanel = ({
                     onClick={onNext}
                     onPointerDown={(e) => e.stopPropagation()}
                     disabled={!hasNext}
-                    className="size-5"
+                    className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                   >
                     <ChevronRightIcon className="size-4" />
                   </Button>
@@ -217,14 +217,14 @@ export const DraggablePanel = ({
             onPointerDown={(e) => {
               e.stopPropagation();
             }}
-            className="size-5"
+            className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
           >
             <XIcon />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto rounded-b-lg">{children}</div>
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded-b-lg">{children}</div>
     </motion.div>
   );
 
