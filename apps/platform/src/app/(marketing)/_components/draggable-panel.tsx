@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@repo/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@repo/ui/tooltip";
 import { cn } from "@repo/ui/utils";
-import { XIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { createPortal } from "react-dom";
 
@@ -13,6 +18,10 @@ type DraggablePanelProps = {
   children: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
   initialPosition?: { x: number; y: number };
   size?: { width: number; height: number };
   className?: string;
@@ -26,6 +35,10 @@ export const DraggablePanel = ({
   children,
   isOpen,
   onClose,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
   initialPosition = { x: 20, y: 20 },
   size = { width: 300, height: 200 },
   className,
@@ -49,6 +62,23 @@ export const DraggablePanel = ({
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && hasPrevious && onPrevious) {
+        e.preventDefault();
+        onPrevious();
+      } else if (e.key === "ArrowRight" && hasNext && onNext) {
+        e.preventDefault();
+        onNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, hasPrevious, hasNext, onPrevious, onNext]);
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent) => {
@@ -141,17 +171,57 @@ export const DraggablePanel = ({
           {icon}
           <h3 className="font-mono text-sm font-semibold">{title}</h3>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          className="size-5"
-        >
-          <XIcon />
-        </Button>
+        <div className="flex items-center gap-1">
+          {(onPrevious || onNext) && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onPrevious}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={!hasPrevious}
+                    className="size-5"
+                  >
+                    <ChevronLeftIcon className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Previous (←)
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onNext}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={!hasNext}
+                    className="size-5"
+                  >
+                    <ChevronRightIcon className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Next (→)
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            className="size-5"
+          >
+            <XIcon />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto rounded-b-lg">{children}</div>
