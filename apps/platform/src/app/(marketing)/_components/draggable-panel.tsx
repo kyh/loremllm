@@ -182,7 +182,7 @@ export const DraggablePanel = ({
                     onClick={onPrevious}
                     onPointerDown={(e) => e.stopPropagation()}
                     disabled={!hasPrevious}
-                    className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                    className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
                   >
                     <ChevronLeftIcon className="size-4" />
                   </Button>
@@ -199,7 +199,7 @@ export const DraggablePanel = ({
                     onClick={onNext}
                     onPointerDown={(e) => e.stopPropagation()}
                     disabled={!hasNext}
-                    className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                    className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
                   >
                     <ChevronRightIcon className="size-4" />
                   </Button>
@@ -217,7 +217,7 @@ export const DraggablePanel = ({
             onPointerDown={(e) => {
               e.stopPropagation();
             }}
-            className="size-5 sm:size-5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+            className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
           >
             <XIcon />
           </Button>
