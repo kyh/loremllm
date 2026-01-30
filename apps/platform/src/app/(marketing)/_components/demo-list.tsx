@@ -8,6 +8,7 @@ import type { Demo } from "./demo-data";
 import type { HoverTextHandle } from "./hover-text";
 import { DemoChat } from "./demo-chat";
 import { DemoCodeView } from "./demo-code-view";
+import { useDemoNavigation } from "./demo-navigation-context";
 import { DraggablePanel } from "./draggable-panel";
 import { HoverText } from "./hover-text";
 
@@ -99,11 +100,23 @@ const DemoItem = ({
   createMouseHandlers,
   formatCounter,
 }: DemoItemProps) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const {
+    allDemos,
+    openIndex,
+    openDemo,
+    closeDemo,
+    goToPrevious,
+    goToNext,
+    hasPrevious,
+    hasNext,
+  } = useDemoNavigation();
+
   const mouseHandlers = createMouseHandlers(index);
+  const currentDemo = openIndex !== null ? allDemos[openIndex] : null;
+  const isOpen = currentDemo?.id === demo.id;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => (open ? openDemo(demo) : closeDemo())}>
       <DialogTrigger asChild>
         <li
           className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_180px_1fr] sm:gap-x-8 sm:text-lg"
@@ -119,25 +132,31 @@ const DemoItem = ({
           </HoverText>
         </li>
       </DialogTrigger>
-      <DraggablePanel
-        title={demo.title}
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        size={{ width: 500, height: 600 }}
-      >
-        <Tabs defaultValue="preview" className="h-full min-h-0">
-          <TabsList className="divide-border border-b divide-x">
-            <TabsTrigger value="preview">Preview</TabsTrigger>
-            <TabsTrigger value="code">Code</TabsTrigger>
-          </TabsList>
-          <TabsContent value="preview" className="min-h-0 overflow-hidden">
-            <DemoChat demo={demo} />
-          </TabsContent>
-          <TabsContent value="code" className="bg-background min-h-0 overflow-auto">
-            <DemoCodeView demo={demo} />
-          </TabsContent>
-        </Tabs>
-      </DraggablePanel>
+      {currentDemo && isOpen && (
+        <DraggablePanel
+          title={`[${currentDemo.section}] ${currentDemo.title}`}
+          isOpen={isOpen}
+          onClose={closeDemo}
+          onPrevious={goToPrevious}
+          onNext={goToNext}
+          hasPrevious={hasPrevious}
+          hasNext={hasNext}
+          size={{ width: 500, height: 600 }}
+        >
+          <Tabs defaultValue="preview" className="h-full min-h-0">
+            <TabsList className="divide-border border-b divide-x">
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="code">Code</TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview" className="min-h-0 overflow-hidden">
+              <DemoChat demo={currentDemo} />
+            </TabsContent>
+            <TabsContent value="code" className="bg-background min-h-0 overflow-auto">
+              <DemoCodeView demo={currentDemo} />
+            </TabsContent>
+          </Tabs>
+        </DraggablePanel>
+      )}
     </Dialog>
   );
 };

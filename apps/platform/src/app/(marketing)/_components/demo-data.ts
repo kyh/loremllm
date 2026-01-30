@@ -6,6 +6,7 @@ import type { StaticTransportContext } from "@loremllm/transport";
 export type Demo = {
   id: string;
   title: string;
+  section: string;
   description: string;
   placeholder?: string;
   preset?: string;
@@ -17,6 +18,7 @@ export const transportDemos: Demo[] = [
   {
     id: "transport-text-response",
     title: "Simple Text Response",
+    section: "AI SDK Transport",
     description: "A simple response that echoes lorem ipsum text.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "@ai-sdk/react";
@@ -57,6 +59,7 @@ export function SimpleTextResponse() {
   {
     id: "transport-tool-calling",
     title: "Tool Calling",
+    section: "AI SDK Transport",
     description: "Simulates tool calls with progressive loading.",
     placeholder: "Try asking about the weather in a city.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
@@ -186,6 +189,7 @@ export function ToolCallingDemo() {
   {
     id: "transport-reasoning",
     title: "Reasoning Stream",
+    section: "AI SDK Transport",
     description: "Stream in reasoning parts.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "@ai-sdk/react";
@@ -247,6 +251,7 @@ export const platformDemos: Demo[] = [
   {
     id: "lorem",
     title: "Default Generator",
+    section: "Platform API",
     description:
       "Generate dynamic lorem ipsum text with customizable parameters.",
     code: `import { useChat } from "@ai-sdk/react";
@@ -273,6 +278,7 @@ export function DefaultGenerator() {
   {
     id: "demo",
     title: "Collections",
+    section: "Platform API",
     description:
       "Define a collection of LLM interactions and query it with a specific input.",
     placeholder:
@@ -307,6 +313,7 @@ export function CollectionsDemo() {
   {
     id: "markdown",
     title: "Markdown Streaming",
+    section: "Platform API",
     description:
       "Paste markdown to see it parsed and streamed back in real time.",
     preset: `
