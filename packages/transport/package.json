@@ -1,6 +1,6 @@
 {
   "name": "@loremllm/transport",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -43,11 +43,11 @@
     "ai": "^6.x.x"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^3.0.61",
+    "@ai-sdk/react": "^3.0.64",
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
-    "ai": "^6.0.59",
+    "ai": "^6.0.62",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",

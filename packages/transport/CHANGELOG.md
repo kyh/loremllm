@@ -1,5 +1,11 @@
 # @loremllm/transport
 
+## 0.6.1
+
+### Patch Changes
+
+- add a clear method
+
 ## 0.6.0
 
 ### Minor Changes

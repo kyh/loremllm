@@ -15,7 +15,7 @@
   },
   "prettier": "@kyh/prettier-config",
   "dependencies": {
-    "@ai-sdk/react": "^3.0.61",
+    "@ai-sdk/react": "^3.0.64",
     "@loremllm/transport": "workspace:^",
     "@repo/api": "workspace:^",
     "@repo/db": "workspace:^",
@@ -26,7 +26,7 @@
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
     "@xenova/transformers": "^2.17.2",
-    "ai": "^6.0.59",
+    "ai": "^6.0.62",
     "better-auth": "catalog:",
     "geist": "^1.5.1",
     "gsap": "^3.14.2",
@@ -45,7 +45,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "^3.0.5",
+    "@ai-sdk/provider": "^3.0.6",
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
