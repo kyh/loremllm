@@ -24,7 +24,7 @@
     "@better-auth/expo": "^1.4.18",
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
-    "ai": "^6.0.81",
+    "ai": "^6.0.82",
     "better-auth": "^1.4.18",
     "drizzle-zod": "^0.8.3",
     "next": "catalog:",

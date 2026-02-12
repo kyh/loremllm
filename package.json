@@ -25,7 +25,7 @@
     "@changesets/cli": "^2.29.8",
     "@kyh/prettier-config": "catalog:",
     "dotenv-cli": "^11.0.0",
-    "pkgroll": "^2.24.0",
+    "pkgroll": "^2.24.1",
     "prettier": "catalog:",
     "tsx": "^4.21.0",
     "turbo": "^2.8.7",
