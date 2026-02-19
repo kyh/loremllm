@@ -15,7 +15,7 @@
   },
   "prettier": "@kyh/prettier-config",
   "dependencies": {
-    "@ai-sdk/react": "^3.0.88",
+    "@ai-sdk/react": "^3.0.93",
     "@loremllm/transport": "workspace:^",
     "@repo/api": "workspace:^",
     "@repo/db": "workspace:^",
@@ -26,13 +26,13 @@
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
     "@xenova/transformers": "^2.17.2",
-    "ai": "^6.0.86",
+    "ai": "^6.0.91",
     "better-auth": "catalog:",
     "geist": "^1.7.0",
     "gsap": "^3.14.2",
     "lorem-ipsum": "^2.0.8",
     "lucide-react": "^0.562.0",
-    "motion": "^12.34.0",
+    "motion": "^12.34.2",
     "msw": "^2.12.10",
     "next": "catalog:",
     "radix-ui": "^1.4.3",
@@ -49,7 +49,7 @@
     "@kyh/eslint-config": "catalog:",
     "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.2.0",
     "@types/mdx": "^2.0.13",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -57,7 +57,7 @@
     "eslint": "catalog:",
     "postcss": "^8.5.6",
     "prettier": "catalog:",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.0",
     "typescript": "catalog:"
   }
 }
