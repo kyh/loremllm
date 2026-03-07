@@ -6,7 +6,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 
 ### Structure
 
-- `apps/platform` - Next.js app (main product)
+- `apps/web` - Next.js app (main product)
 - `packages/api` - tRPC API with better-auth
 - `packages/db` - Drizzle ORM + Turso/libSQL
 - `packages/transport` - Published npm package (@loremllm/transport) for AI SDK chat transport

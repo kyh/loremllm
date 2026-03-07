@@ -1,4 +1,4 @@
-# @loremllm/platform
+# @loremllm/web
 
 ## 0.1.2
 
