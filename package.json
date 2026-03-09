@@ -16,7 +16,9 @@
     "gen-ui": "pnpm -F ui gen-ui",
     "changeset": "changeset",
     "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "lint-fix": "oxlint --fix",
+    "format-fix": "oxfmt --write"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
