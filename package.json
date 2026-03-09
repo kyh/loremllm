@@ -9,29 +9,26 @@
     "db-push": "pnpm -F db push",
     "db-push-remote": "pnpm -F db push-remote && pnpm -F builder push-remote",
     "dev": "turbo watch db studio dev --continue",
-    "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
-    "format-fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
-    "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
-    "lint-fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
+    "lint": "oxlint --report-unused-disable-directives",
     "lint-ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint-ws",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "gen-ui": "pnpm -F ui gen-ui",
     "changeset": "changeset",
-    "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish"
+    "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish",
+    "format": "oxfmt"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
-    "@kyh/prettier-config": "catalog:",
     "dotenv-cli": "^11.0.0",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
     "pkgroll": "^2.27.0",
-    "prettier": "catalog:",
     "tsx": "^4.21.0",
     "turbo": "^2.8.14",
     "typescript": "catalog:"
   },
-  "prettier": "@kyh/prettier-config",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",

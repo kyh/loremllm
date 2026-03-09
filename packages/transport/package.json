@@ -34,8 +34,6 @@
     "build": "pkgroll",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "dev": "pkgroll --watch",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
-    "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
@@ -44,12 +42,8 @@
   },
   "devDependencies": {
     "@ai-sdk/react": "^3.0.118",
-    "@kyh/eslint-config": "catalog:",
-    "@kyh/prettier-config": "catalog:",
     "@kyh/tsconfig": "catalog:",
     "ai": "^6.0.116",
-    "eslint": "catalog:",
-    "prettier": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.0.18"
   },
