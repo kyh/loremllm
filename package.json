@@ -9,8 +9,6 @@
     "db-push-remote": "pnpm -F db push-remote && pnpm -F builder push-remote",
     "dev": "turbo watch db studio dev --continue",
     "lint": "oxlint --report-unused-disable-directives",
-    "lint-ws": "pnpm dlx sherif@latest",
-    "postinstall": "pnpm lint-ws",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "gen-ui": "pnpm -F ui gen-ui",
