@@ -14,9 +14,7 @@ const createUserMessage = (text: string, id = "user-1"): UIMessage =>
     parts: [{ type: "text", text }],
   }) as UIMessage;
 
-const readAllChunks = async (
-  stream: ReadableStream<UIMessageChunk>,
-): Promise<UIMessageChunk[]> => {
+const readAllChunks = async (stream: ReadableStream<UIMessageChunk>): Promise<UIMessageChunk[]> => {
   const reader = stream.getReader();
   const chunks: UIMessageChunk[] = [];
   // eslint-disable-next-line no-constant-condition
@@ -90,9 +88,9 @@ describe("StaticChatTransport", () => {
         "finish-step",
         "finish",
       ]);
-      expect(
-        chunks.filter((chunk) => chunk.type === "text-delta")[0],
-      ).toMatchObject({ delta: "Hi there!" });
+      expect(chunks.filter((chunk) => chunk.type === "text-delta")[0]).toMatchObject({
+        delta: "Hi there!",
+      });
     });
 
     it("requires mockResponse to yield at least one part", async () => {
@@ -194,11 +192,7 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "data-widget",
-        "finish",
-      ]);
+      expect(chunks.map((chunk) => chunk.type)).toEqual(["start", "data-widget", "finish"]);
       expect(chunks[1]).toMatchObject({
         type: "data-widget",
         data: { foo: "bar" },
@@ -228,9 +222,7 @@ describe("StaticChatTransport", () => {
       );
 
       const reasoningDeltas = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
           chunk.type === "reasoning-delta",
       );
       const textDeltas = chunks.filter(
@@ -241,14 +233,10 @@ describe("StaticChatTransport", () => {
       expect(reasoningDeltas.length).toBeGreaterThan(0);
       expect(textDeltas.length).toBeGreaterThan(0);
 
-      const reasoningText = reasoningDeltas
-        .map((chunk) => chunk.delta)
-        .join("");
+      const reasoningText = reasoningDeltas.map((chunk) => chunk.delta).join("");
       const textContent = textDeltas.map((chunk) => chunk.delta).join("");
 
-      expect(reasoningText).toBe(
-        "First I think about this problem carefully step by step",
-      );
+      expect(reasoningText).toBe("First I think about this problem carefully step by step");
       expect(textContent).toBe("Here is my final answer to you");
     });
   });
@@ -288,9 +276,7 @@ describe("StaticChatTransport", () => {
       ]);
 
       const inputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
       expect(inputChunk).toMatchObject({
@@ -301,12 +287,8 @@ describe("StaticChatTransport", () => {
       });
 
       const outputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<
-          UIMessageChunk,
-          { type: "tool-output-available" }
-        > => chunk.type === "tool-output-available",
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-available" }> =>
+          chunk.type === "tool-output-available",
       );
       expect(outputChunk).toMatchObject({
         type: "tool-output-available",
@@ -345,9 +327,7 @@ describe("StaticChatTransport", () => {
       ]);
 
       const errorChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
           chunk.type === "tool-output-error",
       );
       expect(errorChunk).toMatchObject({
@@ -387,9 +367,7 @@ describe("StaticChatTransport", () => {
       ]);
 
       const inputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
       expect(inputChunk).toMatchObject({
@@ -420,9 +398,7 @@ describe("StaticChatTransport", () => {
       );
 
       const inputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
       expect(inputChunk).toMatchObject({
@@ -456,9 +432,7 @@ describe("StaticChatTransport", () => {
       );
 
       const inputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
       expect(inputChunk).toMatchObject({
@@ -526,16 +500,11 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
       expect(toolChunks).toHaveLength(4); // 2 input + 2 output
 
-      const firstInput = toolChunks[0] as Extract<
-        UIMessageChunk,
-        { type: "tool-input-available" }
-      >;
+      const firstInput = toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>;
       expect(firstInput.toolCallId).toBe("call_a");
 
       const secondInput = toolChunks[2] as Extract<
@@ -620,17 +589,12 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
       expect(toolChunks).toHaveLength(2);
 
-      const inputChunk = toolChunks[0] as Extract<
-        UIMessageChunk,
-        { type: "tool-input-available" }
-      >;
+      const inputChunk = toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>;
       expect(inputChunk.type).toBe("tool-input-available");
       expect(inputChunk.toolCallId).toBe("call_weather_1");
       expect(inputChunk.toolName).toBe("weather");
@@ -684,9 +648,7 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
       expect(toolChunks).toHaveLength(2);
@@ -726,19 +688,14 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-error",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-error",
       );
 
       expect(toolChunks).toHaveLength(2);
       expect(toolChunks[0].type).toBe("tool-input-available");
       expect(toolChunks[1].type).toBe("tool-output-error");
 
-      const errorChunk = toolChunks[1] as Extract<
-        UIMessageChunk,
-        { type: "tool-output-error" }
-      >;
+      const errorChunk = toolChunks[1] as Extract<UIMessageChunk, { type: "tool-output-error" }>;
       expect(errorChunk.toolCallId).toBe("call_error_1");
       expect(errorChunk.errorText).toBe("Processing failed");
     });
@@ -795,16 +752,12 @@ describe("StaticChatTransport", () => {
       );
 
       const reasoningDeltaChunks = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
           chunk.type === "reasoning-delta",
       );
 
       expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
-      const fullText = reasoningDeltaChunks
-        .map((chunk) => chunk.delta)
-        .join("");
+      const fullText = reasoningDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Let me think about this carefully");
     });
 
@@ -852,9 +805,7 @@ describe("StaticChatTransport", () => {
       );
 
       const reasoningDeltaChunks = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
           chunk.type === "reasoning-delta",
       );
 
@@ -907,16 +858,12 @@ describe("StaticChatTransport", () => {
       );
 
       const reasoningDeltaChunks = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
           chunk.type === "reasoning-delta",
       );
 
       expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
-      const fullText = reasoningDeltaChunks
-        .map((chunk) => chunk.delta)
-        .join("");
+      const fullText = reasoningDeltaChunks.map((chunk) => chunk.delta).join("");
       expect(fullText).toBe("Step1.Step2.Step3");
     });
 
@@ -952,9 +899,7 @@ describe("StaticChatTransport", () => {
   describe("Stream Control", () => {
     it("invokes the chunk delay resolver for every chunk", async () => {
       const userMessage = createUserMessage("Hello");
-      const chunkDelay = vi
-        .fn<(chunk: UIMessageChunk) => number>()
-        .mockReturnValue(0);
+      const chunkDelay = vi.fn<(chunk: UIMessageChunk) => number>().mockReturnValue(0);
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
@@ -1102,10 +1047,7 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         chunkDelayMs: (chunk) => {
           delaySpy(chunk.type);
-          if (
-            chunk.type === "tool-input-available" ||
-            chunk.type === "tool-output-available"
-          ) {
+          if (chunk.type === "tool-input-available" || chunk.type === "tool-output-available") {
             return 10;
           }
           return 0;
@@ -1141,9 +1083,7 @@ describe("StaticChatTransport", () => {
       expect(delaySpy).toHaveBeenCalledWith("tool-output-available");
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
       expect(toolChunks).toHaveLength(2);
     });
@@ -1364,18 +1304,12 @@ describe("StaticChatTransport", () => {
       );
 
       const toolInputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
       const toolOutputChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<
-          UIMessageChunk,
-          { type: "tool-output-available" }
-        > => chunk.type === "tool-output-available",
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-available" }> =>
+          chunk.type === "tool-output-available",
       );
 
       expect(toolInputChunk).toBeDefined();
@@ -1404,9 +1338,7 @@ describe("StaticChatTransport", () => {
       );
 
       const dataChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is UIMessageChunk & { type: "data-widget"; data: unknown } =>
+        (chunk): chunk is UIMessageChunk & { type: "data-widget"; data: unknown } =>
           chunk.type === "data-widget",
       );
 
@@ -1470,9 +1402,7 @@ describe("StaticChatTransport", () => {
       );
 
       const docChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "source-document" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "source-document" }> =>
           chunk.type === "source-document",
       );
 
@@ -1511,9 +1441,7 @@ describe("StaticChatTransport", () => {
       );
 
       const reasoningDeltas = chunks.filter(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "reasoning-delta" }> =>
           chunk.type === "reasoning-delta",
       );
       const textDeltas = chunks.filter(
@@ -1524,9 +1452,7 @@ describe("StaticChatTransport", () => {
       expect(reasoningDeltas.length).toBeGreaterThan(0);
       expect(textDeltas.length).toBeGreaterThan(0);
 
-      const reasoningText = reasoningDeltas
-        .map((chunk) => chunk.delta)
-        .join("");
+      const reasoningText = reasoningDeltas.map((chunk) => chunk.delta).join("");
       const textContent = textDeltas.map((chunk) => chunk.delta).join("");
 
       expect(reasoningText).toBe("Let me think about this step by step...");
@@ -1567,9 +1493,7 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
       expect(toolChunks.length).toBeGreaterThanOrEqual(4); // 2 inputs + 2 outputs
@@ -1606,9 +1530,7 @@ describe("StaticChatTransport", () => {
       );
 
       const errorChunk = chunks.find(
-        (
-          chunk,
-        ): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
+        (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
           chunk.type === "tool-output-error",
       );
 
@@ -1646,9 +1568,7 @@ describe("StaticChatTransport", () => {
       );
 
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
       expect(toolChunks.length).toBe(2);
@@ -1699,9 +1619,7 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
       const toolChunks = chunks.filter(
-        (chunk) =>
-          chunk.type === "tool-input-available" ||
-          chunk.type === "tool-output-available",
+        (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
       const dataChunk = chunks.find((chunk) => chunk.type === "data-status");
 
@@ -1730,8 +1648,7 @@ describe("StaticChatTransport", () => {
       );
 
       const fileChunk = chunks.find(
-        (chunk): chunk is Extract<UIMessageChunk, { type: "file" }> =>
-          chunk.type === "file",
+        (chunk): chunk is Extract<UIMessageChunk, { type: "file" }> => chunk.type === "file",
       );
 
       expect(fileChunk).toBeDefined();
@@ -1768,9 +1685,7 @@ describe("StaticChatTransport", () => {
 
       expect(textDeltas.length).toBeGreaterThan(1);
       const fullText = extractTextFromChunks(chunks);
-      expect(fullText).toBe(
-        "This is a streaming message that will be chunked word by word",
-      );
+      expect(fullText).toBe("This is a streaming message that will be chunked word by word");
     });
 
     it("handles aborting mid-stream as useChat.stop() would", async () => {

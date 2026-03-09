@@ -4,23 +4,10 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@repo/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/table";
 import { Textarea } from "@repo/ui/textarea";
 import { toast } from "@repo/ui/toast";
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
@@ -61,19 +48,10 @@ const formatOutputToHtml = (content: string) =>
   content
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(
-      /`(.*?)`/g,
-      '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>',
-    )
+    .replace(/`(.*?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>')
     .replace(/^# (.*$)/gm, '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>')
-    .replace(
-      /^## (.*$)/gm,
-      '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>',
-    )
-    .replace(
-      /^### (.*$)/gm,
-      '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>',
-    )
+    .replace(/^## (.*$)/gm, '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>')
     .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
     .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
     .replace(/\n\n/g, '</p><p class="mb-2">')
@@ -82,16 +60,10 @@ const formatOutputToHtml = (content: string) =>
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
-  const collectionListQuery = useQuery(
-    trpc.collection.list.queryOptions(undefined),
-  );
+  const collectionListQuery = useQuery(trpc.collection.list.queryOptions(undefined));
   const collections = collectionListQuery.data ?? emptyCollectionList;
-  const [selectedCollectionId, setSelectedCollectionId] = useState<
-    string | null
-  >(null);
-  const [collectionForm, setCollectionForm] = useState<CollectionFormState>(
-    defaultCollectionForm,
-  );
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [collectionForm, setCollectionForm] = useState<CollectionFormState>(defaultCollectionForm);
 
   useEffect(() => {
     if (!selectedCollectionId && collections.length > 0) {
@@ -258,15 +230,10 @@ export const MockDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>No collection selected</CardTitle>
-          <CardDescription>
-            Create a new collection or select an existing one.
-          </CardDescription>
+          <CardDescription>Create a new collection or select an existing one.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={handleCreateCollection}
-            className="grid gap-3 sm:grid-cols-2"
-          >
+          <form onSubmit={handleCreateCollection} className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="collection-name">Collection name</Label>
               <Input
@@ -283,9 +250,7 @@ export const MockDashboard = () => {
               />
             </div>
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="collection-description">
-                Description (optional)
-              </Label>
+              <Label htmlFor="collection-description">Description (optional)</Label>
               <Textarea
                 id="collection-description"
                 placeholder="A brief description of what this collection does."
@@ -321,9 +286,7 @@ export const MockDashboard = () => {
             ) : null}
             <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
               <span>Public ID:</span>
-              <span className="bg-muted rounded px-2 py-1 font-mono">
-                {collection.publicId}
-              </span>
+              <span className="bg-muted rounded px-2 py-1 font-mono">{collection.publicId}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -335,9 +298,7 @@ export const MockDashboard = () => {
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={() =>
-                deleteCollection.mutate({ collectionId: collection.id })
-              }
+              onClick={() => deleteCollection.mutate({ collectionId: collection.id })}
               disabled={deleteCollection.isPending}
             >
               Delete
@@ -345,10 +306,7 @@ export const MockDashboard = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={handleUpdateCollection}
-            className="grid gap-3 sm:grid-cols-2"
-          >
+          <form onSubmit={handleUpdateCollection} className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="collection-name">Collection name</Label>
               <Input
@@ -365,9 +323,7 @@ export const MockDashboard = () => {
               />
             </div>
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="collection-description">
-                Description (optional)
-              </Label>
+              <Label htmlFor="collection-description">Description (optional)</Label>
               <Textarea
                 id="collection-description"
                 placeholder="A brief description of what this collection does."
@@ -393,15 +349,10 @@ export const MockDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Add new mock response</CardTitle>
-          <CardDescription>
-            Create a new mock interaction for this collection.
-          </CardDescription>
+          <CardDescription>Create a new mock interaction for this collection.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={handleCreateInteraction}
-            className="grid gap-3 md:grid-cols-2"
-          >
+          <form onSubmit={handleCreateInteraction} className="grid gap-3 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="interaction-title">Title</Label>
               <Input
@@ -418,9 +369,7 @@ export const MockDashboard = () => {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="interaction-description">
-                Description (optional)
-              </Label>
+              <Label htmlFor="interaction-description">Description (optional)</Label>
               <Textarea
                 id="interaction-description"
                 placeholder="A brief description of this mock interaction."
@@ -503,9 +452,7 @@ export const MockDashboard = () => {
                 {collection.interactions.map((interaction) => (
                   <TableRow key={interaction.id}>
                     <TableCell className="align-top whitespace-normal">
-                      <div className="leading-6 font-medium">
-                        {interaction.title}
-                      </div>
+                      <div className="leading-6 font-medium">{interaction.title}</div>
                       {interaction.description ? (
                         <p className="text-muted-foreground mt-1 text-xs leading-5">
                           {interaction.description}
@@ -555,8 +502,7 @@ export const MockDashboard = () => {
             </Table>
           ) : (
             <div className="text-muted-foreground py-10 text-center text-sm">
-              No interactions yet. Create one to start streaming mocked
-              responses.
+              No interactions yet. Create one to start streaming mocked responses.
             </div>
           )}
         </CardContent>

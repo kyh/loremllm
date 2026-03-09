@@ -32,22 +32,22 @@ In this example:
 
 ### Info String
 
-- Start the fence with `````tool`````.
-- You can optionally append the tool name and call ID separated by spaces, e.g. `````tool search call_123`````.
-- Assignments such as `````tool name=search id=call_123````` are also supported. Quoted values (e.g. `name="weather lookup"`) are unquoted automatically.
+- Start the fence with `tool`.
+- You can optionally append the tool name and call ID separated by spaces, e.g. `tool search call_123`.
+- Assignments such as `tool name=search id=call_123` are also supported. Quoted values (e.g. `name="weather lookup"`) are unquoted automatically.
 
 ### Body Fields
 
-Everything between the opening `````tool````` line and the closing ````` ``` ````` line is parsed as YAML. The following fields are recognized:
+Everything between the opening `tool` line and the closing ` ``` ` line is parsed as YAML. The following fields are recognized:
 
-| Field | Required? | Description |
-| --- | --- | --- |
-| `toolCallId` / `id` | Optional | Stable identifier for the tool call. You can also supply this in the info string. A fallback such as `tool-call-1` is generated when omitted. |
-| `toolName` / `name` | Optional | Human-readable name of the tool. You can also supply this in the info string. Defaults to `tool` when not provided. |
-| `state` | Optional | Final state of the tool invocation. Must be one of `input-streaming`, `input-available`, `output-available`, or `output-error`. |
-| `input` | Optional | YAML payload that was sent to the tool. When present, a `tool-input-available` event is emitted with this value. |
-| `output` | Optional | YAML payload returned by the tool. When provided (or when `state` is `output-available`), a `tool-output-available` event is emitted. |
-| `errorText` / `error` | Optional | Error message to display when the tool invocation fails. When provided (or when `state` is `output-error`), a `tool-output-error` event is emitted. |
+| Field                 | Required? | Description                                                                                                                                         |
+| --------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `toolCallId` / `id`   | Optional  | Stable identifier for the tool call. You can also supply this in the info string. A fallback such as `tool-call-1` is generated when omitted.       |
+| `toolName` / `name`   | Optional  | Human-readable name of the tool. You can also supply this in the info string. Defaults to `tool` when not provided.                                 |
+| `state`               | Optional  | Final state of the tool invocation. Must be one of `input-streaming`, `input-available`, `output-available`, or `output-error`.                     |
+| `input`               | Optional  | YAML payload that was sent to the tool. When present, a `tool-input-available` event is emitted with this value.                                    |
+| `output`              | Optional  | YAML payload returned by the tool. When provided (or when `state` is `output-available`), a `tool-output-available` event is emitted.               |
+| `errorText` / `error` | Optional  | Error message to display when the tool invocation fails. When provided (or when `state` is `output-error`), a `tool-output-error` event is emitted. |
 
 Any additional YAML fields are ignored by the parser but preserved in the emitted chunk so downstream consumers can inspect them if needed.
 

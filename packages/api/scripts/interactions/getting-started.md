@@ -28,14 +28,11 @@ Getting started with LoremLLM is super easy! 🚀
 
 ```javascript
 // Get your collection's public ID from the dashboard
-const response = await fetch(
-  "https://api.loremllm.com/v1/collections/{publicId}/chat",
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: "Hello!" }),
-  },
-);
+const response = await fetch("https://api.loremllm.com/v1/collections/{publicId}/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: "Hello!" }),
+});
 ```
 
 That's it! Check out our docs for more advanced features.

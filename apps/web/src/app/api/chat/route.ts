@@ -47,20 +47,11 @@ export async function POST(request: Request) {
         try {
           const userQuery = extractUserQuery(payload.data.messages ?? []);
 
-          const response = await handleChatQuery(
-            userQuery,
-            payload.data.collectionId,
-          );
+          const response = await handleChatQuery(userQuery, payload.data.collectionId);
           return applyCors(response, origin);
         } catch (error) {
-          if (
-            error instanceof Error &&
-            error.message === "No matching response found"
-          ) {
-            return applyCors(
-              new Response("No matching response found", { status: 404 }),
-              origin,
-            );
+          if (error instanceof Error && error.message === "No matching response found") {
+            return applyCors(new Response("No matching response found", { status: 404 }), origin);
           }
           throw error;
         }
@@ -80,10 +71,9 @@ export async function POST(request: Request) {
     console.error("Error processing request:", error);
 
     return applyCors(
-      new Response(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        { status: 500 },
-      ),
+      new Response(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, {
+        status: 500,
+      }),
       origin,
     );
   }

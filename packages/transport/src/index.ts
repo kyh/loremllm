@@ -1,10 +1,4 @@
-import type {
-  ChatRequestOptions,
-  ChatTransport,
-  ToolUIPart,
-  UIMessage,
-  UIMessageChunk,
-} from "ai";
+import type { ChatRequestOptions, ChatTransport, ToolUIPart, UIMessage, UIMessageChunk } from "ai";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -52,9 +46,7 @@ export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
 export type ChunkDelayResolver =
   | number
   | [number, number]
-  | ((
-      chunk: UIMessageChunk,
-    ) => MaybePromise<number | [number, number] | undefined>);
+  | ((chunk: UIMessageChunk) => MaybePromise<number | [number, number] | undefined>);
 
 export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
   /**
@@ -66,11 +58,7 @@ export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
    */
   mockResponse: (
     context: StaticTransportContext<UI_MESSAGE>,
-  ) => AsyncGenerator<
-    UI_MESSAGE["parts"][number] | SpecialToolPart,
-    void,
-    unknown
-  >;
+  ) => AsyncGenerator<UI_MESSAGE["parts"][number] | SpecialToolPart, void, unknown>;
   /**
    * Optional delay (in milliseconds) to wait between chunk emissions to simulate streaming.
    * Accepts:
@@ -127,11 +115,7 @@ export class StaticChatTransport<
 > implements ChatTransport<UI_MESSAGE> {
   private readonly mockResponseOption: (
     context: StaticTransportContext<UI_MESSAGE>,
-  ) => AsyncGenerator<
-    UI_MESSAGE["parts"][number] | SpecialToolPart,
-    void,
-    unknown
-  >;
+  ) => AsyncGenerator<UI_MESSAGE["parts"][number] | SpecialToolPart, void, unknown>;
   private readonly chunkDelayMs?: ChunkDelayResolver;
   private readonly autoChunkText: boolean | RegExp;
   private readonly autoChunkReasoning: boolean | RegExp;
@@ -213,9 +197,7 @@ export class StaticChatTransport<
     }
 
     if (parts.length === 0) {
-      throw new Error(
-        "StaticChatTransport: mockResponse must yield at least one part.",
-      );
+      throw new Error("StaticChatTransport: mockResponse must yield at least one part.");
     }
 
     const messageId = context.messageId ?? generateMessageId();
@@ -237,9 +219,7 @@ export class StaticChatTransport<
 
     const isAborted = () => aborted || abortSignal?.aborted === true;
 
-    const resolveDelay = async (
-      chunk: UIMessageChunk,
-    ): Promise<number | undefined> => {
+    const resolveDelay = async (chunk: UIMessageChunk): Promise<number | undefined> => {
       const { chunkDelayMs } = this;
       if (chunkDelayMs == null) {
         return undefined;
@@ -280,14 +260,12 @@ export class StaticChatTransport<
               throw new AbortTransportError();
             }
 
-            const isDeltaChunk =
-              chunk.type === "text-delta" || chunk.type === "reasoning-delta";
+            const isDeltaChunk = chunk.type === "text-delta" || chunk.type === "reasoning-delta";
             const isToolChunk =
               chunk.type === "tool-input-available" ||
               chunk.type === "tool-output-available" ||
               chunk.type === "tool-output-error";
-            const isDataChunk =
-              typeof chunk.type === "string" && chunk.type.startsWith("data-");
+            const isDataChunk = typeof chunk.type === "string" && chunk.type.startsWith("data-");
 
             // Delay on delta chunks (actual content chunks), tool chunks, and data chunks
             // Control chunks (start, end, text-start, etc.) are sent immediately
@@ -372,10 +350,7 @@ function createTextLikeChunks(
       }
     } else {
       // Split pattern (e.g., /[,.]/g) - add capturing group to preserve separators
-      const splitPattern = new RegExp(
-        `(${matchPattern.source})`,
-        matchPattern.flags,
-      );
+      const splitPattern = new RegExp(`(${matchPattern.source})`, matchPattern.flags);
       for (const segment of part.text.split(splitPattern)) {
         pushDelta(segment);
       }
@@ -463,13 +438,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
       case "reasoning": {
         openStepIfNeeded();
         const reasoningId = `reasoning-${++nextReasoningId}`;
-        createTextLikeChunks(
-          chunks,
-          "reasoning",
-          reasoningId,
-          part,
-          autoChunkReasoning,
-        );
+        createTextLikeChunks(chunks, "reasoning", reasoningId, part, autoChunkReasoning);
         break;
       }
       case "step-start": {
@@ -527,8 +496,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
 
           // Skip state-based processing for special tool parts that don't follow the standard pattern
           // (e.g., tool-approval-request, which has approvalId instead of state)
-          const hasStandardState =
-            "state" in toolPart && toolPart.state !== undefined;
+          const hasStandardState = "state" in toolPart && toolPart.state !== undefined;
 
           if (hasStandardState) {
             const toolState = toolPartStateMap.get(toolPart.toolCallId);
@@ -556,8 +524,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
                 chunks.push({
                   type: "tool-output-error",
                   toolCallId: toolPart.toolCallId,
-                  errorText:
-                    toolPart.errorText ?? "An unknown tool error occurred.",
+                  errorText: toolPart.errorText ?? "An unknown tool error occurred.",
                   providerMetadata: toolPart.providerMetadata,
                 } as UIMessageChunk);
               }

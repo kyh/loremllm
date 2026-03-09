@@ -101,8 +101,7 @@ import { useChat } from "ai/react";
 const transport = new StaticChatTransport({
   async *mockResponse({ messages }) {
     const userMessage = messages[messages.length - 1];
-    const userText =
-      userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+    const userText = userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
 
     // Check if user asked about weather
     if (userText.toLowerCase().includes("weather")) {

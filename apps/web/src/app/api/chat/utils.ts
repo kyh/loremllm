@@ -7,13 +7,10 @@ import { parse as parseYaml } from "yaml";
  */
 export const extractUserQuery = (messages: unknown[]): string => {
   const uiMessages = messages as UIMessage[];
-  const lastUserMessage = uiMessages
-    .reverse()
-    .find((message) => message.role === "user");
+  const lastUserMessage = uiMessages.toReversed().find((message) => message.role === "user");
   const textParts =
     lastUserMessage?.parts.filter(
-      (part) =>
-        typeof part === "object" && "type" in part && part.type === "text",
+      (part) => typeof part === "object" && "type" in part && part.type === "text",
     ) ?? [];
 
   return textParts
@@ -82,10 +79,7 @@ const parseToolFenceInfo = (
 
       if (["name", "tool", "toolname"].includes(key) && !headerToolName) {
         headerToolName = value;
-      } else if (
-        ["id", "toolcallid", "call", "callid"].includes(key) &&
-        !headerToolCallId
-      ) {
+      } else if (["id", "toolcallid", "call", "callid"].includes(key) && !headerToolCallId) {
         headerToolCallId = value;
       }
 
@@ -122,10 +116,7 @@ const isValidToolState = (value: unknown): ToolInvocationState | undefined => {
     : undefined;
 };
 
-const getStringField = (
-  data: Record<string, unknown>,
-  keys: string[],
-): string | undefined => {
+const getStringField = (data: Record<string, unknown>, keys: string[]): string | undefined => {
   for (const key of keys) {
     const value = data[key];
 
@@ -137,10 +128,7 @@ const getStringField = (
   return undefined;
 };
 
-const parseToolCallChunk = (
-  rawContent: string,
-  fallbackId: string,
-): ToolCallChunk | null => {
+const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChunk | null => {
   const lines = rawContent.split("\n");
 
   if (lines.length === 0) {
@@ -189,21 +177,12 @@ const parseToolCallChunk = (
 
   const toolCallId =
     headerToolCallId ??
-    getStringField(data, [
-      "toolCallId",
-      "tool_call_id",
-      "callId",
-      "id",
-      "toolCall",
-    ]) ??
+    getStringField(data, ["toolCallId", "tool_call_id", "callId", "id", "toolCall"]) ??
     fallbackId;
   const toolName =
-    headerToolName ??
-    getStringField(data, ["toolName", "tool_name", "name", "tool"]) ??
-    "tool";
+    headerToolName ?? getStringField(data, ["toolName", "tool_name", "name", "tool"]) ?? "tool";
   const state = isValidToolState(data.state);
-  const errorText =
-    getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
+  const errorText = getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
 
   const chunk: ToolCallChunk = {
     type: "tool",
@@ -320,11 +299,7 @@ export const createStreamChunks = (
 
     const finalState = chunk.state;
 
-    if (
-      finalState === "output-error" ||
-      finalState === "output-denied" ||
-      chunk.errorText
-    ) {
+    if (finalState === "output-error" || finalState === "output-denied" || chunk.errorText) {
       events.push({
         type: "tool-result",
         toolCallId: chunk.toolCallId,
@@ -332,10 +307,7 @@ export const createStreamChunks = (
         result: chunk.errorText ?? "An unknown tool error occurred.",
         isError: true,
       });
-    } else if (
-      finalState === "output-available" ||
-      chunk.output !== undefined
-    ) {
+    } else if (finalState === "output-available" || chunk.output !== undefined) {
       events.push({
         type: "tool-result",
         toolCallId: chunk.toolCallId,

@@ -20,21 +20,10 @@ type HoverTextProps = {
 } & React.HTMLAttributes<HTMLSpanElement>;
 
 const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
-  (
-    {
-      children,
-      className,
-      asChild = false,
-      onMouseEnter,
-      onMouseLeave,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ children, className, asChild = false, onMouseEnter, onMouseLeave, ...props }, ref) => {
     const { theme } = useTheme();
     // Light theme = cursor-square (V1), Dark theme = bg (V2)
-    const effectiveVariant: HoverTextVariant =
-      theme === "dark" ? "bg" : "cursor-square";
+    const effectiveVariant: HoverTextVariant = theme === "dark" ? "bg" : "cursor-square";
     const internalRef = React.useRef<HTMLSpanElement>(null);
     const animatorRef = React.useRef<TextAnimator | null>(null);
 
@@ -67,10 +56,7 @@ const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
         const currentElement = internalRef.current;
         if (!currentElement || animatorRef.current) return;
 
-        animatorRef.current = new TextAnimator(
-          currentElement,
-          effectiveVariant,
-        );
+        animatorRef.current = new TextAnimator(currentElement, effectiveVariant);
       });
 
       return () => {

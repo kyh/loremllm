@@ -25,9 +25,7 @@ export const generateEmbedding = async (text: string): Promise<number[]> => {
 /**
  * Generate embeddings for multiple texts in batch
  */
-export const generateEmbeddingsBatch = async (
-  texts: string[],
-): Promise<number[][]> => {
+export const generateEmbeddingsBatch = async (texts: string[]): Promise<number[][]> => {
   if (texts.length === 0) {
     return [];
   }

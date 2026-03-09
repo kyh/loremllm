@@ -97,9 +97,7 @@ const ChatPanel = (props: ChatPanelProps) => {
   const { collectionId, collectionName, open } = props;
   const [input, setInput] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
-  const [matchingParts, setMatchingParts] = useState<MatchingMetadata | null>(
-    null,
-  );
+  const [matchingParts, setMatchingParts] = useState<MatchingMetadata | null>(null);
 
   const handleData = useCallback((part: DataUIPart<MatchingMetadata>) => {
     if (!part.type.startsWith("data-matching")) {
@@ -107,7 +105,7 @@ const ChatPanel = (props: ChatPanelProps) => {
     }
 
     setMatchingParts((previous) => {
-      const next: MatchingMetadata = { ...(previous ?? {}) };
+      const next: MatchingMetadata = { ...previous };
 
       if (isRecord(part.data)) {
         Object.assign(next, part.data as MatchingMetadata);
@@ -151,15 +149,7 @@ const ChatPanel = (props: ChatPanelProps) => {
     [transport, handleData, handleFinish],
   );
 
-  const {
-    messages,
-    sendMessage,
-    status,
-    error,
-    setMessages,
-    stop,
-    clearError,
-  } = useChat({ chat });
+  const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat({ chat });
 
   useEffect(() => {
     if (!open) {
@@ -205,8 +195,7 @@ const ChatPanel = (props: ChatPanelProps) => {
         await sendMessage({ text: trimmedInput });
         setInput("");
       } catch (cause) {
-        const message =
-          cause instanceof Error ? cause.message : "Unknown error";
+        const message = cause instanceof Error ? cause.message : "Unknown error";
         setClientError(message);
       }
     },
@@ -224,11 +213,8 @@ const ChatPanel = (props: ChatPanelProps) => {
   const latestAssistant = useMemo(
     () =>
       [...messages]
-        .reverse()
-        .find(
-          (message) =>
-            message.role === "assistant" && isRecord(message.metadata),
-        ),
+        .toReversed()
+        .find((message) => message.role === "assistant" && isRecord(message.metadata)),
     [messages],
   );
 
@@ -244,15 +230,10 @@ const ChatPanel = (props: ChatPanelProps) => {
   );
 
   const similarity =
-    typeof combinedMetadata?.similarity === "number"
-      ? combinedMetadata.similarity
-      : null;
-  const matchedTitle =
-    typeof combinedMetadata?.title === "string" ? combinedMetadata.title : null;
+    typeof combinedMetadata?.similarity === "number" ? combinedMetadata.similarity : null;
+  const matchedTitle = typeof combinedMetadata?.title === "string" ? combinedMetadata.title : null;
   const matchedInteractionId =
-    typeof combinedMetadata?.interactionId === "string"
-      ? combinedMetadata.interactionId
-      : null;
+    typeof combinedMetadata?.interactionId === "string" ? combinedMetadata.interactionId : null;
 
   const isStreaming = status === "submitted" || status === "streaming";
 
@@ -261,14 +242,11 @@ const ChatPanel = (props: ChatPanelProps) => {
       <div className="border-border/60 bg-muted/40 text-muted-foreground rounded-md border border-dashed p-4 text-xs">
         <div className="text-foreground flex flex-col gap-1">
           <span className="font-medium">Collection ID</span>
-          <code className="bg-background/70 w-fit rounded px-2 py-1 text-xs">
-            {collectionId}
-          </code>
+          <code className="bg-background/70 w-fit rounded px-2 py-1 text-xs">{collectionId}</code>
         </div>
         <p className="text-muted-foreground mt-3">
-          Send a message to preview how{" "}
-          <span className="font-medium">{collectionName}</span> responds.
-          Messages are matched against your saved mock interactions.
+          Send a message to preview how <span className="font-medium">{collectionName}</span>{" "}
+          responds. Messages are matched against your saved mock interactions.
         </p>
       </div>
       {combinedMetadata ? (
@@ -355,9 +333,7 @@ const ChatPanel = (props: ChatPanelProps) => {
                             </pre>
                           ) : null}
                           {part.errorText ? (
-                            <p className="text-destructive mt-1 text-xs">
-                              {part.errorText}
-                            </p>
+                            <p className="text-destructive mt-1 text-xs">{part.errorText}</p>
                           ) : null}
                         </div>
                       ))}
@@ -381,11 +357,7 @@ const ChatPanel = (props: ChatPanelProps) => {
           placeholder="Ask the mock assistant a question"
           disabled={isStreaming}
         />
-        <Button
-          type="submit"
-          loading={isStreaming}
-          disabled={isStreaming && !input.trim()}
-        >
+        <Button type="submit" loading={isStreaming} disabled={isStreaming && !input.trim()}>
           Send
         </Button>
         {isStreaming ? (
@@ -423,11 +395,7 @@ export const CollectionChatDrawer = (props: CollectionChatDrawerProps) => {
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-4 pb-6">
-          <ChatPanel
-            collectionId={collectionId}
-            collectionName={collectionName}
-            open={open}
-          />
+          <ChatPanel collectionId={collectionId} collectionName={collectionName} open={open} />
         </div>
       </DrawerContent>
     </Drawer>

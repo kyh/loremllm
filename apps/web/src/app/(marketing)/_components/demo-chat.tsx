@@ -21,24 +21,9 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@repo/ui/ai-elements/prompt-input";
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@repo/ui/ai-elements/reasoning";
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "@repo/ui/ai-elements/sources";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@repo/ui/ai-elements/tool";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "@repo/ui/ai-elements/reasoning";
+import { Source, Sources, SourcesContent, SourcesTrigger } from "@repo/ui/ai-elements/sources";
+import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@repo/ui/ai-elements/tool";
 import { Spinner } from "@repo/ui/spinner";
 import { getToolOrDynamicToolName, isToolOrDynamicToolUIPart } from "ai";
 
@@ -83,10 +68,7 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      <PromptInput
-        onSubmit={handleSubmit}
-        inputGroupClassName="border-b-0 border-x-0"
-      >
+      <PromptInput onSubmit={handleSubmit} inputGroupClassName="border-b-0 border-x-0">
         <PromptInputBody className="h-[80px]">
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}
@@ -162,37 +144,23 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
                 part.type === "dynamic-tool" ? "tool-dynamic" : part.type;
               return (
                 <Tool key={key}>
-                  <ToolHeader
-                    title={toolName}
-                    type={toolType}
-                    state={part.state}
-                  />
+                  <ToolHeader title={toolName} type={toolType} state={part.state} />
                   <ToolContent>
-                    {part.input !== undefined && (
-                      <ToolInput input={part.input} />
-                    )}
-                    <ToolOutput
-                      output={part.output}
-                      errorText={part.errorText}
-                    />
+                    {part.input !== undefined && <ToolInput input={part.input} />}
+                    <ToolOutput output={part.output} errorText={part.errorText} />
                   </ToolContent>
                 </Tool>
               );
             }
 
             // Handle data-* parts (custom data parts)
-            if (
-              typeof part.type === "string" &&
-              part.type.startsWith("data-")
-            ) {
+            if (typeof part.type === "string" && part.type.startsWith("data-")) {
               return (
                 <div
                   key={key}
                   className="border-border/70 bg-muted/40 text-muted-foreground rounded-md border p-2 text-xs"
                 >
-                  <div className="text-foreground mb-1 font-medium">
-                    {part.type}
-                  </div>
+                  <div className="text-foreground mb-1 font-medium">{part.type}</div>
                   <pre className="bg-background text-foreground/90 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
                     {JSON.stringify("data" in part ? part.data : part, null, 2)}
                   </pre>
@@ -212,13 +180,7 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
             {sourceParts.map((source, i) => {
               const key = `${messageId}-source-${i}`;
               if (source.type === "source-url") {
-                return (
-                  <Source
-                    key={key}
-                    href={source.url}
-                    title={source.title ?? source.url}
-                  />
-                );
+                return <Source key={key} href={source.url} title={source.title ?? source.url} />;
               } else {
                 // source-document
                 return (

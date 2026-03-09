@@ -15,20 +15,14 @@ const globalScope = globalThis as typeof globalThis & {
   alert?: (message?: string) => unknown;
 };
 
-const navigatorDescriptor = Object.getOwnPropertyDescriptor(
-  globalScope,
-  "navigator",
-);
+const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalScope, "navigator");
 const originalAlert = globalScope.alert;
 const hadAlert = Object.prototype.hasOwnProperty.call(globalScope, "alert");
 
 let alertSpy: ReturnType<typeof vi.fn<(message?: string) => unknown>>;
 let messageId = 0;
 
-const createMessage = (
-  role: UIMessage["role"],
-  parts: MessagePart[],
-): UIMessage =>
+const createMessage = (role: UIMessage["role"], parts: MessagePart[]): UIMessage =>
   ({
     id: `${role}-${++messageId}`,
     role,
@@ -55,15 +49,13 @@ afterEach(() => {
   if (navigatorDescriptor) {
     Object.defineProperty(globalScope, "navigator", navigatorDescriptor);
   } else {
-    (globalScope as { navigator?: NavigatorWithClipboard }).navigator =
-      undefined;
+    (globalScope as { navigator?: NavigatorWithClipboard }).navigator = undefined;
   }
 
   if (hadAlert) {
     globalScope.alert = originalAlert;
   } else {
-    (globalScope as { alert?: (message?: string) => unknown }).alert =
-      undefined;
+    (globalScope as { alert?: (message?: string) => unknown }).alert = undefined;
   }
 
   vi.restoreAllMocks();
@@ -79,9 +71,7 @@ describe("copyMessagesToClipboard", () => {
     const messages: UIMessage[] = [
       createMessage("user", [{ type: "text", text: "Hello!" }]),
       createMessage("assistant", [{ type: "text", text: "Hi there" }]),
-      createMessage("assistant", [
-        { type: "text", text: "What else can I help with?" },
-      ]),
+      createMessage("assistant", [{ type: "text", text: "What else can I help with?" }]),
     ];
 
     copyMessagesToClipboard({ messages });
@@ -90,9 +80,7 @@ describe("copyMessagesToClipboard", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     const [template] = writeText.mock.calls[0] ?? [];
     expect(typeof template).toBe("string");
-    expect(template).toContain(
-      'import { StaticChatTransport } from "@loremllm/transport";',
-    );
+    expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
     expect(template).toContain("chunkDelayMs: [50, 100],");
     expect(template).toContain("async *mockResponse() {");
     expect(template).toContain('"text": "Hi there"');
@@ -100,9 +88,7 @@ describe("copyMessagesToClipboard", () => {
     expect(template.trim().endsWith("});")).toBe(true);
 
     expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(
-      "Static transport template copied to your clipboard.",
-    );
+    expect(alertSpy).toHaveBeenCalledWith("Static transport template copied to your clipboard.");
   });
 
   it("alerts and exits when no assistant messages are present", () => {
@@ -112,16 +98,12 @@ describe("copyMessagesToClipboard", () => {
     });
 
     copyMessagesToClipboard({
-      messages: [
-        createMessage("user", [{ type: "text", text: "Only user input" }]),
-      ],
+      messages: [createMessage("user", [{ type: "text", text: "Only user input" }])],
     });
 
     expect(writeText).not.toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(
-      "No assistant messages were found to copy.",
-    );
+    expect(alertSpy).toHaveBeenCalledWith("No assistant messages were found to copy.");
   });
 
   it("throws when clipboard access is unavailable", () => {
@@ -129,16 +111,12 @@ describe("copyMessagesToClipboard", () => {
 
     expect(() => {
       copyMessagesToClipboard({
-        messages: [
-          createMessage("assistant", [{ type: "text", text: "Response" }]),
-        ],
+        messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
       });
     }).toThrow("Clipboard access is not available in this environment.");
 
     expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(
-      "Clipboard access is not available in this environment.",
-    );
+    expect(alertSpy).toHaveBeenCalledWith("Clipboard access is not available in this environment.");
   });
 
   it("propagates clipboard errors and alerts the failure", async () => {
@@ -149,9 +127,7 @@ describe("copyMessagesToClipboard", () => {
     });
 
     copyMessagesToClipboard({
-      messages: [
-        createMessage("assistant", [{ type: "text", text: "Response" }]),
-      ],
+      messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
     });
 
     // Wait for the promise to reject and error handling to complete
@@ -193,9 +169,7 @@ describe("copyMessagesToClipboard", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     const [template] = writeText.mock.calls[0] ?? [];
     expect(typeof template).toBe("string");
-    expect(template).toContain(
-      'import { StaticChatTransport } from "@loremllm/transport";',
-    );
+    expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
     expect(template).toContain("chunkDelayMs: [50, 100],");
     expect(template).toContain('"type": "tool-weather"');
     expect(template).toContain(`"toolCallId": "${toolCallId}"`);
@@ -234,9 +208,7 @@ describe("copyMessagesToClipboard", () => {
 
     // Should contain both input-available and output-available parts
     const inputAvailableIndex = template.indexOf('"state": "input-available"');
-    const outputAvailableIndex = template.indexOf(
-      '"state": "output-available"',
-    );
+    const outputAvailableIndex = template.indexOf('"state": "output-available"');
 
     expect(inputAvailableIndex).toBeGreaterThan(-1);
     expect(outputAvailableIndex).toBeGreaterThan(-1);

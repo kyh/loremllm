@@ -1,34 +1,34 @@
 {
   "name": "@loremllm/transport",
   "version": "0.6.1",
-  "type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
   "keywords": [
     "ai",
     "ai-sdk",
-    "vercel-ai-sdk",
     "chat",
-    "transport",
-    "streaming",
-    "ui-message",
     "chatbot",
-    "llm",
     "demo",
-    "testing",
+    "llm",
     "mock",
-    "static-chat"
+    "static-chat",
+    "streaming",
+    "testing",
+    "transport",
+    "ui-message",
+    "vercel-ai-sdk"
   ],
+  "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./copy-messages-to-clipboard": {
-      "import": "./dist/copy-messages-to-clipboard.js",
-      "types": "./dist/copy-messages-to-clipboard.d.ts"
+      "types": "./dist/copy-messages-to-clipboard.d.ts",
+      "import": "./dist/copy-messages-to-clipboard.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "pkgroll",
@@ -37,15 +37,15 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
-  "peerDependencies": {
-    "ai": "^6.x.x"
-  },
   "devDependencies": {
     "@ai-sdk/react": "^3.0.118",
     "@kyh/tsconfig": "catalog:",
     "ai": "^6.0.116",
     "typescript": "catalog:",
     "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "ai": "^6.x.x"
   },
   "prettier": "@kyh/prettier-config"
 }

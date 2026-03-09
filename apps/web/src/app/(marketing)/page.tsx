@@ -15,10 +15,7 @@ const Page = () => {
     <main className="flex min-h-dvh flex-col gap-10 px-8 pt-8">
       <header className="flex flex-col gap-5">
         <Logo />
-        <p>
-          LoremLLM is a collection of tools that help developers mock LLM
-          responses.
-        </p>
+        <p>LoremLLM is a collection of tools that help developers mock LLM responses.</p>
       </header>
       <DemoNavigationProvider demos={allDemos}>
         <section className="flex flex-col justify-center gap-10">

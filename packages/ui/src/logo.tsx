@@ -1,9 +1,6 @@
 import { cn } from "./utils";
 
-export const Logo = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLHeadingElement>) => (
+export const Logo = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h1 className={cn("font-mono text-[8px]/[1.2]", className)} {...props}>
     &nbsp;&nbsp;&nbsp;&nbsp;__&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;__&nbsp;&nbsp;&nbsp;&nbsp;__&nbsp;&nbsp;&nbsp;&nbsp;__&nbsp;&nbsp;___
     <br />

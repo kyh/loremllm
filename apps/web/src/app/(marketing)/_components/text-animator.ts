@@ -57,10 +57,7 @@ export class TextAnimator {
   private originalChars: string[] = [];
   private variant: AnimationVariant;
 
-  constructor(
-    textElement: HTMLElement,
-    variant: AnimationVariant = "cursor-square",
-  ) {
+  constructor(textElement: HTMLElement, variant: AnimationVariant = "cursor-square") {
     if (!(textElement instanceof HTMLElement)) {
       throw new Error("Invalid text element provided.");
     }
@@ -86,9 +83,7 @@ export class TextAnimator {
   }
 
   private getRandomChar() {
-    return LETTERS_AND_SYMBOLS[
-      Math.floor(Math.random() * LETTERS_AND_SYMBOLS.length)
-    ];
+    return LETTERS_AND_SYMBOLS[Math.floor(Math.random() * LETTERS_AND_SYMBOLS.length)];
   }
 
   reset() {
@@ -163,11 +158,7 @@ export class TextAnimator {
           },
         );
       });
-      gsap.fromTo(
-        this.textElement,
-        { "--anim": 0 },
-        { duration: 1, ease: "expo", "--anim": 1 },
-      );
+      gsap.fromTo(this.textElement, { "--anim": 0 }, { duration: 1, ease: "expo", "--anim": 1 });
     }
   }
 

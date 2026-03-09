@@ -12,10 +12,7 @@ export const LoremParamsSchema = z.object({
   sentenceLowerBound: z.number().min(1).optional().default(5),
   sentenceUpperBound: z.number().min(1).optional().default(15),
   suffix: z.string().optional().default("\n"),
-  units: z
-    .enum(["words", "sentences", "paragraphs"])
-    .optional()
-    .default("sentences"),
+  units: z.enum(["words", "sentences", "paragraphs"]).optional().default("sentences"),
   words: z.array(z.string()).optional(),
 });
 

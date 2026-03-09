@@ -92,10 +92,7 @@ const RootLayout = (props: LayoutProps) => {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={cn(
-          GeistMono.variable,
-          "text-foreground bg-background font-mono antialiased",
-        )}
+        className={cn(GeistMono.variable, "text-foreground bg-background font-mono antialiased")}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <TooltipProvider>

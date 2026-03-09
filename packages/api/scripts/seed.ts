@@ -108,9 +108,7 @@ async function main() {
   console.log("🚀 Starting Demo Collection Seed\n");
   console.log(`👤 User Email: ${USER_EMAIL}`);
   console.log(`🏢 Organization: ${ORGANIZATION_NAME}`);
-  console.log(
-    `📝 Interactions to create: ${DEMO_INTERACTION_CONFIGS.length}\n`,
-  );
+  console.log(`📝 Interactions to create: ${DEMO_INTERACTION_CONFIGS.length}\n`);
 
   try {
     // Step 1: Create or get user using better-auth API
@@ -126,9 +124,7 @@ async function main() {
       userId = existingUser.id;
     } else {
       // Use better-auth admin API to create user
-      const { data: newUser, error: userError } = await (
-        auth.api as any
-      ).createUser({
+      const { data: newUser, error: userError } = await (auth.api as any).createUser({
         body: {
           email: USER_EMAIL,
           name: USER_NAME,
@@ -138,16 +134,12 @@ async function main() {
       });
 
       if (userError || !newUser) {
-        throw new Error(
-          `Failed to create user: ${userError?.message ?? "Unknown error"}`,
-        );
+        throw new Error(`Failed to create user: ${userError?.message ?? "Unknown error"}`);
       }
 
       userId = newUser.id;
       console.log(`   ✅ User created: ${USER_EMAIL}`);
-      console.log(
-        `   ℹ️  Personal organization created automatically by better-auth`,
-      );
+      console.log(`   ℹ️  Personal organization created automatically by better-auth`);
     }
 
     // Step 2: Create or get demo organization using better-auth API
@@ -163,9 +155,7 @@ async function main() {
       organizationId = existingOrg.id;
     } else {
       // Use better-auth organization API to create organization
-      const { data: newOrg, error: orgError } = await (
-        auth.api as any
-      ).createOrganization({
+      const { data: newOrg, error: orgError } = await (auth.api as any).createOrganization({
         body: {
           userId,
           name: ORGANIZATION_NAME,
@@ -177,9 +167,7 @@ async function main() {
       });
 
       if (orgError || !newOrg) {
-        throw new Error(
-          `Failed to create organization: ${orgError?.message ?? "Unknown error"}`,
-        );
+        throw new Error(`Failed to create organization: ${orgError?.message ?? "Unknown error"}`);
       }
 
       organizationId = newOrg.id;
@@ -226,9 +214,7 @@ async function main() {
 
     // Try to find existing collection by publicId
     const allCollections = await caller.collection.list();
-    const existingCollection = allCollections.find(
-      (col) => col.publicId === "demo",
-    );
+    const existingCollection = allCollections.find((col) => col.publicId === "demo");
 
     if (existingCollection) {
       // Get full collection with interactions
@@ -268,10 +254,7 @@ async function main() {
 
     // Create a map of existing interactions by input
     const existingInteractionMap = new Map(
-      existingInteractions.map((interaction) => [
-        interaction.input,
-        interaction,
-      ]),
+      existingInteractions.map((interaction) => [interaction.input, interaction]),
     );
 
     let successCount = 0;
@@ -303,17 +286,13 @@ async function main() {
         });
 
         successCount++;
-        console.log(
-          `   ✅ [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] ${interaction.title}`,
-        );
+        console.log(`   ✅ [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] ${interaction.title}`);
       } catch (error) {
         errorCount++;
         console.error(
           `   ❌ [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] Failed to create: ${config.title}`,
         );
-        console.error(
-          `      Error: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 

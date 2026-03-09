@@ -25,22 +25,19 @@ export const DemoList = ({ demos, className }: DemoListProps) => {
     return num;
   };
 
-  const setHoverTextRef = React.useCallback(
-    (itemIndex: number, colIndex: number) => {
-      return (handle: HoverTextHandle | null) => {
-        if (handle) {
-          if (!hoverTextRefs.current.has(itemIndex)) {
-            hoverTextRefs.current.set(itemIndex, []);
-          }
-          const refs = hoverTextRefs.current.get(itemIndex);
-          if (refs) {
-            refs[colIndex] = handle;
-          }
+  const setHoverTextRef = React.useCallback((itemIndex: number, colIndex: number) => {
+    return (handle: HoverTextHandle | null) => {
+      if (handle) {
+        if (!hoverTextRefs.current.has(itemIndex)) {
+          hoverTextRefs.current.set(itemIndex, []);
         }
-      };
-    },
-    [],
-  );
+        const refs = hoverTextRefs.current.get(itemIndex);
+        if (refs) {
+          refs[colIndex] = handle;
+        }
+      }
+    };
+  }, []);
 
   const createMouseHandlers = React.useCallback((index: number) => {
     return {
@@ -100,16 +97,8 @@ const DemoItem = ({
   createMouseHandlers,
   formatCounter,
 }: DemoItemProps) => {
-  const {
-    allDemos,
-    openIndex,
-    openDemo,
-    closeDemo,
-    goToPrevious,
-    goToNext,
-    hasPrevious,
-    hasNext,
-  } = useDemoNavigation();
+  const { allDemos, openIndex, openDemo, closeDemo, goToPrevious, goToNext, hasPrevious, hasNext } =
+    useDemoNavigation();
 
   const mouseHandlers = createMouseHandlers(index);
   const currentDemo = openIndex !== null ? allDemos[openIndex] : null;
@@ -124,10 +113,7 @@ const DemoItem = ({
         >
           <span>{formatCounter(index)}</span>
           <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
-          <HoverText
-            ref={setHoverTextRef(index, 1)}
-            className="hidden whitespace-normal sm:block"
-          >
+          <HoverText ref={setHoverTextRef(index, 1)} className="hidden whitespace-normal sm:block">
             {demo.description}
           </HoverText>
         </li>

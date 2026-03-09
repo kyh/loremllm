@@ -5,30 +5,17 @@ import { Tabs as TabsPrimitive } from "radix-ui";
 
 import { cn } from "./utils";
 
-const Tabs = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Root>) => {
+const Tabs = ({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Root>) => {
   return (
-    <TabsPrimitive.Root
-      data-slot="tabs"
-      className={cn("flex flex-col", className)}
-      {...props}
-    />
+    <TabsPrimitive.Root data-slot="tabs" className={cn("flex flex-col", className)} {...props} />
   );
 };
 
-const TabsList = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) => {
+const TabsList = ({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) => {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
-      className={cn(
-        "bg-muted text-muted-foreground flex h-9 items-center",
-        className,
-      )}
+      className={cn("bg-muted text-muted-foreground flex h-9 items-center", className)}
       {...props}
     />
   );

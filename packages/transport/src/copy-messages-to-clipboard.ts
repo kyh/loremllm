@@ -35,26 +35,24 @@ function handleCopyError(runtime: RuntimeGlobal, error: unknown): void {
   notify(runtime, `Failed to copy the static transport template.\n\n${reason}`);
 }
 
-export function copyMessagesToClipboard<
-  UI_MESSAGE extends UIMessage = UIMessage,
->(options: CopyMessagesOptions<UI_MESSAGE>): void {
+export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage>(
+  options: CopyMessagesOptions<UI_MESSAGE>,
+): void {
   const runtime = globalThis as RuntimeGlobal;
 
   try {
     // Get all assistant messages and deduplicate by message ID
     const seenIds = new Set<string>();
-    const assistantMessages = options.messages.filter(
-      (message): message is UI_MESSAGE => {
-        if (message.role !== "assistant") {
-          return false;
-        }
-        if (seenIds.has(message.id)) {
-          return false;
-        }
-        seenIds.add(message.id);
-        return true;
-      },
-    );
+    const assistantMessages = options.messages.filter((message): message is UI_MESSAGE => {
+      if (message.role !== "assistant") {
+        return false;
+      }
+      if (seenIds.has(message.id)) {
+        return false;
+      }
+      seenIds.add(message.id);
+      return true;
+    });
 
     if (assistantMessages.length === 0) {
       notify(runtime, "No assistant messages were found to copy.");
@@ -65,8 +63,7 @@ export function copyMessagesToClipboard<
     const clipboard = runtime.navigator?.clipboard;
 
     if (!clipboard || typeof clipboard.writeText !== "function") {
-      const errorMessage =
-        "Clipboard access is not available in this environment.";
+      const errorMessage = "Clipboard access is not available in this environment.";
       notify(runtime, errorMessage);
       throw new Error(errorMessage);
     }
@@ -88,10 +85,7 @@ export function copyMessagesToClipboard<
   } catch (error) {
     // Only handle and throw for truly unrecoverable errors (like clipboard not available)
     // For other errors, handle them but don't throw to avoid breaking callbacks
-    if (
-      error instanceof Error &&
-      error.message.includes("Clipboard access is not available")
-    ) {
+    if (error instanceof Error && error.message.includes("Clipboard access is not available")) {
       throw error;
     }
     handleCopyError(runtime, error);
@@ -101,10 +95,7 @@ export function copyMessagesToClipboard<
 function notify(runtime: RuntimeGlobal, message: string): void {
   if (typeof runtime.alert === "function") {
     runtime.alert(message);
-  } else if (
-    typeof console !== "undefined" &&
-    typeof console.info === "function"
-  ) {
+  } else if (typeof console !== "undefined" && typeof console.info === "function") {
     console.info(message);
   }
 }
@@ -139,8 +130,7 @@ function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
         // If tool part has output-available or output-error state with input,
         // create an input-available part first
         if (
-          (toolPart.state === "output-available" ||
-            toolPart.state === "output-error") &&
+          (toolPart.state === "output-available" || toolPart.state === "output-error") &&
           toolPart.input !== undefined
         ) {
           // Create input-available part

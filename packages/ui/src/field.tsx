@@ -8,34 +8,28 @@ import { Label } from "./label";
 import { Separator } from "./separator";
 import { cn } from "./utils";
 
-const fieldVariants = cva(
-  "group/field data-[invalid=true]:text-destructive flex w-full gap-3",
-  {
-    variants: {
-      orientation: {
-        vertical: ["flex-col [&>*]:w-full [&>.sr-only]:w-auto"],
-        horizontal: [
-          "flex-row items-center",
-          "[&>[data-slot=field-label]]:flex-auto",
-          "has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px has-[>[data-slot=field-content]]:items-start",
-        ],
-        responsive: [
-          "@md/field-group:flex-row @md/field-group:items-center @md/field-group:[&>*]:w-auto flex-col [&>*]:w-full [&>.sr-only]:w-auto",
-          "@md/field-group:[&>[data-slot=field-label]]:flex-auto",
-          "@md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
-        ],
-      },
-    },
-    defaultVariants: {
-      orientation: "vertical",
+const fieldVariants = cva("group/field data-[invalid=true]:text-destructive flex w-full gap-3", {
+  variants: {
+    orientation: {
+      vertical: ["flex-col [&>*]:w-full [&>.sr-only]:w-auto"],
+      horizontal: [
+        "flex-row items-center",
+        "[&>[data-slot=field-label]]:flex-auto",
+        "has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px has-[>[data-slot=field-content]]:items-start",
+      ],
+      responsive: [
+        "@md/field-group:flex-row @md/field-group:items-center @md/field-group:[&>*]:w-auto flex-col [&>*]:w-full [&>.sr-only]:w-auto",
+        "@md/field-group:[&>[data-slot=field-label]]:flex-auto",
+        "@md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
+      ],
     },
   },
-);
+  defaultVariants: {
+    orientation: "vertical",
+  },
+});
 
-const FieldSet = ({
-  className,
-  ...props
-}: React.ComponentProps<"fieldset">) => {
+const FieldSet = ({ className, ...props }: React.ComponentProps<"fieldset">) => {
   return (
     <fieldset
       data-slot="field-set"
@@ -69,10 +63,7 @@ const FieldLegend = ({
   );
 };
 
-const FieldGroup = ({
-  className,
-  ...props
-}: React.ComponentProps<"div">) => {
+const FieldGroup = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="field-group"
@@ -101,26 +92,17 @@ const Field = ({
   );
 };
 
-const FieldContent = ({
-  className,
-  ...props
-}: React.ComponentProps<"div">) => {
+const FieldContent = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="field-content"
-      className={cn(
-        "group/field-content flex flex-1 flex-col gap-1.5 leading-snug",
-        className,
-      )}
+      className={cn("group/field-content flex flex-1 flex-col gap-1.5 leading-snug", className)}
       {...props}
     />
   );
 };
 
-const FieldLabel = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof Label>) => {
+const FieldLabel = ({ className, ...props }: React.ComponentProps<typeof Label>) => {
   return (
     <Label
       data-slot="field-label"
@@ -135,10 +117,7 @@ const FieldLabel = ({
   );
 };
 
-const FieldTitle = ({
-  className,
-  ...props
-}: React.ComponentProps<"div">) => {
+const FieldTitle = ({ className, ...props }: React.ComponentProps<"div">) => {
   return (
     <div
       data-slot="field-label"
@@ -151,10 +130,7 @@ const FieldTitle = ({
   );
 };
 
-const FieldDescription = ({
-  className,
-  ...props
-}: React.ComponentProps<"p">) => {
+const FieldDescription = ({ className, ...props }: React.ComponentProps<"p">) => {
   return (
     <p
       data-slot="field-description"
@@ -224,10 +200,7 @@ const FieldError = ({
 
     return (
       <ul className="ml-4 flex list-disc flex-col gap-1">
-        {errors.map(
-          (error, index) =>
-            error?.message && <li key={index}>{error.message}</li>,
-        )}
+        {errors.map((error, index) => error?.message && <li key={index}>{error.message}</li>)}
       </ul>
     );
   }, [children, maybeErrors]);

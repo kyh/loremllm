@@ -46,10 +46,7 @@ export const mockCollection = sqliteTable("mock_collection", (t) => ({
   name: t.text(),
   description: t.text(),
   isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
-  metadata: t
-    .text({ mode: "json" })
-    .$type<Record<string, unknown>>()
-    .default({}),
+  metadata: t.text({ mode: "json" }).$type<Record<string, unknown>>().default({}),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -75,20 +72,14 @@ export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
     .text()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  collectionId: t
-    .text()
-    .references(() => mockCollection.id, { onDelete: "cascade" }), // Nullable for demo interactions
+  collectionId: t.text().references(() => mockCollection.id, { onDelete: "cascade" }), // Nullable for demo interactions
   title: t.text().notNull(),
   description: t.text(),
   input: t.text().notNull(), // will be matched against the user input
   vector: float32Array("vector", { dimensions: 1536 }),
   output: t.text().notNull(), // Markdown response string
   responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
-  metadata: t
-    .text({ mode: "json" })
-    .$type<Record<string, unknown>>()
-    .default({})
-    .notNull(),
+  metadata: t.text({ mode: "json" }).$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -99,22 +90,16 @@ export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
     .notNull(),
 }));
 
-export const mockCollectionRelations = relations(
-  mockCollection,
-  ({ many }) => ({
-    interactions: many(mockInteraction),
-  }),
-);
+export const mockCollectionRelations = relations(mockCollection, ({ many }) => ({
+  interactions: many(mockInteraction),
+}));
 
-export const mockInteractionRelations = relations(
-  mockInteraction,
-  ({ one }) => ({
-    collection: one(mockCollection, {
-      fields: [mockInteraction.collectionId],
-      references: [mockCollection.id],
-    }),
+export const mockInteractionRelations = relations(mockInteraction, ({ one }) => ({
+  collection: one(mockCollection, {
+    fields: [mockInteraction.collectionId],
+    references: [mockCollection.id],
   }),
-);
+}));
 
 export const waitlist = sqliteTable("waitlist", (t) => ({
   id: t

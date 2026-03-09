@@ -37,9 +37,7 @@ async function main() {
 
     for (const interaction of batch) {
       try {
-        console.log(
-          `[${i + 1}/${interactions.length}] ${interaction.title}...`,
-        );
+        console.log(`[${i + 1}/${interactions.length}] ${interaction.title}...`);
 
         const vector = await generateEmbedding(interaction.input);
 
@@ -55,9 +53,7 @@ async function main() {
         console.log(`   Done (${vector.length}d)`);
       } catch (error) {
         errorCount++;
-        console.error(
-          `   Error: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 

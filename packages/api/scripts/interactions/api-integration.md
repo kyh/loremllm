@@ -22,17 +22,14 @@ const result = await streamText({
 ## 🔌 Direct API Call
 
 ```javascript
-const response = await fetch(
-  "https://api.loremllm.com/v1/collections/{publicId}/chat",
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: "What is LoremLLM?",
-      stream: true, // Optional: enable streaming
-    }),
-  },
-);
+const response = await fetch("https://api.loremllm.com/v1/collections/{publicId}/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    message: "What is LoremLLM?",
+    stream: true, // Optional: enable streaming
+  }),
+});
 ```
 
 ## ⚙️ Configuration

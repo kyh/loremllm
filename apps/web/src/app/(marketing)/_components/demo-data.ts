@@ -131,18 +131,14 @@ export function ToolCallingDemo() {
 }`,
     transport: new StaticChatTransport({
       chunkDelayMs: (chunk) => {
-        if (
-          chunk.type === "tool-output-available" ||
-          chunk.type === "tool-output-error"
-        ) {
+        if (chunk.type === "tool-output-available" || chunk.type === "tool-output-error") {
           return 1000;
         }
         return [20, 60];
       },
       async *mockResponse(context: StaticTransportContext<UIMessage>) {
         const userMessage = context.messages[context.messages.length - 1];
-        const userText =
-          userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+        const userText = userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
 
         if (userText.toLowerCase().includes("weather")) {
           const locationMatch = /weather in (.+?)(?:\?|$)/i.exec(userText);
@@ -230,8 +226,7 @@ export function ReasoningDemo() {
       chunkDelayMs: 30,
       async *mockResponse(context) {
         const userMessage = context.messages[context.messages.length - 1];
-        const userText =
-          userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
+        const userText = userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
 
         yield {
           type: "reasoning",
@@ -252,8 +247,7 @@ export const platformDemos: Demo[] = [
     id: "lorem",
     title: "Default Generator",
     section: "Platform API",
-    description:
-      "Generate dynamic lorem ipsum text with customizable parameters.",
+    description: "Generate dynamic lorem ipsum text with customizable parameters.",
     code: `import { useChat } from "@ai-sdk/react";
 
 export function DefaultGenerator() {
@@ -279,8 +273,7 @@ export function DefaultGenerator() {
     id: "demo",
     title: "Collections",
     section: "Platform API",
-    description:
-      "Define a collection of LLM interactions and query it with a specific input.",
+    description: "Define a collection of LLM interactions and query it with a specific input.",
     placeholder:
       'Try asking "What is Lorem Ipsum?" or "Faq", it will respond with the corresponding response from the collection.',
     code: `import { useChat } from "@ai-sdk/react";
@@ -314,8 +307,7 @@ export function CollectionsDemo() {
     id: "markdown",
     title: "Markdown Streaming",
     section: "Platform API",
-    description:
-      "Paste markdown to see it parsed and streamed back in real time.",
+    description: "Paste markdown to see it parsed and streamed back in real time.",
     preset: `
 # Release Highlights
 

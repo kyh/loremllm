@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@repo/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@repo/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/tooltip";
 import { cn } from "@repo/ui/utils";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -187,9 +183,7 @@ export const DraggablePanel = ({
                     <ChevronLeftIcon className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Previous (←)
-                </TooltipContent>
+                <TooltipContent side="bottom">Previous (←)</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -204,9 +198,7 @@ export const DraggablePanel = ({
                     <ChevronRightIcon className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Next (→)
-                </TooltipContent>
+                <TooltipContent side="bottom">Next (→)</TooltipContent>
               </Tooltip>
             </>
           )}

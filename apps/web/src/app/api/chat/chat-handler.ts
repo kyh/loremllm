@@ -6,10 +6,7 @@ import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
 /**
  * Handle chat functionality by querying a collection
  */
-export const handleChatQuery = async (
-  userQuery: string,
-  collectionId: string,
-) => {
+export const handleChatQuery = async (userQuery: string, collectionId: string) => {
   // Dynamically import caller only when needed
   const { caller } = await import("@/trpc/server");
 
