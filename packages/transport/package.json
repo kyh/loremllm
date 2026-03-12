@@ -42,10 +42,9 @@
     "@kyh/tsconfig": "catalog:",
     "ai": "^6.0.116",
     "typescript": "catalog:",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "ai": "^6.x.x"
-  },
-  "prettier": "@kyh/prettier-config"
+  }
 }

@@ -28,10 +28,10 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ```bash
 pnpm dev              # Start all (db, studio, app)
 pnpm build            # Build all
-pnpm lint             # ESLint
-pnpm lint-fix         # ESLint --fix
-pnpm format           # Prettier check
-pnpm format-fix       # Prettier --write
+pnpm lint             # oxlint
+pnpm lint-fix         # oxlint --fix
+pnpm format           # oxfmt
+pnpm format-fix       # oxfmt --write
 pnpm typecheck        # TypeScript check
 pnpm test             # Run tests
 pnpm db-push          # Push DB schema locally

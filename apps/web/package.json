@@ -29,7 +29,7 @@
     "gsap": "^3.14.2",
     "lorem-ipsum": "^2.0.8",
     "lucide-react": "^0.562.0",
-    "motion": "^12.35.2",
+    "motion": "^12.36.0",
     "msw": "^2.12.10",
     "next": "catalog:",
     "radix-ui": "^1.4.3",
@@ -52,6 +52,5 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "typescript": "catalog:"
-  },
-  "prettier": "@kyh/prettier-config"
+  }
 }

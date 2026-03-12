@@ -19,11 +19,11 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.41",
-    "@better-auth/expo": "^1.5.4",
+    "@better-auth/expo": "^1.5.5",
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
     "ai": "^6.0.116",
-    "better-auth": "^1.5.4",
+    "better-auth": "^1.5.5",
     "drizzle-zod": "^0.8.3",
     "next": "catalog:",
     "react": "catalog:",
@@ -35,6 +35,5 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "typescript": "catalog:"
-  },
-  "prettier": "@kyh/prettier-config"
+  }
 }
