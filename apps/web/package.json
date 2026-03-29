@@ -28,7 +28,7 @@
     "geist": "^1.7.0",
     "gsap": "^3.14.2",
     "lorem-ipsum": "^2.0.8",
-    "lucide-react": "^0.577.0",
+    "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
     "msw": "^2.12.14",
     "next": "catalog:",
@@ -44,13 +44,13 @@
   "devDependencies": {
     "@ai-sdk/provider": "^3.0.8",
     "@kyh/tsconfig": "catalog:",
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/postcss": "catalog:",
     "@types/mdx": "^2.0.13",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "postcss": "^8.5.8",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
 }

@@ -1,6 +1,7 @@
 {
   "extends": "@kyh/tsconfig/internal-package.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "rootDir": ".",
