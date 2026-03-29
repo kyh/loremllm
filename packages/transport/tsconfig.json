@@ -1,7 +1,7 @@
 {
   "extends": "@kyh/tsconfig/internal-package.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2023", "DOM"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts"]
