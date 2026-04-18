@@ -1,1 +1,92 @@
 @import "@repo/ui/globals.css";
+
+:root {
+  --link: rgba(0, 0, 0, 0.8);
+  --link-hover: oklch(0 0 0);
+  --heading: oklch(0 0 0);
+  --pattern-line: rgba(0, 0, 0, 0.24);
+  --radius: 0rem;
+  --font-sans: Geist Mono, monospace;
+  --font-serif: Geist Mono, monospace;
+  --font-mono: Geist Mono, monospace;
+}
+
+.dark {
+  --link: #717781;
+  --link-hover: oklch(0.9851 0 0);
+  --heading: #5b6b85;
+  --pattern-line: rgba(255, 255, 255, 0.1);
+}
+
+@theme inline {
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-heading: var(--heading);
+  --color-pattern-line: var(--pattern-line);
+}
+
+@layer base {
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 2px,
+      var(--pattern-line) 3px
+    );
+    background-size: auto 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hover-effect .split-word {
+    white-space: nowrap;
+  }
+
+  .hover-effect .split-char,
+  .hover-effect .char {
+    position: relative;
+  }
+
+  .hover-effect--cursor-square .split-char,
+  .hover-effect--cursor-square .char {
+    --opa: 0;
+  }
+
+  .hover-effect--cursor-square .split-char::after,
+  .hover-effect--cursor-square .char::after {
+    content: "";
+    width: 1ch;
+    top: 0;
+    left: 0;
+    position: absolute;
+    opacity: var(--opa);
+    background: currentColor;
+    height: 100%;
+  }
+
+  .hover-effect--bg,
+  .hover-effect--bg-south {
+    --anim: 0;
+  }
+
+  .hover-effect--bg::after,
+  .hover-effect--bg-south::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: calc(100% + 3px);
+    top: 0;
+    background-color: var(--line-hover-bg-effect, white);
+    mix-blend-mode: var(--line-hover-blendmode, difference);
+    -webkit-backdrop-filter: blur(var(--line-hover-bg-blur, 0px));
+    backdrop-filter: blur(var(--line-hover-bg-blur, 0px));
+    transform-origin: 0% 50%;
+    transform: scaleX(var(--anim));
+  }
+}
