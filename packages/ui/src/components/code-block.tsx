@@ -85,8 +85,8 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { codeToHtml } from "shiki";
 
 import type { IconType } from "@icons-pack/react-simple-icons";
-import { Button } from "@repo/ui/components/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select";
+import { Button } from "./button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 import { cn } from "@repo/ui/lib/utils";
 
 export type { BundledLanguage } from "shiki";
