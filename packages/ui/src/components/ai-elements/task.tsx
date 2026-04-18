@@ -48,7 +48,7 @@ export const TaskTrigger = ({ children, className, title, render, ...props }: Ta
         <div className="flex w-full cursor-pointer items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
           <SearchIcon className="size-4" />
           <p className="text-sm">{title}</p>
-          <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+          <ChevronDownIcon className="size-4 transition-transform group-data-[open]:rotate-180" />
         </div>
       )
     }
@@ -60,7 +60,7 @@ export type TaskContentProps = ComponentProps<typeof CollapsibleContent>;
 export const TaskContent = ({ children, className, ...props }: TaskContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      "data-closed:fade-out-0 data-closed:slide-out-to-top-2 data-open:slide-in-from-top-2 text-popover-foreground outline-none data-closed:animate-out data-open:animate-in",
       className,
     )}
     {...props}
