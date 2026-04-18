@@ -32,7 +32,7 @@ export const SourcesContent = ({ className, ...props }: SourcesContentProps) => 
   <CollapsibleContent
     className={cn(
       "mt-3 flex w-fit flex-col gap-2",
-      "data-closed:fade-out-0 data-closed:slide-out-to-top-2 data-open:slide-in-from-top-2 outline-none data-closed:animate-out data-open:animate-in",
+      "data-closed:fade-out-0 outline-none data-closed:animate-out data-open:animate-in",
       className,
     )}
     {...props}

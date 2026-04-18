@@ -60,7 +60,7 @@ export type TaskContentProps = ComponentProps<typeof CollapsibleContent>;
 export const TaskContent = ({ children, className, ...props }: TaskContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-closed:fade-out-0 data-closed:slide-out-to-top-2 data-open:slide-in-from-top-2 text-popover-foreground outline-none data-closed:animate-out data-open:animate-in",
+      "data-closed:fade-out-0 text-popover-foreground outline-none data-closed:animate-out data-open:animate-in",
       className,
     )}
     {...props}
