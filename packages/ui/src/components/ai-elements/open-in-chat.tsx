@@ -11,7 +11,7 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "lucide-react";
-import { type ComponentProps, createContext, useContext } from "react";
+import { type ComponentProps, createContext, isValidElement, useContext } from "react";
 
 const providers = {
   github: {
@@ -207,7 +207,7 @@ export const OpenInTrigger = ({ children, ...props }: OpenInTriggerProps) => (
   <DropdownMenuTrigger
     {...props}
     render={
-      (children as React.ReactElement | undefined) ?? (
+      isValidElement(children) ? children : (
         <Button type="button" variant="outline">
           Open in chat
           <ChevronDownIcon className="size-4" />
