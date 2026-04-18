@@ -37,12 +37,13 @@ export type TaskTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
   title: string;
 };
 
-export const TaskTrigger = ({ children, className, title, ...props }: TaskTriggerProps) => (
+export const TaskTrigger = ({ children, className, title, render, ...props }: TaskTriggerProps) => (
   <CollapsibleTrigger
     nativeButton={false}
     className={cn("group", className)}
     {...props}
     render={
+      render ??
       (children as React.ReactElement | undefined) ?? (
         <div className="flex w-full cursor-pointer items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
           <SearchIcon className="size-4" />
