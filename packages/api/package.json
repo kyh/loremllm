@@ -13,9 +13,9 @@
     "dev": "tsc",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false",
     "seed": "pnpm with-env tsx scripts/seed.ts",
-    "seed-remote": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts",
+    "seed:remote": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts",
     "with-env": "dotenv -e ../../.env --",
-    "backfill-vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
+    "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.48",

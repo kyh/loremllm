@@ -4,19 +4,18 @@
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
-    "clean-workspaces": "turbo run clean",
-    "db-push": "pnpm -F db push",
-    "db-push-remote": "pnpm -F db push-remote && pnpm -F builder push-remote",
+    "clean:workspaces": "turbo run clean",
+    "db:push": "pnpm -F db push",
+    "db:push-remote": "pnpm -F db push:remote && pnpm -F builder push:remote",
     "dev": "turbo watch db studio dev --continue",
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "gen-ui": "pnpm -F ui gen-ui",
     "changeset": "changeset",
-    "publish-packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish",
+    "publish:packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish",
     "format": "oxfmt",
-    "lint-fix": "oxlint --fix",
-    "format-fix": "oxfmt --write"
+    "lint:fix": "oxlint --fix",
+    "format:fix": "oxfmt --write"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

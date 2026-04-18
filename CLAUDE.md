@@ -29,13 +29,13 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 pnpm dev              # Start all (db, studio, app)
 pnpm build            # Build all
 pnpm lint             # oxlint
-pnpm lint-fix         # oxlint --fix
+pnpm lint:fix         # oxlint --fix
 pnpm format           # oxfmt
-pnpm format-fix       # oxfmt --write
+pnpm format:fix       # oxfmt --write
 pnpm typecheck        # TypeScript check
 pnpm test             # Run tests
-pnpm db-push          # Push DB schema locally
-pnpm db-push-remote   # Push DB schema to production
+pnpm db:push          # Push DB schema locally
+pnpm db:push-remote   # Push DB schema to production
 ```
 
 ### Package-specific
@@ -43,5 +43,4 @@ pnpm db-push-remote   # Push DB schema to production
 ```bash
 pnpm -F db studio     # Drizzle Studio
 pnpm -F api seed      # Seed local DB
-pnpm -F ui gen-ui     # Add shadcn components
 ```
