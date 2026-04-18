@@ -68,7 +68,7 @@ export const ToolHeader = ({ className, title, type, state, ...props }: ToolHead
       <span className="font-medium text-sm">{title ?? type.split("-").slice(1).join("-")}</span>
       {getStatusBadge(state)}
     </div>
-    <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+    <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[panel-open]:rotate-180" />
   </CollapsibleTrigger>
 );
 

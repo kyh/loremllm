@@ -94,7 +94,7 @@ const RootLayout = (props: LayoutProps) => {
       <body
         className={cn(GeistMono.variable, "text-foreground bg-background font-mono antialiased")}
       >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider>
           <TooltipProvider>
             <TRPCReactProvider>{props.children}</TRPCReactProvider>
             <Toaster />
