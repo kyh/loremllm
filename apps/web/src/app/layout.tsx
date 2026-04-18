@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { GlobalAlertDialog } from "@repo/ui/alert-dialog";
-import { ThemeProvider } from "@repo/ui/theme";
-import { GlobalToaster } from "@repo/ui/toast";
-import { TooltipProvider } from "@repo/ui/tooltip";
-import { cn } from "@repo/ui/utils";
+import { GlobalAlertDialog } from "@repo/ui/components/alert-dialog";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@repo/ui/components/sonner";
+import { TooltipProvider } from "@repo/ui/components/tooltip";
+import { cn } from "@repo/ui/lib/utils";
 import { GeistMono } from "geist/font/mono";
 
 import { siteConfig } from "@/lib/site-config";
@@ -97,7 +97,7 @@ const RootLayout = (props: LayoutProps) => {
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <TooltipProvider>
             <TRPCReactProvider>{props.children}</TRPCReactProvider>
-            <GlobalToaster />
+            <Toaster />
             <GlobalAlertDialog />
           </TooltipProvider>
         </ThemeProvider>

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "@repo/ui/theme";
-import { cn } from "@repo/ui/utils";
+import { useTheme } from "next-themes";
+import { cn } from "@repo/ui/lib/utils";
 import { Slot } from "radix-ui";
 
 import { TextAnimator } from "./text-animator";

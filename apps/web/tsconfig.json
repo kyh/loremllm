@@ -4,7 +4,6 @@
     "checkJs": false,
     "lib": ["ES2023", "dom", "dom.iterable"],
     "jsx": "preserve",
-    "baseUrl": ".",
     "paths": {
       "@/.source": ["./.source/index.ts"],
       "@/*": ["./src/*"]

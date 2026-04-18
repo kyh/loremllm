@@ -4,8 +4,8 @@ import type { DataUIPart, UIMessage } from "ai";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Chat, useChat } from "@ai-sdk/react";
-import { Badge } from "@repo/ui/badge";
-import { Button } from "@repo/ui/button";
+import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import {
   Drawer,
   DrawerContent,
@@ -13,8 +13,8 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@repo/ui/drawer";
-import { Input } from "@repo/ui/input";
+} from "@repo/ui/components/drawer";
+import { Input } from "@repo/ui/components/input";
 import { DefaultChatTransport } from "ai";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CodeBlock } from "@repo/ui/ai-elements/code-block";
+import { CodeBlock } from "@repo/ui/components/ai-elements/code-block";
 
 import type { Demo } from "./demo-data";
 

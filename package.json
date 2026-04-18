@@ -8,6 +8,7 @@
     "db:push": "pnpm -F db push",
     "db:push-remote": "pnpm -F db push:remote && pnpm -F builder push:remote",
     "dev": "turbo watch db studio dev --continue",
+    "dev:web": "turbo watch dev --filter=@loremllm/web --continue",
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",

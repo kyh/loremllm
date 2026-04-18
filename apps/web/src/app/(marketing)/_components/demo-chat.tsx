@@ -7,28 +7,28 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@repo/ui/ai-elements/conversation";
+} from "@repo/ui/components/ai-elements/conversation";
 import {
   Message,
   MessageAttachment,
   MessageContent,
   MessageResponse,
-} from "@repo/ui/ai-elements/message";
+} from "@repo/ui/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTextarea,
-} from "@repo/ui/ai-elements/prompt-input";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@repo/ui/ai-elements/reasoning";
-import { Source, Sources, SourcesContent, SourcesTrigger } from "@repo/ui/ai-elements/sources";
-import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@repo/ui/ai-elements/tool";
-import { Spinner } from "@repo/ui/spinner";
+} from "@repo/ui/components/ai-elements/prompt-input";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "@repo/ui/components/ai-elements/reasoning";
+import { Source, Sources, SourcesContent, SourcesTrigger } from "@repo/ui/components/ai-elements/sources";
+import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@repo/ui/components/ai-elements/tool";
+import { Spinner } from "@repo/ui/components/spinner";
 import { getToolOrDynamicToolName, isToolOrDynamicToolUIPart } from "ai";
 
 import type { Demo } from "./demo-data";
-import type { PromptInputMessage } from "@repo/ui/ai-elements/prompt-input";
+import type { PromptInputMessage } from "@repo/ui/components/ai-elements/prompt-input";
 
 export const DemoChat = ({ demo }: { demo: Demo }) => {
   const [input, setInput] = useState(() => demo.preset ?? "");

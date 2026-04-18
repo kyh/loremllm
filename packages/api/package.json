@@ -24,7 +24,6 @@
     "@trpc/server": "catalog:",
     "ai": "^6.0.141",
     "better-auth": "catalog:",
-    "drizzle-zod": "^0.8.3",
     "next": "catalog:",
     "react": "catalog:",
     "superjson": "catalog:",
