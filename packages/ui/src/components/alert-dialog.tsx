@@ -226,16 +226,18 @@ export const GlobalAlertDialog = () => {
     }
   };
 
-  const onOpenChange = (open: boolean) => {
-    if (pendingAction || pendingCancel) return;
-    if (!open) {
-      void runAndClose(alertState.cancel?.onClick, setPendingCancel);
-    }
-  };
+  const onOpenChange = React.useCallback((open: boolean) => {
+    if (open) return;
+    alertDialog.close();
+  }, []);
 
-  const onConfirm = () => {
+  const onCancel = React.useCallback(() => {
+    void runAndClose(alertState.cancel?.onClick, setPendingCancel);
+  }, [alertState.cancel?.onClick]);
+
+  const onConfirm = React.useCallback(() => {
     void runAndClose(alertState.action?.onClick, setPendingAction);
-  };
+  }, [alertState.action?.onClick]);
 
   return (
     <AlertDialog open={alertState.open} onOpenChange={onOpenChange}>
@@ -253,7 +255,7 @@ export const GlobalAlertDialog = () => {
             </Button>
           )}
           {!alertState.cancel?.hidden && (
-            <Button variant="secondary" onClick={() => onOpenChange(false)} loading={pendingCancel}>
+            <Button variant="secondary" onClick={onCancel} loading={pendingCancel}>
               {alertState.cancel?.label ?? "Close"}
             </Button>
           )}
