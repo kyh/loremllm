@@ -58,3 +58,4 @@ local.*
 
 # claude
 .claude/scheduled_tasks.lock
+.playwright-mcp/
