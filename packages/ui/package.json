@@ -17,9 +17,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@icons-pack/react-simple-icons": "^13.13.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
-    "@shikijs/transformers": "^4.0.2",
     "@tanstack/react-table": "^8.21.3",
     "ai": "^6.0.141",
     "class-variance-authority": "^0.7.1",
