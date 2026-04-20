@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Logo } from "@repo/ui/logo";
+import { Logo } from "@repo/ui/components/logo";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { allDemos, platformDemos, transportDemos } from "./_components/demo-data";

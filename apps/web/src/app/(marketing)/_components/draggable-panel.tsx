@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@repo/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/tooltip";
-import { cn } from "@repo/ui/utils";
+import { Button } from "@repo/ui/components/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/components/tooltip";
+import { cn } from "@repo/ui/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -171,33 +171,37 @@ export const DraggablePanel = ({
           {(onPrevious || onNext) && (
             <>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onPrevious}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    disabled={!hasPrevious}
-                    className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
-                  >
-                    <ChevronLeftIcon className="size-4" />
-                  </Button>
-                </TooltipTrigger>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onPrevious}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={!hasPrevious}
+                      className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
+                    >
+                      <ChevronLeftIcon className="size-4" />
+                    </Button>
+                  }
+                />
                 <TooltipContent side="bottom">Previous (←)</TooltipContent>
               </Tooltip>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onNext}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    disabled={!hasNext}
-                    className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
-                  >
-                    <ChevronRightIcon className="size-4" />
-                  </Button>
-                </TooltipTrigger>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onNext}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={!hasNext}
+                      className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
+                    >
+                      <ChevronRightIcon className="size-4" />
+                    </Button>
+                  }
+                />
                 <TooltipContent side="bottom">Next (→)</TooltipContent>
               </Tooltip>
             </>

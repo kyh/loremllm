@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogTrigger } from "@repo/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/tabs";
+import { Dialog, DialogTrigger } from "@repo/ui/components/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 
 import type { Demo } from "./demo-data";
 import type { HoverTextHandle } from "./hover-text";
@@ -106,18 +106,21 @@ const DemoItem = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => (open ? openDemo(demo) : closeDemo())}>
-      <DialogTrigger asChild>
-        <li
-          className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_180px_1fr] sm:gap-x-8 sm:text-lg"
-          {...mouseHandlers}
-        >
-          <span>{formatCounter(index)}</span>
-          <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
-          <HoverText ref={setHoverTextRef(index, 1)} className="hidden whitespace-normal sm:block">
-            {demo.description}
-          </HoverText>
-        </li>
-      </DialogTrigger>
+      <DialogTrigger
+        nativeButton={false}
+        render={
+          <li
+            className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_180px_1fr] sm:gap-x-8 sm:text-lg"
+            {...mouseHandlers}
+          >
+            <span>{formatCounter(index)}</span>
+            <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
+            <HoverText ref={setHoverTextRef(index, 1)} className="hidden whitespace-normal sm:block">
+              {demo.description}
+            </HoverText>
+          </li>
+        }
+      />
       {currentDemo && isOpen && (
         <DraggablePanel
           title={`[${currentDemo.section}] ${currentDemo.title}`}

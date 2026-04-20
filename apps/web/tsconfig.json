@@ -2,12 +2,13 @@
   "extends": "@kyh/tsconfig/base.json",
   "compilerOptions": {
     "checkJs": false,
-    "lib": ["ES2022", "dom", "dom.iterable"],
+    "lib": ["ES2023", "dom", "dom.iterable"],
     "jsx": "preserve",
-    "baseUrl": ".",
     "paths": {
       "@/.source": ["./.source/index.ts"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@loremllm/transport": ["../../packages/transport/src/index.ts"],
+      "@loremllm/transport/*": ["../../packages/transport/src/*.ts"]
     },
     "plugins": [{ "name": "next" }],
     "module": "esnext"
