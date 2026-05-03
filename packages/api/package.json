@@ -21,7 +21,7 @@
     "@better-auth/expo": "catalog:",
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
-    "ai": "^6.0.141",
+    "ai": "^6.0.174",
     "better-auth": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
