@@ -38,11 +38,11 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^3.0.176",
+    "@ai-sdk/react": "^3.0.185",
     "@kyh/tsconfig": "catalog:",
-    "ai": "^6.0.174",
+    "ai": "^6.0.183",
     "typescript": "catalog:",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   },
   "peerDependencies": {
     "ai": "^6.x.x"
