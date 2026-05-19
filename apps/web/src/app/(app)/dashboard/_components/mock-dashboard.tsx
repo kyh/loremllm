@@ -9,7 +9,7 @@ import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/components/table";
 import { Textarea } from "@repo/ui/components/textarea";
-import { toast } from "@repo/ui/components/toast";
+import { toast } from "@repo/ui/components/sonner";
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";

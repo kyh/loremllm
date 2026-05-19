@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GlobalAlertDialog } from "@repo/ui/components/alert-dialog";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@repo/ui/components/toast";
+import { Toaster } from "@repo/ui/components/sonner";
 import { TooltipProvider } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import { GeistMono } from "geist/font/mono";
