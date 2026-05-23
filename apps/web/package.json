@@ -12,7 +12,7 @@
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.185",
+    "@ai-sdk/react": "^3.0.193",
     "@loremllm/transport": "workspace:^",
     "@repo/api": "workspace:^",
     "@repo/db": "workspace:^",
@@ -22,13 +22,13 @@
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
-    "ai": "^6.0.183",
+    "ai": "^6.0.191",
     "better-auth": "catalog:",
-    "geist": "^1.7.0",
+    "geist": "^1.7.1",
     "gsap": "^3.15.0",
     "lorem-ipsum": "^3.0.0",
     "lucide-react": "^1.16.0",
-    "motion": "^12.38.0",
+    "motion": "^12.40.0",
     "next": "catalog:",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",
@@ -47,7 +47,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.15",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
