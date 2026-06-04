@@ -12,14 +12,11 @@
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "changeset": "changeset",
-    "publish:packages": "turbo run build --filter=\"./packages/*\" && changeset version && changeset publish",
     "format": "oxfmt",
     "lint:fix": "oxlint --fix",
     "format:fix": "oxfmt --write"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
     "dotenv-cli": "^11.0.0",
     "oxfmt": "^0.51.0",
     "oxlint": "^1.66.0",
