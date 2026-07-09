@@ -31,18 +31,18 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pkgroll",
+    "build": "tsc --emitDeclarationOnly false",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "dev": "pkgroll --watch",
+    "dev": "tsc --emitDeclarationOnly false --watch --preserveWatchOutput",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^3.0.193",
+    "@ai-sdk/react": "^4.0.20",
     "@kyh/tsconfig": "catalog:",
-    "ai": "^6.0.191",
+    "ai": "^7.0.19",
     "typescript": "catalog:",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "ai": "^6.x.x"
