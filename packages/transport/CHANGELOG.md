@@ -1,5 +1,14 @@
 # @loremllm/transport
 
+## 0.7.0 — 2026-07-09
+
+### Minor Changes
+
+- new `@loremllm/transport/eve` entry: static mock server for the eve agent framework (stream protocol v18) — implements eve's session + NDJSON stream routes from the same `mockResponse` generator API as `StaticChatTransport`
+- `EveSessionStore` seam + `parseEveSessionRecord` for DB-backed sessions on serverless
+- peer dep widened to `ai@^6.0.0 || ^7.0.0`
+- README: v7-era `useChat` examples (`@ai-sdk/react`, `sendMessage`), fix clipboard subpath import
+
 ## 0.6.1
 
 ### Patch Changes
