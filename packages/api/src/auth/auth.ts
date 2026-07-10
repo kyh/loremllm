@@ -23,7 +23,6 @@ export const auth = betterAuth({
     provider: "sqlite",
   }),
   baseURL: baseUrl,
-  secret: process.env.BETTER_AUTH_SECRET ?? process.env.AUTH_SECRET,
   plugins: [
     oAuthProxy({
       currentURL: baseUrl,
