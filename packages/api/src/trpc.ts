@@ -6,7 +6,9 @@
  * tl;dr - this is where all the tRPC server stuff is created and plugged in.
  * The pieces you will need to use are documented accordingly near the end
  */
+import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
+import { session } from "@repo/db/drizzle-schema-auth";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -108,5 +110,44 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
       // infers the `session` as non-nullable
       session: { ...session, user: session.user },
     },
+  });
+});
+
+/**
+ * Organization-scoped procedure
+ *
+ * Builds on `protectedProcedure` and additionally guarantees the session has an
+ * active organization, exposing it as `ctx.organizationId`.
+ *
+ * Sessions created during sign-up can miss the active organization (the
+ * organization is created in a parallel hook), so fall back to the user's
+ * first membership and persist it on the session.
+ */
+export const organizationProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  let organizationId = ctx.session.session.activeOrganizationId ?? null;
+
+  if (!organizationId) {
+    const membership = await ctx.db.query.member.findFirst({
+      where: (member, { eq }) => eq(member.userId, ctx.session.user.id),
+    });
+    organizationId = membership?.organizationId ?? null;
+
+    if (organizationId) {
+      await ctx.db
+        .update(session)
+        .set({ activeOrganizationId: organizationId })
+        .where(eq(session.id, ctx.session.session.id));
+    }
+  }
+
+  if (!organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No active organization found for session",
+    });
+  }
+
+  return next({
+    ctx: { ...ctx, organizationId },
   });
 });

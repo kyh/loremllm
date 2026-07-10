@@ -1,6 +1,6 @@
 # @loremllm/transport
 
-A lightweight transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack or incurring any llm fees.
+A lightweight transport implementation for the [Vercel AI SDK UI layer](https://ai-sdk.dev/docs/ai-sdk-ui/transport). It lets you describe the exact `UIMessage[]` the UI should display and streams the message back to the client without touching your network stack or incurring any llm fees.
 
 ## When to use it
 
@@ -14,13 +14,13 @@ A lightweight transport implementation for the [Vercel AI SDK UI layer](https://
 pnpm add @loremllm/transport
 ```
 
-The package declares a peer dependency on `ai@5.x.x`; make sure it is available in your workspace.
+The package declares a peer dependency on `ai@^6.0.0 || ^7.0.0`; make sure it is available in your workspace.
 
 ## Quick start
 
 ```ts
 import { StaticChatTransport } from "@loremllm/transport";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 
 const transport = new StaticChatTransport({
   chunkDelayMs: 25,
@@ -30,12 +30,12 @@ const transport = new StaticChatTransport({
 });
 
 export const DemoChat = () => {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     id: "demo",
     transport,
   });
 
-  // render messages + form
+  // render messages + form, call sendMessage({ text }) on submit
 };
 ```
 
@@ -92,11 +92,11 @@ Return `undefined` or `0` to emit the next chunk immediately.
 
 ### Tool calling
 
-You can simulate tool calls by yielding tool parts. Here's an example inspired by the [AI SDK tool calling documentation](https://v6.ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling):
+You can simulate tool calls by yielding tool parts. Here's an example inspired by the [AI SDK tool calling documentation](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling):
 
 ```ts
 import { StaticChatTransport } from "@loremllm/transport";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 
 const transport = new StaticChatTransport({
   async *mockResponse({ messages }) {
@@ -133,12 +133,12 @@ const transport = new StaticChatTransport({
 });
 
 export const WeatherChat = () => {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     id: "weather-demo",
     transport,
   });
 
-  // render messages + form
+  // render messages + form, call sendMessage({ text }) on submit
 };
 ```
 
@@ -148,7 +148,7 @@ Use custom `data-*` parts to stream application-specific data that your UI can h
 
 ```ts
 import { StaticChatTransport } from "@loremllm/transport";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 
 const transport = new StaticChatTransport({
   async *mockResponse() {
@@ -184,7 +184,7 @@ const transport = new StaticChatTransport({
 });
 
 export const DataStreamChat = () => {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     id: "data-demo",
     transport,
     onData: (dataPart) => {
@@ -205,11 +205,11 @@ export const DataStreamChat = () => {
 
 ### MCP dynamic tools
 
-For [Model Context Protocol (MCP)](https://v6.ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling#mcp-tools) dynamic tools, use the `dynamic-tool` type:
+For [Model Context Protocol (MCP)](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling#mcp-tools) dynamic tools, use the `dynamic-tool` type:
 
 ```ts
 import { StaticChatTransport } from "@loremllm/transport";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 
 const transport = new StaticChatTransport({
   async *mockResponse() {
@@ -236,12 +236,12 @@ const transport = new StaticChatTransport({
 });
 
 export const MCPChat = () => {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     id: "mcp-demo",
     transport,
   });
 
-  // render messages + form
+  // render messages + form, call sendMessage({ text }) on submit
 };
 ```
 
@@ -269,13 +269,54 @@ Encountering an unsupported part type throws so the UI can flag the issue. Exten
 `StaticChatTransport` exposes the raw class if you want to subclass it, override `createStreamFromChunks`, or plug your own caching layer.  
 For complex real transports, consider implementing `ChatTransport` directly so you can forward the stream from your backend without converting to `UIMessage` first.
 
+## eve framework support
+
+The `@loremllm/transport/eve` entry point serves the same scripted responses over the [eve agent framework](https://eve.dev)'s wire protocol (stream version 18, eve 0.22.x). Instead of a client-side transport, eve support is a tiny mock server: a [fetch handler](https://developer.mozilla.org/en-US/docs/Web/API/Request) implementing the three routes `useEveAgent` talks to.
+
+```ts
+// app/api/mock/[[...eve]]/route.ts (Next.js example — any Request => Response host works)
+import { createStaticEveHandler } from "@loremllm/transport/eve";
+
+const handler = createStaticEveHandler({
+  chunkDelayMs: 25,
+  async *mockResponse() {
+    yield { type: "reasoning", text: "The user greeted me." };
+    yield { type: "text", text: "Hello! How can I help you today?" };
+  },
+});
+
+export const GET = handler;
+export const POST = handler;
+export const OPTIONS = handler;
+```
+
+```tsx
+"use client";
+import { useEveAgent } from "eve/react";
+
+export const DemoAgent = () => {
+  const { data, send, status } = useEveAgent({ host: "/api/mock" });
+  // data.messages renders exactly like a real eve agent's output
+};
+```
+
+`mockResponse` is the **same option — and can be the same function — as `StaticChatTransport`'s**: author a scripted response once and serve it to both AI SDK `useChat` UIs and eve `useEveAgent` UIs. `chunkDelayMs`, `autoChunkText`, and `autoChunkReasoning` behave identically.
+
+Notes:
+
+- Supported parts on the eve wire: `text`, `reasoning`, `tool-*`, `dynamic-tool`, `step-start`. Parts with no eve representation (`file`, `source-*`, `data-*`) fail the turn loudly rather than dropping silently.
+- The handler routes on the `/eve/v1/` path segment, so any mount prefix works. CORS is on by default (any origin) since demos usually run cross-origin; pass `cors: { origin }` or `cors: false` to tighten.
+- Sessions live in memory by default. On serverless, pass a `sessionStore` backed by shared storage — the create request and the stream request for a turn can land on different instances.
+- A thrown `mockResponse` becomes a `turn.failed` + `session.failed` sequence, surfacing in `useEveAgent`'s `error`/`status`.
+- HITL (`inputResponses`) turns and task-mode sessions aren't supported; every successful turn ends `session.waiting` (conversation mode).
+
 ## Copy messages to clipboard
 
 The `copyMessagesToClipboard` function can be used to copy a real llm response to the clipboard as a static transport template.
 
 ```ts
-import { copyMessagesToClipboard } from "@loremllm/transport";
-import { useChat } from "ai/react";
+import { copyMessagesToClipboard } from "@loremllm/transport/copy-messages-to-clipboard";
+import { useChat } from "@ai-sdk/react";
 
 const { messages, sendMessage, status, error } = useChat({
   onFinish: copyMessagesToClipboard,

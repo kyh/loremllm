@@ -3,8 +3,7 @@ import { eq } from "@repo/db";
 import { mockCollection } from "@repo/db/drizzle-schema";
 import { TRPCError } from "@trpc/server";
 
-import type { AuthenticatedSession, TRPCContext } from "../trpc";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, organizationProcedure } from "../trpc";
 import {
   collectionByIdInput,
   createCollectionInput,
@@ -12,32 +11,10 @@ import {
   updateCollectionInput,
 } from "./collection-schema";
 
-type SessionWithActiveOrganization = {
-  session: { activeOrganizationId?: string | null };
-  user: { activeOrganizationId?: string | null };
-};
-
-const requireActiveOrganizationId = (ctx: TRPCContext) => {
-  const session = ctx.session as AuthenticatedSession & SessionWithActiveOrganization;
-  const organizationId =
-    session.session.activeOrganizationId ?? session.user.activeOrganizationId ?? null;
-
-  if (!organizationId) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "No active organization found for session",
-    });
-  }
-
-  return organizationId;
-};
-
 export const collectionRouter = createTRPCRouter({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    const organizationId = requireActiveOrganizationId(ctx);
-
+  list: organizationProcedure.query(async ({ ctx }) => {
     const collections = await ctx.db.query.mockCollection.findMany({
-      where: (collection, { eq }) => eq(collection.organizationId, organizationId),
+      where: (collection, { eq }) => eq(collection.organizationId, ctx.organizationId),
       orderBy: (collection, { desc }) => [desc(collection.updatedAt)],
       with: {
         interactions: {
@@ -52,6 +29,7 @@ export const collectionRouter = createTRPCRouter({
       name: collection.name,
       description: collection.description,
       isPublic: collection.isPublic,
+      minSimilarity: collection.minSimilarity,
       metadata: collection.metadata,
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
@@ -59,14 +37,17 @@ export const collectionRouter = createTRPCRouter({
     }));
   }),
 
-  byId: protectedProcedure.input(collectionByIdInput).query(async ({ ctx, input }) => {
-    const organizationId = requireActiveOrganizationId(ctx);
-
+  byId: organizationProcedure.input(collectionByIdInput).query(async ({ ctx, input }) => {
     const collection = await ctx.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
-        and(eq(collection.id, input.collectionId), eq(collection.organizationId, organizationId)),
+        and(
+          eq(collection.id, input.collectionId),
+          eq(collection.organizationId, ctx.organizationId),
+        ),
       with: {
         interactions: {
+          // Exclude the embedding blob — libsql's JSON protocol can't carry it
+          columns: { vector: false },
           orderBy: (interaction, { desc }) => [desc(interaction.updatedAt)],
         },
       },
@@ -85,6 +66,7 @@ export const collectionRouter = createTRPCRouter({
       name: collection.name,
       description: collection.description,
       isPublic: collection.isPublic,
+      minSimilarity: collection.minSimilarity,
       metadata: collection.metadata,
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
@@ -101,17 +83,16 @@ export const collectionRouter = createTRPCRouter({
     };
   }),
 
-  create: protectedProcedure.input(createCollectionInput).mutation(async ({ ctx, input }) => {
-    const organizationId = requireActiveOrganizationId(ctx);
-
+  create: organizationProcedure.input(createCollectionInput).mutation(async ({ ctx, input }) => {
     const [collection] = await ctx.db
       .insert(mockCollection)
       .values({
-        organizationId,
+        organizationId: ctx.organizationId,
         publicId: input.publicId ?? randomUUID(),
         name: input.name,
         description: input.description ?? null,
         isPublic: input.isPublic ?? false,
+        minSimilarity: input.minSimilarity ?? 0,
         metadata: input.metadata ?? {},
       })
       .returning();
@@ -129,6 +110,7 @@ export const collectionRouter = createTRPCRouter({
       name: collection.name,
       description: collection.description,
       isPublic: collection.isPublic,
+      minSimilarity: collection.minSimilarity,
       metadata: collection.metadata,
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
@@ -136,12 +118,13 @@ export const collectionRouter = createTRPCRouter({
     };
   }),
 
-  update: protectedProcedure.input(updateCollectionInput).mutation(async ({ ctx, input }) => {
-    const organizationId = requireActiveOrganizationId(ctx);
-
+  update: organizationProcedure.input(updateCollectionInput).mutation(async ({ ctx, input }) => {
     const collection = await ctx.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
-        and(eq(collection.id, input.collectionId), eq(collection.organizationId, organizationId)),
+        and(
+          eq(collection.id, input.collectionId),
+          eq(collection.organizationId, ctx.organizationId),
+        ),
     });
 
     if (!collection) {
@@ -155,8 +138,13 @@ export const collectionRouter = createTRPCRouter({
       .update(mockCollection)
       .set({
         name: input.name ?? collection.name,
-        description: input.description ?? collection.description,
+        // An explicit empty string clears the description; undefined leaves it unchanged
+        description:
+          input.description === undefined
+            ? collection.description
+            : input.description.trim() || null,
         isPublic: input.isPublic ?? collection.isPublic,
+        minSimilarity: input.minSimilarity ?? collection.minSimilarity,
         metadata: input.metadata ?? collection.metadata,
         updatedAt: new Date(),
       })
@@ -176,18 +164,20 @@ export const collectionRouter = createTRPCRouter({
       name: updatedCollection.name,
       description: updatedCollection.description,
       isPublic: updatedCollection.isPublic,
+      minSimilarity: updatedCollection.minSimilarity,
       metadata: updatedCollection.metadata,
       createdAt: updatedCollection.createdAt,
       updatedAt: updatedCollection.updatedAt,
     };
   }),
 
-  delete: protectedProcedure.input(deleteCollectionInput).mutation(async ({ ctx, input }) => {
-    const organizationId = requireActiveOrganizationId(ctx);
-
+  delete: organizationProcedure.input(deleteCollectionInput).mutation(async ({ ctx, input }) => {
     const collection = await ctx.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
-        and(eq(collection.id, input.collectionId), eq(collection.organizationId, organizationId)),
+        and(
+          eq(collection.id, input.collectionId),
+          eq(collection.organizationId, ctx.organizationId),
+        ),
     });
 
     if (!collection) {

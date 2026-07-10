@@ -115,7 +115,10 @@ const DemoItem = ({
           >
             <span>{formatCounter(index)}</span>
             <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
-            <HoverText ref={setHoverTextRef(index, 1)} className="hidden whitespace-normal sm:block">
+            <HoverText
+              ref={setHoverTextRef(index, 1)}
+              className="hidden whitespace-normal sm:block"
+            >
               {demo.description}
             </HoverText>
           </li>

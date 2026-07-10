@@ -20,6 +20,7 @@ Cut a new npm version of `@loremllm/transport`, the one publishable package in t
 ## Arguments
 
 Parse from the user message:
+
 - Bump type: `patch`, `minor`, `major`. Default `patch`.
 - `--force` to release even with no changes since the last tag.
 
@@ -30,6 +31,7 @@ If ambiguous, ask in one short sentence before proceeding.
 ### 1. Preflight
 
 Run in parallel:
+
 - `npm whoami` — must be `kaiyuhsu`. If not, stop and tell the user to `npm login`.
 - `git status --porcelain` — if dirty in unrelated files, surface and ask whether to proceed.
 - `npm view @loremllm/transport version` — current published.
@@ -70,10 +72,12 @@ Terse bullets — sacrifice grammar for concision. If unsure, show the proposed 
 ### 5. Publish
 
 From `packages/transport`:
+
 ```
 pnpm publish --access public --no-git-checks
 ```
-`--no-git-checks` because we commit + tag *after* publish.
+
+`--no-git-checks` because we commit + tag _after_ publish.
 
 ### 6. Verify
 
@@ -87,6 +91,7 @@ git commit -m "release: @loremllm/transport@<version>"
 git tag -a '@loremllm/transport@<version>' -m '@loremllm/transport@<version>'
 git push --follow-tags origin <current-branch>
 ```
+
 git accepts `@` in tag names.
 
 ### 8. Report
@@ -95,6 +100,7 @@ git accepts `@` in tag names.
 Released: @loremllm/transport@X.Y.Z (tag: @loremllm/transport@X.Y.Z)
 Commit: <sha> (pushed to origin/<branch>)
 ```
+
 If anything failed, lead with the failure and the exact state (published? committed? tagged? pushed?).
 
 ## Rules

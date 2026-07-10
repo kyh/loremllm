@@ -8,6 +8,14 @@ export const createInteractionInput = z.object({
   output: z.string().min(1, "Output is required"),
 });
 
+export const updateInteractionInput = z.object({
+  interactionId: z.string(),
+  title: z.string().min(1, "Title is required").optional(),
+  description: z.string().optional(),
+  input: z.string().min(1, "Input is required").optional(),
+  output: z.string().min(1, "Output is required").optional(),
+});
+
 export const deleteInteractionInput = z.object({
   interactionId: z.string(),
 });

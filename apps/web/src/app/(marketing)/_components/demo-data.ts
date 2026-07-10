@@ -255,6 +255,7 @@ export function DefaultGenerator() {
     api: "/api/chat",
     body: {
       // Default lorem ipsum generator
+      type: "lorem",
     },
   });
 
@@ -282,6 +283,7 @@ export function CollectionsDemo() {
   const { messages, sendMessage } = useChat({
     api: "/api/chat",
     body: {
+      type: "chat",
       collectionId: "demo",
     },
   });
@@ -320,7 +322,7 @@ export function MarkdownStreamingDemo() {
   const { messages, sendMessage } = useChat({
     api: "/api/chat",
     body: {
-      markdown: true,
+      type: "markdown",
     },
   });
 

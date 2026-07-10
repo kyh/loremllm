@@ -1,6 +1,7 @@
 import type { ChatRequestOptions, ChatTransport, ToolUIPart, UIMessage, UIMessageChunk } from "ai";
 
-type MaybePromise<T> = T | Promise<T>;
+import type { DelayResolver } from "./shared.ts";
+import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
 /**
  * Tool state values supported by the transport.
@@ -43,10 +44,7 @@ export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
   messageId: string | undefined;
 };
 
-export type ChunkDelayResolver =
-  | number
-  | [number, number]
-  | ((chunk: UIMessageChunk) => MaybePromise<number | [number, number] | undefined>);
+export type ChunkDelayResolver = DelayResolver<UIMessageChunk>;
 
 export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
   /**
@@ -88,14 +86,6 @@ class AbortTransportError extends Error {
     super("The transport request was aborted.");
     this.name = "AbortError";
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function randomDelay(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function generateMessageId(): string {
@@ -219,28 +209,8 @@ export class StaticChatTransport<
 
     const isAborted = () => aborted || abortSignal?.aborted === true;
 
-    const resolveDelay = async (chunk: UIMessageChunk): Promise<number | undefined> => {
-      const { chunkDelayMs } = this;
-      if (chunkDelayMs == null) {
-        return undefined;
-      }
-
-      if (typeof chunkDelayMs === "number") {
-        return chunkDelayMs;
-      }
-
-      if (Array.isArray(chunkDelayMs)) {
-        return randomDelay(chunkDelayMs[0], chunkDelayMs[1]);
-      }
-
-      // Function resolver
-      const result = await chunkDelayMs(chunk);
-      if (result == null) {
-        return undefined;
-      }
-
-      return Array.isArray(result) ? randomDelay(result[0], result[1]) : result;
-    };
+    const resolveDelay = (chunk: UIMessageChunk): Promise<number | undefined> =>
+      resolveChunkDelay(this.chunkDelayMs, chunk);
 
     return new ReadableStream<UIMessageChunk>({
       start: async (controller) => {
@@ -328,33 +298,8 @@ function createTextLikeChunks(
     }
   };
 
-  // No chunking - send entire text as single delta
-  if (autoChunk === false) {
-    pushDelta(part.text);
-  } else {
-    // Determine the regex pattern
-    const matchPattern =
-      autoChunk === true
-        ? /(\S+|\s+)/g // Default: word-by-word (words and spaces)
-        : autoChunk.global
-          ? autoChunk
-          : new RegExp(autoChunk.source, autoChunk.flags + "g");
-
-    // Check if regex has capturing groups (matches content) vs separators (splits on)
-    const hasCapturingGroups = matchPattern.source.includes("(");
-
-    if (hasCapturingGroups) {
-      // Match content pattern (e.g., /(\S+|\s+)/g)
-      for (const match of part.text.matchAll(matchPattern)) {
-        pushDelta(match[0]);
-      }
-    } else {
-      // Split pattern (e.g., /[,.]/g) - add capturing group to preserve separators
-      const splitPattern = new RegExp(`(${matchPattern.source})`, matchPattern.flags);
-      for (const segment of part.text.split(splitPattern)) {
-        pushDelta(segment);
-      }
-    }
+  for (const segment of segmentText(part.text, autoChunk)) {
+    pushDelta(segment);
   }
 
   chunks.push({

@@ -21,11 +21,26 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@repo/ui/components/ai-elements/prompt-input";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@repo/ui/components/ai-elements/reasoning";
-import { Source, Sources, SourcesContent, SourcesTrigger } from "@repo/ui/components/ai-elements/sources";
-import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@repo/ui/components/ai-elements/tool";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@repo/ui/components/ai-elements/reasoning";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@repo/ui/components/ai-elements/sources";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@repo/ui/components/ai-elements/tool";
 import { Spinner } from "@repo/ui/components/spinner";
-import { getToolOrDynamicToolName, isToolOrDynamicToolUIPart } from "ai";
+import { getToolOrDynamicToolName, isToolUIPart } from "ai";
 
 import type { Demo } from "./demo-data";
 import type { PromptInputMessage } from "@repo/ui/components/ai-elements/prompt-input";
@@ -41,11 +56,17 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
     if (!text) return;
     const body: Record<string, unknown> = {};
 
+    if (demo.id === "lorem") {
+      body.type = "lorem";
+    }
+
     if (demo.id === "demo") {
+      body.type = "chat";
       body.collectionId = "demo";
     }
 
     if (demo.id === "markdown") {
+      body.type = "markdown";
       body.markdown = text;
     }
 
@@ -137,7 +158,7 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
 
           default:
             // Handle tool parts (tool-* and dynamic-tool)
-            if (isToolOrDynamicToolUIPart(part)) {
+            if (isToolUIPart(part)) {
               const toolName = getToolOrDynamicToolName(part);
               // ToolHeader expects tool-* format, so convert dynamic-tool
               const toolType: `tool-${string}` =

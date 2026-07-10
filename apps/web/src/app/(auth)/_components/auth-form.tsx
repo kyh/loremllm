@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
@@ -16,9 +16,16 @@ type AuthFormProps = {
   type: "login" | "register";
 } & React.HTMLAttributes<HTMLDivElement>;
 
-export const AuthForm = ({ className, type, ...props }: AuthFormProps) => {
+export const AuthForm = (props: AuthFormProps) => (
+  <Suspense>
+    <AuthFormInner {...props} />
+  </Suspense>
+);
+
+const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
   const router = useRouter();
-  const params = useParams<{ nextPath?: string }>();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") ?? "/dashboard";
   const [submittingGithub, setSubmittingGithub] = useState(false);
 
   const form = useForm({
@@ -41,7 +48,7 @@ export const AuthForm = ({ className, type, ...props }: AuthFormProps) => {
           name: emailPrefix ?? "User",
           fetchOptions: {
             onSuccess: () => {
-              router.replace(params.nextPath ?? "/dashboard");
+              router.replace(nextPath);
             },
             onError: (ctx: any) => {
               toast.error(ctx.error.message);
@@ -56,7 +63,7 @@ export const AuthForm = ({ className, type, ...props }: AuthFormProps) => {
           password: value.password,
           fetchOptions: {
             onSuccess: () => {
-              router.replace(params.nextPath ?? "/dashboard");
+              router.replace(nextPath);
             },
             onError: (ctx: any) => {
               toast.error(ctx.error.message);
@@ -73,7 +80,7 @@ export const AuthForm = ({ className, type, ...props }: AuthFormProps) => {
       provider: "github",
       fetchOptions: {
         onSuccess: () => {
-          router.replace(params.nextPath ?? "/dashboard");
+          router.replace(nextPath);
         },
         onError: (ctx: any) => {
           toast.error(ctx.error.message);
@@ -184,7 +191,9 @@ export const AuthForm = ({ className, type, ...props }: AuthFormProps) => {
             }}
           </form.Field>
         </FieldGroup>
-        <Button loading={form.state.isSubmitting}>{type === "login" ? "Login" : "Register"}</Button>
+        <Button type="submit" loading={form.state.isSubmitting}>
+          {type === "login" ? "Login" : "Register"}
+        </Button>
       </form>
     </div>
   );
@@ -273,7 +282,9 @@ export const RequestPasswordResetForm = () => {
           }}
         </form.Field>
       </FieldGroup>
-      <Button loading={form.state.isSubmitting}>Request Password Reset</Button>
+      <Button type="submit" loading={form.state.isSubmitting}>
+        Request Password Reset
+      </Button>
     </form>
   );
 };
@@ -408,7 +419,9 @@ export const UpdatePasswordForm = () => {
           }}
         </form.Field>
       </FieldGroup>
-      <Button loading={form.state.isSubmitting}>Update Password</Button>
+      <Button type="submit" loading={form.state.isSubmitting}>
+        Update Password
+      </Button>
     </form>
   );
 };

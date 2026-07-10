@@ -9,6 +9,7 @@ export const createCollectionInput = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   isPublic: z.boolean().optional(),
+  minSimilarity: z.number().min(0).max(1).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
@@ -17,6 +18,7 @@ export const updateCollectionInput = z.object({
   name: z.string().min(1, "Name is required").optional(),
   description: z.string().optional(),
   isPublic: z.boolean().optional(),
+  minSimilarity: z.number().min(0).max(1).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
 });
 

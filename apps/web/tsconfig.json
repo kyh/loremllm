@@ -4,6 +4,9 @@
     "checkJs": false,
     "lib": ["ES2023", "dom", "dom.iterable"],
     "jsx": "preserve",
+    // The transport package aliases below compile its source directly, and its
+    // internal imports use explicit .ts specifiers (see its tsconfig).
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/.source": ["./.source/index.ts"],
       "@/*": ["./src/*"],

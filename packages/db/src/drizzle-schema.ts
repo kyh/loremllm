@@ -46,6 +46,8 @@ export const mockCollection = sqliteTable("mock_collection", (t) => ({
   name: t.text(),
   description: t.text(),
   isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
+  // Minimum cosine similarity (0-1) a query must reach to match; 0 disables the threshold
+  minSimilarity: t.real().notNull().default(0),
   metadata: t.text({ mode: "json" }).$type<Record<string, unknown>>().default({}),
   createdAt: t
     .integer({ mode: "timestamp" })
@@ -99,6 +101,31 @@ export const mockInteractionRelations = relations(mockInteraction, ({ one }) => 
     fields: [mockInteraction.collectionId],
     references: [mockCollection.id],
   }),
+}));
+
+/**
+ * Mock Eve Session
+ * Server-side session state for the hosted eve-protocol endpoints
+ * (/api/eve/[collectionId]). Holds the serialized session record
+ * (event log + conversation history) that the @loremllm/transport/eve
+ * handler needs across requests — create/continue POSTs and stream GETs
+ * can land on different serverless instances.
+ */
+export const mockEveSession = sqliteTable("mock_eve_session", (t) => ({
+  id: t.text().primaryKey(), // sessionId minted by the eve handler
+  collectionPublicId: t
+    .text()
+    .notNull()
+    .references(() => mockCollection.publicId, { onDelete: "cascade" }),
+  record: t.text({ mode: "json" }).notNull(), // EveSessionRecord, validated on read
+  createdAt: t
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: t
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 }));
 
 export const waitlist = sqliteTable("waitlist", (t) => ({

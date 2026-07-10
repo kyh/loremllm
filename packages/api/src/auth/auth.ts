@@ -16,18 +16,18 @@ const baseUrl =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_ENV === "preview"
       ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+      : `http://localhost:${process.env.PORT ?? 3000}`;
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),
   baseURL: baseUrl,
-  secret: process.env.AUTH_SECRET ?? "",
+  secret: process.env.BETTER_AUTH_SECRET ?? process.env.AUTH_SECRET,
   plugins: [
     oAuthProxy({
       currentURL: baseUrl,
-      productionURL: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "init.kyh.io"}`,
+      productionURL: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "loremllm.com"}`,
     }),
     expo(),
     organization(),

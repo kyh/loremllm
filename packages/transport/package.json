@@ -2,11 +2,13 @@
   "name": "@loremllm/transport",
   "version": "0.6.1",
   "keywords": [
+    "agent",
     "ai",
     "ai-sdk",
     "chat",
     "chatbot",
     "demo",
+    "eve",
     "llm",
     "mock",
     "static-chat",
@@ -25,6 +27,10 @@
     "./copy-messages-to-clipboard": {
       "types": "./dist/copy-messages-to-clipboard.d.ts",
       "import": "./dist/copy-messages-to-clipboard.js"
+    },
+    "./eve": {
+      "types": "./dist/eve.d.ts",
+      "import": "./dist/eve.js"
     }
   },
   "publishConfig": {
@@ -41,10 +47,11 @@
     "@ai-sdk/react": "^4.0.20",
     "@kyh/tsconfig": "catalog:",
     "ai": "^7.0.19",
+    "eve": "^0.22.3",
     "typescript": "catalog:",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "ai": "^6.x.x"
+    "ai": "^6.0.0 || ^7.0.0"
   }
 }

@@ -1,7 +1,11 @@
 "use client";
 
 import { Badge } from "@repo/ui/components/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@repo/ui/components/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
 import type { ToolUIPart } from "ai";
 import {

@@ -4,105 +4,58 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@repo/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/components/table";
+import { Spinner } from "@repo/ui/components/spinner";
 import { Textarea } from "@repo/ui/components/textarea";
 import { toast } from "@repo/ui/components/sonner";
-import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
+import { cn } from "@repo/ui/lib/utils";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";
 import { useTRPC } from "@/trpc/react";
-import { CollectionChatDrawer } from "./collection-chat-drawer";
+import { CollectionSettings } from "./collection-settings";
+import { EndpointCard } from "./endpoint-card";
+import { InteractionForm } from "./interaction-form";
+import { InteractionsTable } from "./interactions-table";
 
-type CollectionFormState = {
-  name: string;
-  description: string;
-};
-
-type InteractionFormState = {
-  title: string;
-  description: string;
-  input: string;
-  output: string;
-};
-
-type CollectionList = RouterOutputs["collection"]["list"];
-
-const emptyCollectionList: CollectionList = [];
-
-const defaultCollectionForm: CollectionFormState = {
-  name: "",
-  description: "",
-};
-
-const createDefaultInteractionForm = (): InteractionFormState => ({
-  title: "",
-  description: "",
-  input: "",
-  output: "",
-});
-
-const formatOutputToHtml = (content: string) =>
-  content
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/`(.*?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-xs">$1</code>')
-    .replace(/^# (.*$)/gm, '<h1 class="text-lg font-bold mt-4 mb-2">$1</h1>')
-    .replace(/^## (.*$)/gm, '<h2 class="text-base font-semibold mt-3 mb-2">$1</h2>')
-    .replace(/^### (.*$)/gm, '<h3 class="text-sm font-medium mt-2 mb-1">$1</h3>')
-    .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
-    .replace(/^\d+\. (.*$)/gm, '<li class="ml-4">$1</li>')
-    .replace(/\n\n/g, '</p><p class="mb-2">')
-    .replace(/^(?!<[h|l])/gm, '<p class="mb-2">')
-    .replace(/(<li.*<\/li>)/gs, '<ul class="list-disc ml-4 mb-2">$1</ul>');
+const emptyCollectionList: RouterOutputs["collection"]["list"] = [];
 
 export const MockDashboard = () => {
   const trpc = useTRPC();
   const collectionListQuery = useQuery(trpc.collection.list.queryOptions(undefined));
   const collections = collectionListQuery.data ?? emptyCollectionList;
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  const [collectionForm, setCollectionForm] = useState<CollectionFormState>(defaultCollectionForm);
 
   useEffect(() => {
-    if (!selectedCollectionId && collections.length > 0) {
+    if (!collections.length) {
+      setSelectedCollectionId(null);
+      return;
+    }
+
+    const selectionExists = collections.some(
+      (collection) => collection.id === selectedCollectionId,
+    );
+
+    if (!selectionExists) {
       setSelectedCollectionId(collections[0]?.id ?? null);
     }
   }, [collections, selectedCollectionId]);
-
-  const createCollection = useMutation({
-    ...trpc.collection.create.mutationOptions(),
-    onSuccess: (data) => {
-      setCollectionForm(defaultCollectionForm);
-      setSelectedCollectionId(data.id);
-      toast.success("Collection created");
-    },
-    onError: () => {
-      toast.error("Failed to create collection");
-    },
-  });
-
-  const updateCollection = useMutation({
-    ...trpc.collection.update.mutationOptions(),
-    onSuccess: () => {
-      toast.success("Collection updated");
-    },
-    onError: () => {
-      toast.error("Failed to update collection");
-    },
-  });
-
-  const deleteCollection = useMutation({
-    ...trpc.collection.delete.mutationOptions(),
-    onSuccess: () => {
-      toast.success("Collection deleted");
-      setSelectedCollectionId(null);
-    },
-    onError: () => {
-      toast.error("Failed to delete collection");
-    },
-  });
 
   const selectedCollectionQuery = useQuery(
     trpc.collection.byId.queryOptions(
@@ -110,21 +63,127 @@ export const MockDashboard = () => {
     ),
   );
   const collection = selectedCollectionQuery.data;
-  const isCollectionPending = selectedCollectionQuery.isPending;
-  const refetchCollection = selectedCollectionQuery.refetch;
 
-  useEffect(() => {
-    if (collection) {
-      setCollectionForm({
-        name: collection.name ?? "",
-        description: collection.description ?? "",
-      });
-    }
-  }, [collection]);
+  if (collectionListQuery.isPending) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner />
+      </div>
+    );
+  }
 
-  const handleCreateCollection = (event: FormEvent<HTMLFormElement>) => {
+  if (collectionListQuery.isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Failed to load collections</CardTitle>
+          <CardDescription>{collectionListQuery.error.message}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => void collectionListQuery.refetch()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!collections.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Create your first collection</CardTitle>
+          <CardDescription>
+            A collection groups the mock interactions behind a single endpoint.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreateCollectionForm onCreated={setSelectedCollectionId} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 lg:flex-row">
+      <aside className="w-full shrink-0 lg:w-64">
+        <div className="flex items-center justify-between gap-2 pb-3">
+          <h2 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Collections
+          </h2>
+          <CreateCollectionDialog onCreated={setSelectedCollectionId} />
+        </div>
+        <nav className="flex flex-col gap-1">
+          {collections.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSelectedCollectionId(item.id)}
+              className={cn(
+                "hover:bg-muted flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                item.id === selectedCollectionId && "bg-muted font-medium",
+              )}
+            >
+              <span className="truncate">{item.name ?? "Untitled"}</span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                {item.isPublic ? (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[0.65rem]">
+                    Public
+                  </Badge>
+                ) : null}
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {item.interactionCount}
+                </span>
+              </span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="min-w-0 flex-1">
+        {collection ? (
+          <div className="flex flex-col gap-4">
+            <CollectionSettings
+              collection={collection}
+              onDeleted={() => setSelectedCollectionId(null)}
+            />
+            <EndpointCard publicId={collection.publicId} isPublic={collection.isPublic} />
+            <InteractionForm collectionId={collection.id} />
+            <InteractionsTable interactions={collection.interactions} />
+          </div>
+        ) : (
+          <div className="flex justify-center py-20">
+            <Spinner />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+type CreateCollectionFormProps = {
+  onCreated: (collectionId: string) => void;
+};
+
+const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ name: "", description: "" });
+
+  const createCollection = useMutation({
+    ...trpc.collection.create.mutationOptions(),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
+      setForm({ name: "", description: "" });
+      toast.success("Collection created");
+      onCreated(data.id);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create collection");
+    },
+  });
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const name = collectionForm.name.trim();
+    const name = form.name.trim();
 
     if (!name.length) {
       toast.error("Collection name is required");
@@ -133,380 +192,61 @@ export const MockDashboard = () => {
 
     createCollection.mutate({
       name,
-      description: collectionForm.description.trim() || undefined,
+      description: form.description.trim() || undefined,
     });
   };
-
-  const handleUpdateCollection = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!collection) {
-      toast.error("Collection not ready");
-      return;
-    }
-
-    const name = collectionForm.name.trim();
-
-    if (!name.length) {
-      toast.error("Collection name is required");
-      return;
-    }
-
-    updateCollection.mutate({
-      collectionId: collection.id,
-      name,
-      description: collectionForm.description.trim() || undefined,
-    });
-  };
-
-  const [interactionForm, setInteractionForm] = useState<InteractionFormState>(
-    createDefaultInteractionForm,
-  );
-
-  const createInteraction = useMutation({
-    ...trpc.interaction.create.mutationOptions(),
-    onSuccess: () => {
-      void refetchCollection();
-      toast.success("Mock interaction saved");
-      setInteractionForm(createDefaultInteractionForm());
-    },
-    onError: () => {
-      toast.error("Failed to save interaction");
-    },
-  });
-
-  const deleteInteraction = useMutation({
-    ...trpc.interaction.delete.mutationOptions(),
-    onSuccess: () => {
-      void refetchCollection();
-      toast.success("Mock interaction deleted");
-    },
-    onError: () => {
-      toast.error("Failed to delete interaction");
-    },
-  });
-
-  const handleCreateInteraction = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!collection) {
-      toast.error("Collection not ready");
-      return;
-    }
-
-    const title = interactionForm.title.trim();
-    const input = interactionForm.input.trim();
-    const output = interactionForm.output.trim();
-
-    if (!title.length || !input.length || !output.length) {
-      toast.error("Title, input, and output are required");
-      return;
-    }
-
-    createInteraction.mutate({
-      collectionId: collection.id,
-      title,
-      description: interactionForm.description.trim() || undefined,
-      input,
-      output,
-    });
-  };
-
-  const handleDeleteInteraction = (interactionId: string) => {
-    deleteInteraction.mutate({ interactionId });
-  };
-
-  if (isCollectionPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading collection…</CardTitle>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  if (!collection) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No collection selected</CardTitle>
-          <CardDescription>Create a new collection or select an existing one.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateCollection} className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="collection-name">Collection name</Label>
-              <Input
-                id="collection-name"
-                placeholder="My new collection"
-                value={collectionForm.name}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="collection-description">Description (optional)</Label>
-              <Textarea
-                id="collection-description"
-                placeholder="A brief description of what this collection does."
-                value={collectionForm.description}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end sm:col-span-2">
-              <Button type="submit" disabled={createCollection.isPending}>
-                Create collection
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{collection.name}</CardTitle>
-            {collection.description ? (
-              <CardDescription>{collection.description}</CardDescription>
-            ) : null}
-            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-              <span>Public ID:</span>
-              <span className="bg-muted rounded px-2 py-1 font-mono">{collection.publicId}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <CollectionChatDrawer
-              collectionId={collection.publicId}
-              collectionName={collection.name ?? "Untitled Collection"}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => deleteCollection.mutate({ collectionId: collection.id })}
-              disabled={deleteCollection.isPending}
-            >
-              Delete
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdateCollection} className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="collection-name">Collection name</Label>
-              <Input
-                id="collection-name"
-                placeholder="My new collection"
-                value={collectionForm.name}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="collection-description">Description (optional)</Label>
-              <Textarea
-                id="collection-description"
-                placeholder="A brief description of what this collection does."
-                value={collectionForm.description}
-                onChange={(event) =>
-                  setCollectionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end sm:col-span-2">
-              <Button type="submit" disabled={updateCollection.isPending}>
-                Update collection
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+    <form onSubmit={handleSubmit} className="grid gap-3">
+      <div className="grid gap-1.5">
+        <Label htmlFor="new-collection-name">Collection name</Label>
+        <Input
+          id="new-collection-name"
+          placeholder="My new collection"
+          value={form.name}
+          onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))}
+          required
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="new-collection-description">Description (optional)</Label>
+        <Textarea
+          id="new-collection-description"
+          placeholder="A brief description of what this collection does."
+          value={form.description}
+          onChange={(event) => setForm((state) => ({ ...state, description: event.target.value }))}
+          rows={3}
+        />
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" loading={createCollection.isPending}>
+          Create collection
+        </Button>
+      </div>
+    </form>
+  );
+};
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add new mock response</CardTitle>
-          <CardDescription>Create a new mock interaction for this collection.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateInteraction} className="grid gap-3 md:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="interaction-title">Title</Label>
-              <Input
-                id="interaction-title"
-                placeholder="Weather in San Francisco"
-                value={interactionForm.title}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    title: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="interaction-description">Description (optional)</Label>
-              <Textarea
-                id="interaction-description"
-                placeholder="A brief description of this mock interaction."
-                value={interactionForm.description}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    description: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
-            <div className="grid gap-1.5 md:col-span-1">
-              <Label htmlFor="interaction-input">Input (User Query)</Label>
-              <Textarea
-                id="interaction-input"
-                placeholder="What's the weather like in San Francisco?"
-                value={interactionForm.input}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    input: event.target.value,
-                  }))
-                }
-                rows={4}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                The user input matched using semantic search.
-              </p>
-            </div>
-            <div className="grid gap-1.5 md:col-span-1">
-              <Label htmlFor="interaction-output">Output (Response)</Label>
-              <Textarea
-                id="interaction-output"
-                placeholder="It's 72°F and sunny along the bay."
-                value={interactionForm.output}
-                onChange={(event) =>
-                  setInteractionForm((state) => ({
-                    ...state,
-                    output: event.target.value,
-                  }))
-                }
-                rows={5}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                Supports markdown formatting for richer answers.
-              </p>
-            </div>
-            <div className="flex justify-end md:col-span-2">
-              <Button type="submit" disabled={createInteraction.isPending}>
-                Save mock response
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+const CreateCollectionDialog = ({ onCreated }: CreateCollectionFormProps) => {
+  const [open, setOpen] = useState(false);
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Mock responses</CardTitle>
-          <CardDescription>
-            Review inputs and generated outputs in a spreadsheet-style table.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {collection.interactions.length ? (
-            <Table className="text-sm">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[16rem]">Interaction</TableHead>
-                  <TableHead className="min-w-[18rem]">Input</TableHead>
-                  <TableHead className="min-w-[24rem]">Response</TableHead>
-                  <TableHead className="w-[1%] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {collection.interactions.map((interaction) => (
-                  <TableRow key={interaction.id}>
-                    <TableCell className="align-top whitespace-normal">
-                      <div className="leading-6 font-medium">{interaction.title}</div>
-                      {interaction.description ? (
-                        <p className="text-muted-foreground mt-1 text-xs leading-5">
-                          {interaction.description}
-                        </p>
-                      ) : null}
-                      <div className="text-muted-foreground mt-2 flex items-center gap-2 text-[0.7rem]">
-                        <span>Response schema:</span>
-                        <span className="bg-muted rounded px-2 py-0.5 font-mono">
-                          {interaction.responseSchema}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground align-top text-xs leading-5 whitespace-pre-wrap">
-                      {interaction.input}
-                    </TableCell>
-                    <TableCell className="align-top whitespace-normal">
-                      <div className="flex flex-col gap-2">
-                        <Badge className="w-fit">Response</Badge>
-                        {typeof interaction.output === "string" ? (
-                          <div
-                            className="prose prose-sm max-w-none text-sm whitespace-pre-wrap"
-                            dangerouslySetInnerHTML={{
-                              __html: formatOutputToHtml(interaction.output),
-                            }}
-                          />
-                        ) : (
-                          <pre className="text-xs whitespace-pre-wrap">
-                            {JSON.stringify(interaction.output, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right align-top">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteInteraction(interaction.id)}
-                        disabled={deleteInteraction.isPending}
-                      >
-                        Remove
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-muted-foreground py-10 text-center text-sm">
-              No interactions yet. Create one to start streaming mocked responses.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>New</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New collection</DialogTitle>
+          <DialogDescription>
+            A collection groups the mock interactions behind a single endpoint.
+          </DialogDescription>
+        </DialogHeader>
+        <CreateCollectionForm
+          onCreated={(collectionId) => {
+            setOpen(false);
+            onCreated(collectionId);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 };

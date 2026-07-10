@@ -41,7 +41,52 @@ export type ParsedRequestPayload =
   | { type: "chat"; data: ChatRequest }
   | { type: "lorem"; data: LoremRequest };
 
+/** Invalid request body — mapped to a 400 response by the route handler */
+export class PayloadError extends Error {}
+
+const parseOrThrow = <T>(schema: z.ZodType<T>, body: unknown, label: string): T => {
+  const result = schema.safeParse(body);
+
+  if (!result.success) {
+    throw new PayloadError(
+      `Invalid "${label}" request: ${result.error.issues
+        .map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`)
+        .join("; ")}`,
+    );
+  }
+
+  return result.data;
+};
+
+/**
+ * Parse the request body into a typed payload.
+ *
+ * Prefer an explicit `type` field ("chat" | "markdown" | "lorem") — a typo'd
+ * body then fails loudly instead of silently falling through to another
+ * handler. Bodies without `type` fall back to shape inference for backwards
+ * compatibility.
+ */
 export const parseRequestPayload = (body: unknown): ParsedRequestPayload => {
+  const explicitType =
+    typeof body === "object" && body !== null && "type" in body && typeof body.type === "string"
+      ? body.type
+      : null;
+
+  if (explicitType !== null) {
+    switch (explicitType) {
+      case "markdown":
+        return { type: "markdown", data: parseOrThrow(MarkdownRequestSchema, body, "markdown") };
+      case "chat":
+        return { type: "chat", data: parseOrThrow(ChatRequestSchema, body, "chat") };
+      case "lorem":
+        return { type: "lorem", data: parseOrThrow(LoremRequestSchema, body, "lorem") };
+      default:
+        throw new PayloadError(
+          `Unknown request type "${explicitType}". Expected "chat", "markdown", or "lorem".`,
+        );
+    }
+  }
+
   const markdownResult = MarkdownRequestSchema.safeParse(body);
   if (markdownResult.success) {
     return { type: "markdown", data: markdownResult.data };
@@ -57,5 +102,5 @@ export const parseRequestPayload = (body: unknown): ParsedRequestPayload => {
     return { type: "lorem", data: loremResult.data };
   }
 
-  throw new Error("Invalid request payload");
+  throw new PayloadError("Invalid request payload");
 };

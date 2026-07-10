@@ -8,7 +8,12 @@ import { Streamdown } from "streamdown";
 
 import { Button } from "@repo/ui/components/button";
 import { ButtonGroup, ButtonGroupText } from "@repo/ui/components/button-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {

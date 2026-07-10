@@ -41,5 +41,17 @@ export const handleChatQuery = async (userQuery: string, collectionId: string) =
     }),
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    messageMetadata: ({ part }) => {
+      if (part.type !== "finish") {
+        return undefined;
+      }
+
+      return {
+        interactionId: bestMatch.id,
+        title: bestMatch.title,
+        similarity: bestMatch.similarity,
+      };
+    },
+  });
 };

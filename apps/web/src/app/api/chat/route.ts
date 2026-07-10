@@ -1,7 +1,10 @@
+import { TRPCError } from "@trpc/server";
+import { getHTTPStatusCodeFromError } from "@trpc/server/http";
+
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
 import { handleMarkdownParsing } from "./markdown-handler";
-import { parseRequestPayload } from "./schema";
+import { parseRequestPayload, PayloadError } from "./schema";
 import { extractUserQuery } from "./utils";
 
 function applyCors(response: Response, origin?: string) {
@@ -22,17 +25,17 @@ function applyCors(response: Response, origin?: string) {
 }
 
 export function OPTIONS(request: Request) {
-  const origin = request.headers.get("origin") ?? "";
+  const origin = request.headers.get("origin") ?? undefined;
   return applyCors(new Response(null, { status: 200 }), origin);
 }
 
 export function GET(request: Request) {
-  const origin = request.headers.get("origin") ?? "";
+  const origin = request.headers.get("origin") ?? undefined;
   return applyCors(new Response("Hello, world!", { status: 200 }), origin);
 }
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin") ?? "";
+  const origin = request.headers.get("origin") ?? undefined;
   try {
     const body = (await request.json()) as unknown;
 
@@ -70,9 +73,16 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error processing request:", error);
 
+    const status =
+      error instanceof PayloadError
+        ? 400
+        : error instanceof TRPCError
+          ? getHTTPStatusCodeFromError(error)
+          : 500;
+
     return applyCors(
       new Response(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, {
-        status: 500,
+        status,
       }),
       origin,
     );

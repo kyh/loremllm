@@ -25,6 +25,8 @@ const __dirname = path.dirname(__filename);
 // User configuration
 const USER_EMAIL = "im.kaiyu@gmail.com";
 const USER_NAME = "Kaiyu Hsu";
+// Known dev password so the seeded account is usable locally; override for remote seeds
+const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "loremllm-dev-password";
 const ORGANIZATION_NAME = "LoremLLM";
 const ORGANIZATION_SLUG = "loremllm";
 
@@ -128,7 +130,7 @@ async function main() {
         body: {
           email: USER_EMAIL,
           name: USER_NAME,
-          password: randomUUID(), // Random password for seed user
+          password: USER_PASSWORD,
           emailVerified: true,
         },
       });
@@ -139,6 +141,7 @@ async function main() {
 
       userId = newUser.id;
       console.log(`   ✅ User created: ${USER_EMAIL}`);
+      console.log(`   🔑 Password: ${USER_PASSWORD}`);
       console.log(`   ℹ️  Personal organization created automatically by better-auth`);
     }
 
