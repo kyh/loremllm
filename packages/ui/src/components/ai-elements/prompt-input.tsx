@@ -143,6 +143,7 @@ export const PromptInputProvider = ({
   const [attachmentFiles, setAttachmentFiles] = useState<(FileUIPart & { id: string })[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => {});
+  const attachmentUrlsRef = useRef(new Set<string>());
 
   const add = useCallback((files: File[] | FileList) => {
     const incoming = Array.from(files);
@@ -150,17 +151,19 @@ export const PromptInputProvider = ({
       return;
     }
 
-    setAttachmentFiles((prev) =>
-      prev.concat(
-        incoming.map((file) => ({
-          id: nanoid(),
-          type: "file" as const,
-          url: URL.createObjectURL(file),
-          mediaType: file.type,
-          filename: file.name,
-        })),
-      ),
-    );
+    const additions: (FileUIPart & { id: string })[] = incoming.map((file) => {
+      const url = URL.createObjectURL(file);
+      attachmentUrlsRef.current.add(url);
+      return {
+        id: nanoid(),
+        type: "file",
+        url,
+        mediaType: file.type,
+        filename: file.name,
+      };
+    });
+
+    setAttachmentFiles((prev) => prev.concat(additions));
   }, []);
 
   const remove = useCallback((id: string) => {
@@ -168,6 +171,7 @@ export const PromptInputProvider = ({
       const found = prev.find((f) => f.id === id);
       if (found?.url) {
         URL.revokeObjectURL(found.url);
+        attachmentUrlsRef.current.delete(found.url);
       }
       return prev.filter((f) => f.id !== id);
     });
@@ -178,24 +182,21 @@ export const PromptInputProvider = ({
       for (const f of prev) {
         if (f.url) {
           URL.revokeObjectURL(f.url);
+          attachmentUrlsRef.current.delete(f.url);
         }
       }
       return [];
     });
   }, []);
 
-  // Keep a ref to attachments for cleanup on unmount (avoids stale closure)
-  const attachmentsRef = useRef(attachmentFiles);
-  attachmentsRef.current = attachmentFiles;
-
   // Cleanup blob URLs on unmount to prevent memory leaks
   useEffect(() => {
+    const attachmentUrls = attachmentUrlsRef.current;
     return () => {
-      for (const f of attachmentsRef.current) {
-        if (f.url) {
-          URL.revokeObjectURL(f.url);
-        }
+      for (const url of attachmentUrls) {
+        URL.revokeObjectURL(url);
       }
+      attachmentUrls.clear();
     };
   }, []);
 
@@ -250,6 +251,21 @@ export const PromptInputProvider = ({
 // ============================================================================
 
 const LocalAttachmentsContext = createContext<AttachmentsContext | null>(null);
+
+const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
 
 export const usePromptInputAttachments = () => {
   // Dual-mode: prefer provider if present, otherwise use local
@@ -451,11 +467,8 @@ export const PromptInput = ({
 
   // ----- Local attachments (only used when no provider)
   const [items, setItems] = useState<(FileUIPart & { id: string })[]>([]);
-  const files = usingProvider ? controller.attachments.files : items;
-
-  // Keep a ref to files for cleanup on unmount (avoids stale closure)
-  const filesRef = useRef(files);
-  filesRef.current = files;
+  const files = controller?.attachments.files ?? items;
+  const localAttachmentUrlsRef = useRef(new Set<string>());
 
   const openFileDialogLocal = useCallback(() => {
     inputRef.current?.click();
@@ -508,10 +521,12 @@ export const PromptInput = ({
         }
         const next: (FileUIPart & { id: string })[] = [];
         for (const file of capped) {
+          const url = URL.createObjectURL(file);
+          localAttachmentUrlsRef.current.add(url);
           next.push({
             id: nanoid(),
             type: "file",
-            url: URL.createObjectURL(file),
+            url,
             mediaType: file.type,
             filename: file.name,
           });
@@ -528,6 +543,7 @@ export const PromptInput = ({
         const found = prev.find((file) => file.id === id);
         if (found?.url) {
           URL.revokeObjectURL(found.url);
+          localAttachmentUrlsRef.current.delete(found.url);
         }
         return prev.filter((file) => file.id !== id);
       }),
@@ -540,6 +556,7 @@ export const PromptInput = ({
         for (const file of prev) {
           if (file.url) {
             URL.revokeObjectURL(file.url);
+            localAttachmentUrlsRef.current.delete(file.url);
           }
         }
         return [];
@@ -618,17 +635,15 @@ export const PromptInput = ({
     };
   }, [add, globalDrop]);
 
-  useEffect(
-    () => () => {
-      if (!usingProvider) {
-        for (const f of filesRef.current) {
-          if (f.url) URL.revokeObjectURL(f.url);
-        }
+  useEffect(() => {
+    const attachmentUrls = localAttachmentUrlsRef.current;
+    return () => {
+      for (const url of attachmentUrls) {
+        URL.revokeObjectURL(url);
       }
-    },
-
-    [usingProvider],
-  );
+      attachmentUrls.clear();
+    };
+  }, []);
 
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
@@ -636,21 +651,6 @@ export const PromptInput = ({
     }
     // Reset input value to allow selecting files that were previously removed
     event.currentTarget.value = "";
-  };
-
-  const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
   };
 
   const ctx = useMemo<AttachmentsContext>(
@@ -673,7 +673,8 @@ export const PromptInput = ({
       ? controller.textInput.value
       : (() => {
           const formData = new FormData(form);
-          return (formData.get("message") as string) || "";
+          const message = formData.get("message");
+          return typeof message === "string" ? message : "";
         })();
 
     // Reset form immediately after capturing text to avoid race condition
@@ -770,11 +771,11 @@ export const PromptInputTextarea = ({
 }: PromptInputTextareaProps) => {
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
-  const [isComposing, setIsComposing] = useState(false);
+  const isComposingRef = useRef(false);
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
-      if (isComposing || e.nativeEvent.isComposing) {
+      if (isComposingRef.current || e.nativeEvent.isComposing) {
         return;
       }
       if (e.shiftKey) {
@@ -784,7 +785,7 @@ export const PromptInputTextarea = ({
 
       // Check if the submit button is disabled before submitting
       const form = e.currentTarget.form;
-      const submitButton = form?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      const submitButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
       if (submitButton?.disabled) {
         return;
       }
@@ -842,8 +843,12 @@ export const PromptInputTextarea = ({
     <InputGroupTextarea
       className={cn("field-sizing-content max-h-48 min-h-16", className)}
       name="message"
-      onCompositionEnd={() => setIsComposing(false)}
-      onCompositionStart={() => setIsComposing(true)}
+      onCompositionEnd={() => {
+        isComposingRef.current = false;
+      }}
+      onCompositionStart={() => {
+        isComposingRef.current = true;
+      }}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       placeholder={placeholder}
