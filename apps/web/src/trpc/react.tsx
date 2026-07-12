@@ -21,7 +21,9 @@ const getQueryClient = () => {
   }
 };
 
-export const { useTRPC, TRPCProvider, useTRPCClient } = createTRPCContext<AppRouter>();
+const { useTRPC, TRPCProvider } = createTRPCContext<AppRouter>();
+
+export { useTRPC };
 
 export const TRPCReactProvider = (props: { children: React.ReactNode }) => {
   const queryClient = getQueryClient();
