@@ -5,7 +5,7 @@ import { Button } from "@repo/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
-import { motion } from "motion/react";
+import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
 
 type DraggablePanelProps = {
@@ -39,6 +39,7 @@ export const DraggablePanel = ({
   size = { width: 300, height: 200 },
   className,
 }: DraggablePanelProps) => {
+  const shouldReduceMotion = useReducedMotion();
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -135,93 +136,97 @@ export const DraggablePanel = ({
   if (!isOpen) return null;
 
   const panel = (
-    <motion.div
-      ref={panelRef}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={cn(
-        "bg-popover/20 border-border fixed z-50 flex flex-col rounded-lg border shadow-lg backdrop-blur-sm",
-        isDragging && "select-none",
-        isMobile && "inset-2",
-        className,
-      )}
-      style={
-        isMobile
-          ? undefined
-          : {
-              left: position.x,
-              top: position.y,
-              width: size.width,
-              height: size.height,
-            }
-      }
-    >
-      <div
+    <LazyMotion features={domAnimation} strict>
+      <m.div
+        ref={panelRef}
+        initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
         className={cn(
-          "border-border bg-muted/50 flex items-center justify-between rounded-t-lg border-b px-3 py-2",
-          !isMobile && "cursor-move",
+          "bg-popover/20 border-border fixed z-50 flex flex-col rounded-lg border shadow-lg backdrop-blur-sm",
+          isDragging && "select-none",
+          isMobile && "inset-2",
+          className,
         )}
-        onPointerDown={isMobile ? undefined : handleDragStart}
+        style={
+          isMobile
+            ? undefined
+            : {
+                left: position.x,
+                top: position.y,
+                width: size.width,
+                height: size.height,
+              }
+        }
       >
-        <div className="flex min-w-0 items-center gap-2">
-          {icon}
-          <h3 className="truncate font-mono text-sm font-semibold">{title}</h3>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {(onPrevious || onNext) && (
-            <>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onPrevious}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      disabled={!hasPrevious}
-                      className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
-                    >
-                      <ChevronLeftIcon className="size-4" />
-                    </Button>
-                  }
-                />
-                <TooltipContent side="bottom">Previous (←)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onNext}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      disabled={!hasNext}
-                      className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
-                    >
-                      <ChevronRightIcon className="size-4" />
-                    </Button>
-                  }
-                />
-                <TooltipContent side="bottom">Next (→)</TooltipContent>
-              </Tooltip>
-            </>
+        <div
+          className={cn(
+            "border-border bg-muted/50 flex items-center justify-between rounded-t-lg border-b px-3 py-2",
+            !isMobile && "cursor-move",
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
-            className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
-          >
-            <XIcon />
-          </Button>
+          onPointerDown={isMobile ? undefined : handleDragStart}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            {icon}
+            <h3 className="truncate font-mono text-sm font-semibold">{title}</h3>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {(onPrevious || onNext) && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onPrevious}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        disabled={!hasPrevious}
+                        className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
+                      >
+                        <ChevronLeftIcon className="size-4" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent side="bottom">Previous (←)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onNext}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        disabled={!hasNext}
+                        className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
+                      >
+                        <ChevronRightIcon className="size-4" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent side="bottom">Next (→)</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
+            >
+              <XIcon />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded-b-lg">{children}</div>
-    </motion.div>
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded-b-lg">
+          {children}
+        </div>
+      </m.div>
+    </LazyMotion>
   );
 
   if (typeof window === "undefined") return null;
