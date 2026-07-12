@@ -9,10 +9,10 @@ Baseline: React Doctor 0.7.6, full scope, 103 files.
 
 Final full scan:
 
-- Findings: 21
+- Findings: 20
 - Errors: 0
-- Warnings: 21
-- Cleared: 25
+- Warnings: 20
+- Cleared: 26
 
 ## Decisions
 
