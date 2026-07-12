@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -98,6 +99,80 @@ export type PromptInputControllerProps = {
 const PromptInputController = createContext<PromptInputControllerProps | null>(null);
 const ProviderAttachmentsContext = createContext<AttachmentsContext | null>(null);
 
+type PromptAttachment = FileUIPart & { id: string };
+
+type LocalAttachmentsState = {
+  items: PromptAttachment[];
+  capacityRejections: number;
+};
+
+type LocalAttachmentsAction =
+  | { type: "add"; additions: PromptAttachment[]; maxFiles?: number }
+  | { type: "remove"; id: string }
+  | { type: "clear" };
+
+const initialLocalAttachmentsState: LocalAttachmentsState = {
+  items: [],
+  capacityRejections: 0,
+};
+
+const localAttachmentsReducer = (
+  state: LocalAttachmentsState,
+  action: LocalAttachmentsAction,
+): LocalAttachmentsState => {
+  switch (action.type) {
+    case "add": {
+      const capacity =
+        typeof action.maxFiles === "number"
+          ? Math.max(0, action.maxFiles - state.items.length)
+          : action.additions.length;
+      const acceptedAdditions = action.additions.slice(0, capacity);
+      const rejected = acceptedAdditions.length < action.additions.length;
+      return {
+        items: state.items.concat(acceptedAdditions),
+        capacityRejections: state.capacityRejections + (rejected ? 1 : 0),
+      };
+    }
+    case "remove":
+      return { ...state, items: state.items.filter((file) => file.id !== action.id) };
+    case "clear":
+      return { ...state, items: [] };
+  }
+};
+
+/** Owns blob URLs and revokes them only after committed attachment changes. */
+const useOwnedObjectUrls = (files: readonly FileUIPart[]) => {
+  const ownedUrlsRef = useRef(new Set<string>());
+
+  const createObjectUrl = useCallback((file: File) => {
+    const url = URL.createObjectURL(file);
+    ownedUrlsRef.current.add(url);
+    return url;
+  }, []);
+
+  useEffect(() => {
+    const activeUrls = new Set(files.flatMap((file) => (file.url ? [file.url] : [])));
+    for (const url of ownedUrlsRef.current) {
+      if (!activeUrls.has(url)) {
+        URL.revokeObjectURL(url);
+        ownedUrlsRef.current.delete(url);
+      }
+    }
+  }, [files]);
+
+  useEffect(() => {
+    const ownedUrls = ownedUrlsRef.current;
+    return () => {
+      for (const url of ownedUrls) {
+        URL.revokeObjectURL(url);
+      }
+      ownedUrls.clear();
+    };
+  }, []);
+
+  return createObjectUrl;
+};
+
 export const usePromptInputController = () => {
   const ctx = useContext(PromptInputController);
   if (!ctx) {
@@ -143,61 +218,36 @@ export const PromptInputProvider = ({
   const [attachmentFiles, setAttachmentFiles] = useState<(FileUIPart & { id: string })[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => {});
-  const attachmentUrlsRef = useRef(new Set<string>());
+  const createObjectUrl = useOwnedObjectUrls(attachmentFiles);
 
-  const add = useCallback((files: File[] | FileList) => {
-    const incoming = Array.from(files);
-    if (incoming.length === 0) {
-      return;
-    }
+  const add = useCallback(
+    (files: File[] | FileList) => {
+      const incoming = Array.from(files);
+      if (incoming.length === 0) {
+        return;
+      }
 
-    const additions: (FileUIPart & { id: string })[] = incoming.map((file) => {
-      const url = URL.createObjectURL(file);
-      attachmentUrlsRef.current.add(url);
-      return {
-        id: nanoid(),
-        type: "file",
-        url,
-        mediaType: file.type,
-        filename: file.name,
-      };
-    });
+      const additions: (FileUIPart & { id: string })[] = incoming.map((file) => {
+        return {
+          id: nanoid(),
+          type: "file",
+          url: createObjectUrl(file),
+          mediaType: file.type,
+          filename: file.name,
+        };
+      });
 
-    setAttachmentFiles((prev) => prev.concat(additions));
-  }, []);
+      setAttachmentFiles((prev) => prev.concat(additions));
+    },
+    [createObjectUrl],
+  );
 
   const remove = useCallback((id: string) => {
-    setAttachmentFiles((prev) => {
-      const found = prev.find((f) => f.id === id);
-      if (found?.url) {
-        URL.revokeObjectURL(found.url);
-        attachmentUrlsRef.current.delete(found.url);
-      }
-      return prev.filter((f) => f.id !== id);
-    });
+    setAttachmentFiles((prev) => prev.filter((file) => file.id !== id));
   }, []);
 
   const clear = useCallback(() => {
-    setAttachmentFiles((prev) => {
-      for (const f of prev) {
-        if (f.url) {
-          URL.revokeObjectURL(f.url);
-          attachmentUrlsRef.current.delete(f.url);
-        }
-      }
-      return [];
-    });
-  }, []);
-
-  // Cleanup blob URLs on unmount to prevent memory leaks
-  useEffect(() => {
-    const attachmentUrls = attachmentUrlsRef.current;
-    return () => {
-      for (const url of attachmentUrls) {
-        URL.revokeObjectURL(url);
-      }
-      attachmentUrls.clear();
-    };
+    setAttachmentFiles([]);
   }, []);
 
   const openFileDialog = useCallback(() => {
@@ -466,9 +516,25 @@ export const PromptInput = ({
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // ----- Local attachments (only used when no provider)
-  const [items, setItems] = useState<(FileUIPart & { id: string })[]>([]);
+  const [localAttachments, dispatchLocalAttachments] = useReducer(
+    localAttachmentsReducer,
+    initialLocalAttachmentsState,
+  );
+  const { items } = localAttachments;
   const files = controller?.attachments.files ?? items;
-  const localAttachmentUrlsRef = useRef(new Set<string>());
+  const createLocalObjectUrl = useOwnedObjectUrls(items);
+  const notifiedCapacityRejectionsRef = useRef(0);
+
+  useEffect(() => {
+    if (localAttachments.capacityRejections === notifiedCapacityRejectionsRef.current) {
+      return;
+    }
+    notifiedCapacityRejectionsRef.current = localAttachments.capacityRejections;
+    onError?.({
+      code: "max_files",
+      message: "Too many files. Some were not added.",
+    });
+  }, [localAttachments.capacityRejections, onError]);
 
   const openFileDialogLocal = useCallback(() => {
     inputRef.current?.click();
@@ -509,60 +575,25 @@ export const PromptInput = ({
         return;
       }
 
-      setItems((prev) => {
-        const capacity =
-          typeof maxFiles === "number" ? Math.max(0, maxFiles - prev.length) : undefined;
-        const capped = typeof capacity === "number" ? sized.slice(0, capacity) : sized;
-        if (typeof capacity === "number" && sized.length > capacity) {
-          onError?.({
-            code: "max_files",
-            message: "Too many files. Some were not added.",
-          });
-        }
-        const next: (FileUIPart & { id: string })[] = [];
-        for (const file of capped) {
-          const url = URL.createObjectURL(file);
-          localAttachmentUrlsRef.current.add(url);
-          next.push({
-            id: nanoid(),
-            type: "file",
-            url,
-            mediaType: file.type,
-            filename: file.name,
-          });
-        }
-        return prev.concat(next);
-      });
+      const additions: PromptAttachment[] = sized.map((file) => ({
+        id: nanoid(),
+        type: "file",
+        url: createLocalObjectUrl(file),
+        mediaType: file.type,
+        filename: file.name,
+      }));
+      dispatchLocalAttachments({ type: "add", additions, maxFiles });
     },
-    [matchesAccept, maxFiles, maxFileSize, onError],
+    [createLocalObjectUrl, matchesAccept, maxFiles, maxFileSize, onError],
   );
 
-  const removeLocal = useCallback(
-    (id: string) =>
-      setItems((prev) => {
-        const found = prev.find((file) => file.id === id);
-        if (found?.url) {
-          URL.revokeObjectURL(found.url);
-          localAttachmentUrlsRef.current.delete(found.url);
-        }
-        return prev.filter((file) => file.id !== id);
-      }),
-    [],
-  );
+  const removeLocal = useCallback((id: string) => {
+    dispatchLocalAttachments({ type: "remove", id });
+  }, []);
 
-  const clearLocal = useCallback(
-    () =>
-      setItems((prev) => {
-        for (const file of prev) {
-          if (file.url) {
-            URL.revokeObjectURL(file.url);
-            localAttachmentUrlsRef.current.delete(file.url);
-          }
-        }
-        return [];
-      }),
-    [],
-  );
+  const clearLocal = useCallback(() => {
+    dispatchLocalAttachments({ type: "clear" });
+  }, []);
 
   const add = usingProvider ? controller.attachments.add : addLocal;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
@@ -634,16 +665,6 @@ export const PromptInput = ({
       document.removeEventListener("drop", onDrop);
     };
   }, [add, globalDrop]);
-
-  useEffect(() => {
-    const attachmentUrls = localAttachmentUrlsRef.current;
-    return () => {
-      for (const url of attachmentUrls) {
-        URL.revokeObjectURL(url);
-      }
-      attachmentUrls.clear();
-    };
-  }, []);
 
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
