@@ -2,7 +2,7 @@
 
 import type { ComponentProps, HTMLAttributes } from "react";
 import type { BundledLanguage, ShikiTransformer } from "shiki";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { codeToHtml } from "shiki";
 
@@ -44,11 +44,7 @@ const lineNumberTransformer: ShikiTransformer = {
   },
 };
 
-export async function highlightCode(
-  code: string,
-  language: BundledLanguage,
-  showLineNumbers = false,
-) {
+async function highlightCode(code: string, language: BundledLanguage, showLineNumbers = false) {
   const transformers: ShikiTransformer[] = showLineNumbers ? [lineNumberTransformer] : [];
 
   return await Promise.all([
@@ -75,24 +71,25 @@ export const CodeBlock = ({
 }: CodeBlockProps) => {
   const [html, setHtml] = useState<string>("");
   const [darkHtml, setDarkHtml] = useState<string>("");
-  const mounted = useRef(false);
+  const contextValue = useMemo(() => ({ code }), [code]);
 
   useEffect(() => {
-    highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
-      if (!mounted.current) {
+    let cancelled = false;
+
+    void highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
+      if (!cancelled) {
         setHtml(light);
         setDarkHtml(dark);
-        mounted.current = true;
       }
     });
 
     return () => {
-      mounted.current = false;
+      cancelled = true;
     };
   }, [code, language, showLineNumbers]);
 
   return (
-    <CodeBlockContext.Provider value={{ code }}>
+    <CodeBlockContext.Provider value={contextValue}>
       <div
         className={cn(
           "group bg-background text-foreground relative h-full w-full overflow-hidden",
@@ -103,12 +100,12 @@ export const CodeBlock = ({
         <div className="relative">
           <div
             className="[&>pre]:bg-background! [&>pre]:text-foreground! overflow-hidden dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
+            // Shiki escapes source code and returns trusted highlight markup.
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
             className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden overflow-hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
+            // Shiki escapes source code and returns trusted highlight markup.
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
