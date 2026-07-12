@@ -16,6 +16,26 @@ type AuthFormProps = {
   type: "login" | "register";
 } & React.HTMLAttributes<HTMLDivElement>;
 
+const DEFAULT_AUTH_PATH = "/dashboard";
+const AUTH_REDIRECT_ORIGIN = "https://loremllm.invalid";
+
+const getSafeNextPath = (value: string | null) => {
+  if (!value?.startsWith("/") || value.startsWith("//")) {
+    return DEFAULT_AUTH_PATH;
+  }
+
+  try {
+    const url = new URL(value, AUTH_REDIRECT_ORIGIN);
+    if (url.origin !== AUTH_REDIRECT_ORIGIN) {
+      return DEFAULT_AUTH_PATH;
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return DEFAULT_AUTH_PATH;
+  }
+};
+
 export const AuthForm = (props: AuthFormProps) => (
   <Suspense>
     <AuthFormInner {...props} />
@@ -25,7 +45,7 @@ export const AuthForm = (props: AuthFormProps) => (
 const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/dashboard";
+  const nextPath = getSafeNextPath(searchParams.get("next"));
   const [submittingGithub, setSubmittingGithub] = useState(false);
 
   const form = useForm({
@@ -50,7 +70,7 @@ const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
             onSuccess: () => {
               router.replace(nextPath);
             },
-            onError: (ctx: any) => {
+            onError: (ctx) => {
               toast.error(ctx.error.message);
             },
           },
@@ -65,7 +85,7 @@ const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
             onSuccess: () => {
               router.replace(nextPath);
             },
-            onError: (ctx: any) => {
+            onError: (ctx) => {
               toast.error(ctx.error.message);
             },
           },
@@ -82,7 +102,7 @@ const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
         onSuccess: () => {
           router.replace(nextPath);
         },
-        onError: (ctx: any) => {
+        onError: (ctx) => {
           toast.error(ctx.error.message);
         },
         onResponse: () => {
@@ -216,7 +236,7 @@ export const RequestPasswordResetForm = () => {
           onSuccess: () => {
             toast.success("Password reset email sent successfully!");
           },
-          onError: (ctx: any) => {
+          onError: (ctx) => {
             toast.error(ctx.error.message);
           },
         },
@@ -316,7 +336,7 @@ export const UpdatePasswordForm = () => {
             toast.success("Password updated successfully!");
             router.push("/dashboard");
           },
-          onError: (ctx: any) => {
+          onError: (ctx) => {
             toast.error(ctx.error.message);
           },
         },
