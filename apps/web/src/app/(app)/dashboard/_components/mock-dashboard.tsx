@@ -142,6 +142,7 @@ export const MockDashboard = () => {
         {collection ? (
           <div className="flex flex-col gap-4">
             <CollectionSettings
+              key={collection.id}
               collection={collection}
               onDeleted={() => setSelectedCollectionId(null)}
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { alertDialog } from "@repo/ui/components/alert-dialog";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -37,14 +37,6 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
     description: collection.description ?? "",
     minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
   });
-
-  useEffect(() => {
-    setForm({
-      name: collection.name ?? "",
-      description: collection.description ?? "",
-      minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
-    });
-  }, [collection.id, collection.name, collection.description, collection.minSimilarity]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries(trpc.collection.list.queryFilter());

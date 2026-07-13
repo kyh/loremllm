@@ -204,6 +204,19 @@ export const alertDialog = {
   },
 };
 
+const runAndClose = async (
+  onClick: (() => void | Promise<unknown>) | undefined,
+  setPending: (value: boolean) => void,
+) => {
+  setPending(true);
+  try {
+    await onClick?.();
+  } finally {
+    setPending(false);
+    alertDialog.close();
+  }
+};
+
 export const GlobalAlertDialog = () => {
   const [pendingAction, setPendingAction] = React.useState(false);
   const [pendingCancel, setPendingCancel] = React.useState(false);
@@ -212,19 +225,6 @@ export const GlobalAlertDialog = () => {
     alertDialogStore.getSnapshot,
     alertDialogStore.getSnapshot,
   );
-
-  const runAndClose = async (
-    onClick: (() => void | Promise<unknown>) | undefined,
-    setPending: (v: boolean) => void,
-  ) => {
-    setPending(true);
-    try {
-      await onClick?.();
-    } finally {
-      setPending(false);
-      alertDialog.close();
-    }
-  };
 
   const onOpenChange = React.useCallback((open: boolean) => {
     if (open) return;

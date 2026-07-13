@@ -17,13 +17,10 @@ type DemoListProps = {
   className?: string;
 };
 
+const formatCounter = (index: number) => (index + 1).toString().padStart(2, "0");
+
 export const DemoList = ({ demos, className }: DemoListProps) => {
   const hoverTextRefs = React.useRef<Map<number, HoverTextHandle[]>>(new Map());
-
-  const formatCounter = (index: number) => {
-    const num = (index + 1).toString().padStart(2, "0");
-    return num;
-  };
 
   const setHoverTextRef = React.useCallback((itemIndex: number, colIndex: number) => {
     return (handle: HoverTextHandle | null) => {
