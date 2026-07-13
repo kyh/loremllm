@@ -18,7 +18,6 @@
     "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
-    "@better-auth/expo": "catalog:",
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
     "ai": "^7.0.19",

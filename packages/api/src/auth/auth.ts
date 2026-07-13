@@ -1,7 +1,6 @@
 import type { User } from "better-auth";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { expo } from "@better-auth/expo";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
 import { user as userSchema } from "@repo/db/drizzle-schema-auth";
@@ -28,7 +27,6 @@ export const auth = betterAuth({
       currentURL: baseUrl,
       productionURL: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "loremllm.com"}`,
     }),
-    expo(),
     organization(),
     admin(),
   ],
@@ -42,7 +40,6 @@ export const auth = betterAuth({
       redirectURI: `${baseUrl}/api/auth/callback/github`,
     },
   },
-  trustedOrigins: ["expo://"],
   databaseHooks: {
     user: {
       create: {
