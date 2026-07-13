@@ -37,15 +37,14 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --emitDeclarationOnly false",
+    "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "dev": "tsc --emitDeclarationOnly false --watch --preserveWatchOutput",
+    "dev": "tsc --watch --preserveWatchOutput",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@ai-sdk/react": "^4.0.20",
-    "@kyh/tsconfig": "catalog:",
     "ai": "^7.0.19",
     "eve": "^0.22.3",
     "typescript": "catalog:",

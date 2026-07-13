@@ -10,7 +10,7 @@
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "dev": "tsc",
-    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "typecheck": "tsc --noEmit",
     "db": "turso dev --db-file local.db",
     "studio": "pnpm with-env drizzle-kit studio",
     "push": "pnpm with-env drizzle-kit push",
