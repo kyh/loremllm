@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@repo/api/auth/auth";
 import { Logo } from "@repo/ui/components/logo";
 
+import { getSession } from "@/lib/auth-server";
 import { SignOutButton } from "./_components/sign-out-button";
 
 type LayoutProps = {

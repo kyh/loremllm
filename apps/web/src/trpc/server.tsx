@@ -6,6 +6,7 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
 import type { AppRouter } from "@repo/api";
 import type { TRPCQueryOptions } from "@trpc/tanstack-react-query";
+import { getSession } from "@/lib/auth-server";
 import { createQueryClient } from "./query-client";
 
 /**
@@ -19,6 +20,10 @@ const createContext = cache(async () => {
 
   return createTRPCContext({
     headers: heads,
+    // Dashboard pages call getSession() to gate the route before they prefetch.
+    // Reuse that cached result — resolving it again here would be a second
+    // session lookup per render.
+    session: await getSession(),
   });
 });
 

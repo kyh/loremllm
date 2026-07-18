@@ -216,12 +216,6 @@ importers:
       better-auth:
         specifier: 'catalog:'
         version: 1.6.23(1711b9677dce4afda572cb5a99c5ef83)
-      next:
-        specifier: 'catalog:'
-        version: 16.2.10(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.7
       superjson:
         specifier: 'catalog:'
         version: 2.2.6
