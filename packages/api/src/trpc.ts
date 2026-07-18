@@ -13,7 +13,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "./auth/auth";
+import type { Session } from "./auth/auth";
+import { auth, trustedOrigins } from "./auth/auth";
 
 /**
  * 1. CONTEXT
@@ -27,14 +28,31 @@ import { auth } from "./auth/auth";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth.api.getSession({
-    headers: opts.headers,
-  });
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  /**
+   * Pass an already-resolved session to reuse it. RSC callers have usually
+   * resolved one via the cached `getSession()` before prefetching; without
+   * this they'd pay a second session lookup, because React's cache keys on the
+   * function, so a separate `auth.api.getSession` call never dedupes with it.
+   * `null` means "resolved, and nobody is logged in" — only `undefined` triggers
+   * a lookup here.
+   */
+  session?: Session | null;
+}) => {
+  const session =
+    opts.session === undefined
+      ? await auth.api.getSession({ headers: opts.headers })
+      : opts.session;
 
   return {
     session,
     db,
+    // Browser-supplied request provenance. Captured here because a tRPC
+    // middleware cannot read raw request headers; read by the mutation origin
+    // guard below. Both null for non-browser callers (server-to-server).
+    origin: opts.headers.get("origin"),
+    secFetchSite: opts.headers.get("sec-fetch-site"),
   };
 };
 
@@ -80,6 +98,39 @@ export const createCallerFactory = t.createCallerFactory;
  */
 export const createTRPCRouter = t.router;
 
+const TRUSTED_ORIGINS = new Set(trustedOrigins);
+
+/**
+ * True when a request carries browser provenance that isn't same-origin or an
+ * allow-listed origin. This is the browser's own CSRF backstop for /api/trpc,
+ * layered under session auth; better-auth's Origin checks only cover
+ * /api/auth/*. Non-browser callers send neither header and are left alone.
+ */
+const isUntrustedOrigin = (origin: string | null, secFetchSite: string | null) => {
+  // Sec-Fetch-Site is set by the browser and cannot be forged from script.
+  if (secFetchSite === "same-origin" || secFetchSite === "none") return false;
+  // No browser provenance at all — not a browser CSRF vector.
+  if (!origin && !secFetchSite) return false;
+  // A cross-site/same-site label, or any Origin, must match the allow-list.
+  // Fail closed: a stripped Origin under a cross-site label is rejected.
+  return origin === null || !TRUSTED_ORIGINS.has(origin);
+};
+
+/**
+ * Rejects state-changing calls whose origin isn't trusted — defence-in-depth
+ * against CSRF, layered under session auth rather than replacing it. Queries are
+ * side-effect-free and pass through untouched.
+ */
+const enforceTrustedOriginOnMutation = t.middleware(({ ctx, type, next }) => {
+  if (type === "mutation" && isUntrustedOrigin(ctx.origin, ctx.secFetchSite)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Cross-origin request rejected",
+    });
+  }
+  return next();
+});
+
 /**
  * Public (unauthed) procedure
  *
@@ -87,7 +138,7 @@ export const createTRPCRouter = t.router;
  * tRPC API. It does not guarantee that a user querying is authorized, but you
  * can still access user session data if they are logged in
  */
-export const publicProcedure = t.procedure;
+export const publicProcedure = t.procedure.use(enforceTrustedOriginOnMutation);
 
 /**
  * Protected (authenticated) procedure
@@ -97,7 +148,7 @@ export const publicProcedure = t.procedure;
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
   const session = ctx.session;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

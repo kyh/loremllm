@@ -1,6 +1,4 @@
 import type { User } from "better-auth";
-import { cache } from "react";
-import { headers } from "next/headers";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
 import { user as userSchema } from "@repo/db/drizzle-schema-auth";
@@ -8,14 +6,18 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, oAuthProxy, organization } from "better-auth/plugins";
 
-import { slugify } from "./utils";
+import { FALLBACK_ORGANIZATION_SLUG, slugify } from "./utils";
 
-const baseUrl =
+export const baseUrl =
   process.env.VERCEL_ENV === "production"
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_ENV === "preview"
       ? `https://${process.env.VERCEL_URL}`
       : `http://localhost:${process.env.PORT ?? 3000}`;
+
+// Origins allowed to drive authenticated requests. Consumed by better-auth's own
+// Origin checks and by the tRPC mutation guard (see packages/api/src/trpc.ts).
+export const trustedOrigins = [baseUrl];
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -30,6 +32,17 @@ export const auth = betterAuth({
     organization(),
     admin(),
   ],
+  trustedOrigins,
+  // Persist rate-limit counters in the database. The default in-memory store
+  // keeps per-instance counters, so on serverless (Vercel) the effective limit
+  // multiplies across cold-started instances and resets on every deploy. 10
+  // requests/60s per IP throttles credential-stuffing against the auth routes.
+  rateLimit: {
+    enabled: true,
+    storage: "database",
+    window: 60,
+    max: 10,
+  },
   emailAndPassword: {
     enabled: true,
   },
@@ -62,25 +75,6 @@ export type Auth = typeof auth;
 export type Session = Auth["$Infer"]["Session"];
 
 /**
- * Cached function to get the current user session
- * Uses React cache to avoid unnecessary re-fetching
- * @returns Promise<Session | null> - The current user session or null if not authenticated
- */
-export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
-
-export const getOrganization = cache(
-  async (query: {
-    organizationId?: string | undefined;
-    organizationSlug?: string | undefined;
-    membersLimit?: string | number | undefined;
-  }) =>
-    auth.api.getFullOrganization({
-      query,
-      headers: await headers(),
-    }),
-);
-
-/**
  * Creates a default personal organization for a new user
  * Generates a unique slug and creates the organization
  * If organization creation fails, the user is deleted to maintain data consistency
@@ -105,7 +99,10 @@ const createDefaultOrganization = async (user: User) => {
     return slug;
   };
 
-  const slug = await generateAvailableSlug(slugify(user.name));
+  // A name in a script with no ASCII base ("李明") slugifies to "", which would
+  // create an organization at the unroutable /dashboard/. Signup has no user to
+  // prompt, so fall back to a generic base and let them rename it later.
+  const slug = await generateAvailableSlug(slugify(user.name) || FALLBACK_ORGANIZATION_SLUG);
 
   try {
     await auth.api.createOrganization({

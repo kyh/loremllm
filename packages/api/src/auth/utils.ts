@@ -19,31 +19,26 @@ export const slugify = (str: string) => {
   return str;
 };
 
-export type Primitive = string | number | boolean | null;
-
-export type JsonType = Primitive | { [key: PropertyKey]: JsonType } | JsonType[];
+/** Base slug for organizations whose name slugifies to "" — see `slugify`. */
+export const FALLBACK_ORGANIZATION_SLUG = "workspace";
 
 /**
- * Zod schema for parsing JSON strings
- *
- * Example usage:
- *
- * ```ts
- * const authMetadataSchema = zJsonString.pipe(z.object({
- *   personal: z.boolean(),
- * }));
- * ```
+ * Parses a JSON string, then validates the result is JSON-shaped. Pipe it into
+ * a concrete schema to get a typed value:
  *
  * ```ts
- * const authMetadata = authMetadataSchema.parse('{"personal": true}');
- * console.log(authMetadata); // { personal: true }
+ * const authMetadataSchema = zJsonString.pipe(z.object({ personal: z.boolean() }));
+ * authMetadataSchema.parse('{"personal": true}'); // { personal: true }
  * ```
  */
-export const zJsonString = z.string().transform((str, ctx): JsonType => {
-  try {
-    return JSON.parse(str) as JsonType;
-  } catch {
-    ctx.addIssue({ code: "custom", message: "Invalid JSON" });
-    return z.NEVER;
-  }
-});
+export const zJsonString = z
+  .string()
+  .transform((str, ctx): unknown => {
+    try {
+      return JSON.parse(str);
+    } catch {
+      ctx.addIssue({ code: "custom", message: "Invalid JSON" });
+      return z.NEVER;
+    }
+  })
+  .pipe(z.json());

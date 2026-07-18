@@ -20,8 +20,6 @@
     "@trpc/server": "catalog:",
     "ai": "^7.0.19",
     "better-auth": "catalog:",
-    "next": "catalog:",
-    "react": "catalog:",
     "superjson": "catalog:",
     "zod": "catalog:"
   },

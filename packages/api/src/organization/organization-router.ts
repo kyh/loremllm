@@ -19,8 +19,14 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
+    // drizzle embeds the related user via `with`, so rows arrive pre-joined —
+    // no second query and hand-built Map to reunite members with their users.
     const members = await ctx.db.query.member.findMany({
       where: (member, { eq }) => eq(member.organizationId, organization.id),
+      with: {
+        // Allow-list only — full rows include admin-only fields (role, banned, banReason)
+        user: { columns: { id: true, name: true, email: true, image: true } },
+      },
     });
     const currentUserMember = members.find((member) => member.userId === ctx.session.user.id);
 
@@ -31,30 +37,18 @@ export const organizationRouter = createTRPCRouter({
       });
     }
 
+    // Exclude canceled invitations in SQL rather than fetching then dropping them.
     const invitations = await ctx.db.query.invitation.findMany({
-      where: (invitation, { eq }) => eq(invitation.organizationId, organization.id),
+      where: (invitation, { and, eq, ne }) =>
+        and(eq(invitation.organizationId, organization.id), ne(invitation.status, "canceled")),
     });
-    const filteredInvitations = invitations.filter(
-      (invitation) => invitation.status !== "canceled",
-    );
-
-    const memberUserIds = members.map((member) => member.userId);
-    const memberUsers = await ctx.db.query.user.findMany({
-      where: (user, { inArray }) => inArray(user.id, memberUserIds),
-    });
-    const memberUsersMap = new Map(memberUsers.map((user) => [user.id, user]));
-
-    const membersWithUsers = members.map((member) => ({
-      ...member,
-      user: memberUsersMap.get(member.userId),
-    }));
 
     return {
       currentUserMember,
       organization,
       organizationMetadata: authMetadataSchema.parse(organization.metadata ?? "{}"),
-      members: membersWithUsers,
-      invitations: filteredInvitations,
+      members,
+      invitations,
     };
   }),
 });

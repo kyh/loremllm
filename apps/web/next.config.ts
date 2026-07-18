@@ -1,8 +1,12 @@
+import type { NextConfig } from "next";
+
+type ImageConfig = NonNullable<NextConfig["images"]>;
+type RemotePatterns = NonNullable<ImageConfig["remotePatterns"]>;
+
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-const getRemotePatterns = () => {
-  /** @type {import('next').NextConfig['remotePatterns']} */
-  const remotePatterns = [];
+const getRemotePatterns = (): RemotePatterns => {
+  const remotePatterns: RemotePatterns = [];
 
   if (!IS_PRODUCTION) {
     remotePatterns.push({
@@ -21,15 +25,13 @@ const getRemotePatterns = () => {
 
 const transpilePackages = ["@loremllm/transport", "@repo/api", "@repo/db", "@repo/ui"];
 
-/** @type {import("next").NextConfig} */
-const config = {
+const config: NextConfig = {
   reactStrictMode: true,
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   transpilePackages,
   images: {
     remotePatterns: getRemotePatterns(),
   },
-  typescript: { ignoreBuildErrors: true },
 };
 
 export default config;
