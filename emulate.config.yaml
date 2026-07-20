@@ -1,0 +1,17 @@
+# Local OAuth emulator for `emulate` (https://github.com/vercel-labs/emulate).
+# Lets agents and tests exercise the GitHub sign-in flow offline — no real OAuth
+# app, no network to github.com. Start it with `pnpm emulate`, then run the web
+# app with NEXT_PUBLIC_GITHUB_EMULATOR_URL=http://localhost:4000 (see AGENTS.md).
+# Everything here is a local-only fixture, not a secret.
+github:
+  oauth_apps:
+    - client_id: loremllm-local-github
+      client_secret: loremllm-local-github-secret
+      name: loremllm (local)
+      redirect_uris:
+        # better-auth genericOAuth callback path for providerId "github"
+        - http://localhost:3000/api/auth/oauth2/callback/github
+  users:
+    - login: octocat
+      name: The Octocat
+      email: octocat@loremllm.local

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The first four steps are exactly `pnpm verify`, kept as separate steps
+      # so a failure names the gate that broke.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format
+        run: pnpm format
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        env:
+          # `next build` constructs the libsql client while collecting page
+          # data, and rejects an empty URL. Nothing connects at build time, so a
+          # syntactically valid placeholder is enough.
+          TURSO_DATABASE_URL: http://127.0.0.1:8080
+          BETTER_AUTH_SECRET: ci-placeholder-not-used-at-runtime
+        run: pnpm build
