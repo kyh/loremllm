@@ -15,7 +15,7 @@ pnpm db:seed                    # dev account + a Demo collection
 pnpm dev:web                    # http://localhost:3000
 ```
 
-**No Docker.** `turso dev` is a local binary writing a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. There is no bootstrap script; the five commands above _are_ the provisioning.
+**No Docker** — but you do need the `turso` CLI on PATH, and it is not a package dependency. Install it first (`brew install tursodatabase/tap/turso`, or `curl -sSfL https://get.tur.so/install.sh | bash`); without it step 2 fails with `command not found: turso`. Given that binary, `turso dev` just writes a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. There is no bootstrap script; the five commands above _are_ the provisioning.
 
 `.env.example` copies cleanly as-is. Three notes on it:
 
@@ -41,7 +41,7 @@ curl -s -i -X POST localhost:3000/api/auth/sign-in/email \
   -d '{"email":"dev@loremllm.local","password":"password"}' | grep -i set-cookie
 ```
 
-`/api/auth/*` is rate-limited to **10 requests per 60s per IP** (`packages/api/src/auth/auth.ts`). A loop that signs in repeatedly will start getting 429s — sign in once and reuse the cookie.
+`/api/auth/*` is rate-limited (`packages/api/src/auth/auth.ts` sets `window: 60, max: 10`), but better-auth applies a stricter built-in rule to the sign-in paths: **3 requests per 10s per IP** on any `/sign-in*`, `/sign-up*`, `/change-password*` or `/change-email*`, which overrides the configured value. A loop that signs in repeatedly gets 429s almost immediately — sign in once and reuse the cookie.
 
 ## Verify a change end-to-end
 

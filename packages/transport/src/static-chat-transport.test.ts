@@ -17,7 +17,6 @@ const createUserMessage = (text: string, id = "user-1"): UIMessage =>
 const readAllChunks = async (stream: ReadableStream<UIMessageChunk>): Promise<UIMessageChunk[]> => {
   const reader = stream.getReader();
   const chunks: UIMessageChunk[] = [];
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
@@ -1013,7 +1012,6 @@ describe("StaticChatTransport", () => {
       const maxChunks = 5;
 
       try {
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -1712,7 +1710,6 @@ describe("StaticChatTransport", () => {
       const maxChunks = 5;
 
       try {
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
