@@ -9,7 +9,8 @@
       "Bash(pnpm dev:web:*)",
       "Bash(pnpm emulate:*)",
       "Bash(pnpm -F db db:*)",
-      "Bash(pnpm -F db studio:*)"
+      "Bash(pnpm -F db studio:*)",
+      "Bash(agent-browser:*)"
     ]
   }
 }

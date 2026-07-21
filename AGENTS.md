@@ -20,7 +20,7 @@ pnpm dev:web                    # http://localhost:3000
 `.env.example` copies cleanly as-is. Three notes on it:
 
 - **`BETTER_AUTH_SECRET`** — any random string. Auth misbehaves without one.
-- **`AI_GATEWAY_API_KEY`** — only needed to **create or update an interaction**: `packages/api/src/interaction/embedding-service.ts` embeds the input through the Vercel AI Gateway on every write, which needs the key _and_ a network. Without it you can still sign in, browse, read, delete, and query existing interactions — `pnpm db:seed` detects the missing key, seeds the account and an empty Demo collection, and tells you to re-run once you have one.
+- **`AI_GATEWAY_API_KEY`** — needed for any **embedding** through the Vercel AI Gateway (which needs the key _and_ a network): both **writing** an interaction (its input is embedded — `packages/api/src/interaction/embedding-service.ts`) and **semantically querying** one (`interaction.query` embeds the query text). So the `/api/chat` `type:"chat"` and `/api/eve` recipes below 500 without it. Without a key you can still sign in, browse, delete, make output-only edits, and use the `lorem`/`markdown` chat types — `pnpm db:seed` detects the missing key, seeds the account and an empty Demo collection, and tells you to re-run once you have one.
 - Leave **`TURSO_AUTH_TOKEN`** commented out locally. `drizzle-kit` rejects an empty-string token, so `TURSO_AUTH_TOKEN=""` breaks `pnpm db:push`.
 
 Resetting the database is manual, because the schema is pushed _through_ the running server: stop `pnpm -F db db`, `rm -f packages/db/local.db*`, start it again, then `pnpm db:push && pnpm db:seed`.
