@@ -3,36 +3,41 @@
 /**
  * Seed Demo Collection Script
  *
- * This script creates a user, organization, and a Demo collection with various interactions about LoremLLM.
+ * Creates the local dev account and a public "Demo" collection populated with
+ * interactions about LoremLLM, so an agent or a fresh clone has a known login
+ * and real data to verify against instead of an empty schema.
+ *
+ * Idempotent — safe to re-run.
  *
  * Usage:
- *   tsx packages/api/scripts/seed.ts
+ *   pnpm db:seed
  */
-import { randomUUID } from "crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { db } from "@repo/db/drizzle-client";
 
 import { auth } from "../src/auth/auth";
+import { env } from "../src/env";
 import { appRouter } from "../src/root-router";
 import { createCallerFactory } from "../src/trpc";
 
-// ESM compatibility: derive __dirname from import.meta.url
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ESM compatibility: derive the script directory from import.meta.url
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 
-// User configuration
-const USER_EMAIL = "im.kaiyu@gmail.com";
-const USER_NAME = "Kaiyu Hsu";
-// Known dev password so the seeded account is usable locally; override for remote seeds
-const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "loremllm-dev-password";
-const ORGANIZATION_NAME = "LoremLLM";
-const ORGANIZATION_SLUG = "loremllm";
+// A local-only account. `.local` is reserved for local use and never resolves,
+// so this address cannot collide with a real inbox. The password is documented
+// in AGENTS.md; override it for `seed:remote`.
+const USER_EMAIL = "dev@loremllm.local";
+const USER_NAME = "Dev";
+const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password";
+
+const COLLECTION_PUBLIC_ID = "demo";
 
 // Load interaction output from markdown files
 async function loadInteractionOutput(filename: string): Promise<string> {
-  const filePath = path.join(__dirname, "interactions", filename);
+  const filePath = path.join(scriptDir, "interactions", filename);
   return await fs.readFile(filePath, "utf-8");
 }
 
@@ -106,77 +111,72 @@ const DEMO_INTERACTION_CONFIGS = [
   },
 ];
 
+/**
+ * Returns the dev user's id, creating the account if it does not exist.
+ *
+ * Signup goes through `auth.api.signUpEmail` rather than a raw insert so the
+ * `databaseHooks.user.create.after` hook runs and provisions the personal
+ * organization exactly as it would in production.
+ */
+async function ensureUser(): Promise<string> {
+  const existingUser = await db.query.user.findFirst({
+    where: (users, { eq }) => eq(users.email, USER_EMAIL),
+  });
+
+  if (existingUser) {
+    console.log(`   ✅ User already exists: ${existingUser.email}`);
+    return existingUser.id;
+  }
+
+  const { user } = await auth.api.signUpEmail({
+    body: {
+      email: USER_EMAIL,
+      name: USER_NAME,
+      password: USER_PASSWORD,
+    },
+  });
+
+  console.log(`   ✅ User created: ${USER_EMAIL}`);
+  console.log(`   🔑 Password: ${USER_PASSWORD}`);
+  console.log(`   ℹ️  Personal organization provisioned by the signup hook`);
+
+  return user.id;
+}
+
+/**
+ * The organization the dashboard opens on: the first membership, which is what
+ * `setActiveOrganization` puts on every new session.
+ */
+async function resolveOrganizationId(userId: string): Promise<string> {
+  const membership = await db.query.member.findFirst({
+    where: (member, { eq }) => eq(member.userId, userId),
+  });
+
+  if (!membership) {
+    throw new Error(
+      `No organization found for ${USER_EMAIL}. The signup hook that creates the personal organization did not run — check packages/api/src/auth/auth.ts.`,
+    );
+  }
+
+  return membership.organizationId;
+}
+
 async function main() {
   console.log("🚀 Starting Demo Collection Seed\n");
   console.log(`👤 User Email: ${USER_EMAIL}`);
-  console.log(`🏢 Organization: ${ORGANIZATION_NAME}`);
   console.log(`📝 Interactions to create: ${DEMO_INTERACTION_CONFIGS.length}\n`);
 
   try {
-    // Step 1: Create or get user using better-auth API
+    // Step 1: Create or find the dev user
     console.log("👤 Creating/finding user...");
-    let userId: string;
+    const userId = await ensureUser();
 
-    const existingUser = await db.query.user.findFirst({
-      where: (users, { eq }) => eq(users.email, USER_EMAIL),
+    // Step 2: Resolve the personal organization the seeded data belongs to
+    const organizationId = await resolveOrganizationId(userId);
+    const org = await db.query.organization.findFirst({
+      where: (organization, { eq }) => eq(organization.id, organizationId),
     });
-
-    if (existingUser) {
-      console.log(`   ✅ User already exists: ${existingUser.email}`);
-      userId = existingUser.id;
-    } else {
-      // Use better-auth admin API to create user
-      const { data: newUser, error: userError } = await (auth.api as any).createUser({
-        body: {
-          email: USER_EMAIL,
-          name: USER_NAME,
-          password: USER_PASSWORD,
-          emailVerified: true,
-        },
-      });
-
-      if (userError || !newUser) {
-        throw new Error(`Failed to create user: ${userError?.message ?? "Unknown error"}`);
-      }
-
-      userId = newUser.id;
-      console.log(`   ✅ User created: ${USER_EMAIL}`);
-      console.log(`   🔑 Password: ${USER_PASSWORD}`);
-      console.log(`   ℹ️  Personal organization created automatically by better-auth`);
-    }
-
-    // Step 2: Create or get demo organization using better-auth API
-    console.log("\n🏢 Creating/finding organization...");
-    let organizationId: string;
-
-    const existingOrg = await db.query.organization.findFirst({
-      where: (orgs, { eq }) => eq(orgs.slug, ORGANIZATION_SLUG),
-    });
-
-    if (existingOrg) {
-      console.log(`   ✅ Organization already exists: ${existingOrg.name}`);
-      organizationId = existingOrg.id;
-    } else {
-      // Use better-auth organization API to create organization
-      const { data: newOrg, error: orgError } = await (auth.api as any).createOrganization({
-        body: {
-          userId,
-          name: ORGANIZATION_NAME,
-          slug: ORGANIZATION_SLUG,
-          metadata: {
-            demo: true,
-          },
-        },
-      });
-
-      if (orgError || !newOrg) {
-        throw new Error(`Failed to create organization: ${orgError?.message ?? "Unknown error"}`);
-      }
-
-      organizationId = newOrg.id;
-      console.log(`   ✅ Organization created: ${ORGANIZATION_NAME}`);
-      console.log(`   ✅ User added as owner automatically`);
-    }
+    console.log(`\n🏢 Organization: ${org?.name ?? organizationId}`);
 
     // Step 3: Create a session context for tRPC calls
     const createCallerContext = async () => ({
@@ -187,9 +187,9 @@ async function main() {
           email: USER_EMAIL,
           emailVerified: true,
           image: null,
+          banned: null,
           createdAt: new Date(),
           updatedAt: new Date(),
-          activeOrganizationId: organizationId,
         },
         session: {
           id: randomUUID(),
@@ -204,23 +204,32 @@ async function main() {
         },
       },
       db,
+      // Not a browser request, so there is no provenance for the tRPC origin
+      // guard to check.
+      origin: null,
+      secFetchSite: null,
     });
 
-    // Create the tRPC caller
     const callerFactory = createCallerFactory(appRouter);
     const caller = callerFactory(createCallerContext);
 
-    // Step 4: Create or get the Demo collection
-    console.log("\n📦 Creating/finding 'Demo' collection...");
-    let collection;
-    let existingInteractions: Array<{ input: string; id: string }> = [];
+    // Step 4: Create or find the Demo collection. publicId is globally unique,
+    // so look it up directly rather than through the org-scoped list.
+    console.log(`\n📦 Creating/finding '${COLLECTION_PUBLIC_ID}' collection...`);
+    const existingCollection = await db.query.mockCollection.findFirst({
+      where: (collection, { eq }) => eq(collection.publicId, COLLECTION_PUBLIC_ID),
+    });
 
-    // Try to find existing collection by publicId
-    const allCollections = await caller.collection.list();
-    const existingCollection = allCollections.find((col) => col.publicId === "demo");
+    if (existingCollection && existingCollection.organizationId !== organizationId) {
+      throw new Error(
+        `A '${COLLECTION_PUBLIC_ID}' collection already exists in a different organization. Reset the local database (see AGENTS.md) and re-run.`,
+      );
+    }
+
+    let collection;
+    let existingInteractions: { input: string; id: string }[] = [];
 
     if (existingCollection) {
-      // Get full collection with interactions
       const fullCollection = await caller.collection.byId({
         collectionId: existingCollection.id,
       });
@@ -232,9 +241,8 @@ async function main() {
       console.log(`   Public ID: ${collection.publicId}`);
       console.log(`   Existing interactions: ${existingInteractions.length}\n`);
     } else {
-      // Collection doesn't exist, create it
       collection = await caller.collection.create({
-        publicId: "demo",
+        publicId: COLLECTION_PUBLIC_ID,
         name: "Demo",
         description:
           "Demo collection showcasing LoremLLM capabilities with common questions and answers about the platform",
@@ -252,66 +260,69 @@ async function main() {
       console.log(`   Name: ${collection.name}\n`);
     }
 
-    // Step 5: Load and create interactions (idempotent)
-    console.log("💬 Creating/updating interactions...\n");
+    // Step 5: Load and create interactions (idempotent).
+    //
+    // Every interaction is embedded through the AI Gateway on write, so this
+    // step needs a key and a network. Without one the login and the collection
+    // above are still usable, which is enough to verify most flows — so warn
+    // and stop rather than failing eleven times over.
+    if (!env.AI_GATEWAY_API_KEY) {
+      console.log("⚠️  AI_GATEWAY_API_KEY is not set — skipping interactions.");
+      console.log("   Creating an interaction embeds its input via the AI Gateway.");
+      console.log("   Set the key in .env and re-run `pnpm db:seed` to populate them.\n");
+    } else {
+      console.log("💬 Creating/updating interactions...\n");
 
-    // Create a map of existing interactions by input
-    const existingInteractionMap = new Map(
-      existingInteractions.map((interaction) => [interaction.input, interaction]),
-    );
+      const existingInteractionMap = new Map(
+        existingInteractions.map((interaction) => [interaction.input, interaction]),
+      );
 
-    let successCount = 0;
-    let skippedCount = 0;
-    let errorCount = 0;
+      let successCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
 
-    for (const [index, config] of DEMO_INTERACTION_CONFIGS.entries()) {
-      try {
-        // Check if interaction with this input already exists
-        const existingInteraction = existingInteractionMap.get(config.input);
+      for (const [index, config] of DEMO_INTERACTION_CONFIGS.entries()) {
+        const label = `[${index + 1}/${DEMO_INTERACTION_CONFIGS.length}]`;
 
-        if (existingInteraction) {
-          skippedCount++;
-          console.log(
-            `   ⏭️  [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] ${config.title} (already exists)`,
-          );
-          continue;
+        try {
+          if (existingInteractionMap.has(config.input)) {
+            skippedCount++;
+            console.log(`   ⏭️  ${label} ${config.title} (already exists)`);
+            continue;
+          }
+
+          const output = await loadInteractionOutput(config.outputFile);
+
+          const interaction = await caller.interaction.create({
+            collectionId: collection.id,
+            title: config.title,
+            description: config.description,
+            input: config.input,
+            output,
+          });
+
+          successCount++;
+          console.log(`   ✅ ${label} ${interaction.title}`);
+        } catch (error) {
+          errorCount++;
+          console.error(`   ❌ ${label} Failed to create: ${config.title}`);
+          console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
         }
+      }
 
-        // Load output from markdown file
-        const output = await loadInteractionOutput(config.outputFile);
-
-        const interaction = await caller.interaction.create({
-          collectionId: collection.id,
-          title: config.title,
-          description: config.description,
-          input: config.input,
-          output,
-        });
-
-        successCount++;
-        console.log(`   ✅ [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] ${interaction.title}`);
-      } catch (error) {
-        errorCount++;
-        console.error(
-          `   ❌ [${index + 1}/${DEMO_INTERACTION_CONFIGS.length}] Failed to create: ${config.title}`,
-        );
-        console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.log("\n" + "=".repeat(50));
+      console.log("📊 Summary");
+      console.log("=".repeat(50));
+      console.log(`✅ Successfully created: ${successCount} interactions`);
+      if (skippedCount > 0) {
+        console.log(`⏭️  Skipped (already exist): ${skippedCount} interactions`);
+      }
+      if (errorCount > 0) {
+        console.log(`❌ Failed: ${errorCount} interactions`);
       }
     }
 
-    // Summary
-    console.log("\n" + "=".repeat(50));
-    console.log("📊 Summary");
-    console.log("=".repeat(50));
-    console.log(`👤 User: ${USER_EMAIL}`);
-    console.log(`🏢 Organization: ${ORGANIZATION_NAME} (${organizationId})`);
-    console.log(`✅ Successfully created: ${successCount} interactions`);
-    if (skippedCount > 0) {
-      console.log(`⏭️  Skipped (already exist): ${skippedCount} interactions`);
-    }
-    if (errorCount > 0) {
-      console.log(`❌ Failed: ${errorCount} interactions`);
-    }
+    console.log(`\n👤 Login: ${USER_EMAIL} / ${USER_PASSWORD}`);
     console.log(`📦 Collection ID: ${collection.id}`);
     console.log(`🔗 Public ID: ${collection.publicId}`);
     console.log("\n🎉 Demo collection seed complete!");

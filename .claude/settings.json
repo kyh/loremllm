@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "prompt": "This repo is built to be driven by coding agents — read AGENTS.md first. If .env is missing, copy .env.example, set BETTER_AUTH_SECRET, then run `pnpm -F db db`, `pnpm db:push`, `pnpm db:seed`. No Docker, but the `turso` CLI must be on PATH (brew install tursodatabase/tap/turso).",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm verify:*)",
+      "Bash(pnpm db:push:*)",
+      "Bash(pnpm db:seed:*)",
+      "Bash(pnpm dev:web:*)",
+      "Bash(pnpm emulate:*)",
+      "Bash(pnpm -F db db:*)",
+      "Bash(pnpm -F db studio:*)",
+      "Bash(agent-browser:*)"
+    ]
+  }
+}

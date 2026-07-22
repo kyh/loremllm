@@ -12,7 +12,7 @@ Cut a new npm version of `@loremllm/transport`, the one publishable package in t
 
 - Repo root: `/Users/kyh/Documents/Projects/loremllm`
 - Only publishable package: `@loremllm/transport` at `packages/transport` (everything else — `@repo/api`, `@repo/db`, `@repo/ui`, `@loremllm/web` — is private).
-- Public (`publishConfig.access: "public"`). Built by `pkgroll`. Tag scheme: `@loremllm/transport@<version>`.
+- Public (`publishConfig.access: "public"`). Built by `tsc` to `dist/`. Tag scheme: `@loremllm/transport@<version>`.
 - Change detection path: `packages/transport`.
 - Current branch: !`git -C /Users/kyh/Documents/Projects/loremllm rev-parse --abbrev-ref HEAD`
 - Working tree: !`git -C /Users/kyh/Documents/Projects/loremllm status --short`

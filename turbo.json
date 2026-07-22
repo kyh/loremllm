@@ -7,7 +7,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".cache/tsbuildinfo.json", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {
       "cache": false,
@@ -40,11 +40,12 @@
     "TURSO_DATABASE_URL",
     "TURSO_AUTH_TOKEN",
     "BETTER_AUTH_SECRET",
+    "AI_GATEWAY_API_KEY",
     "PORT",
     "VERCEL_PROJECT_PRODUCTION_URL",
-    "PORT",
     "GITHUB_CLIENT_ID",
-    "GITHUB_CLIENT_SECRET"
+    "GITHUB_CLIENT_SECRET",
+    "NEXT_PUBLIC_GITHUB_EMULATOR_URL"
   ],
   "globalPassThroughEnv": [
     "NODE_ENV",

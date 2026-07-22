@@ -6,21 +6,23 @@
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo run clean",
     "db:push": "pnpm -F db push",
-    "db:push-remote": "pnpm -F db push:remote && pnpm -F builder push:remote",
+    "db:push-remote": "pnpm -F db push:remote",
+    "db:seed": "pnpm -F @repo/api seed",
     "dev": "turbo watch db studio dev --continue",
     "dev:web": "turbo watch dev --filter=@loremllm/web --continue",
+    "emulate": "npx emulate@0.9.0 --service github",
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "format": "oxfmt",
+    "format": "oxfmt --check",
     "lint:fix": "oxlint --fix",
-    "format:fix": "oxfmt --write"
+    "format:fix": "oxfmt --write",
+    "verify": "pnpm typecheck && pnpm lint && pnpm format && pnpm test"
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
     "oxfmt": "^0.58.0",
     "oxlint": "^1.73.0",
-    "pkgroll": "^2.27.1",
     "tsx": "^4.23.0",
     "turbo": "^2.10.4",
     "typescript": "catalog:"

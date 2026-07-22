@@ -15,6 +15,13 @@ const setCorsHeaders = (res: Response) => {
   res.headers.set("Access-Control-Allow-Headers", "*");
 };
 
+/**
+ * Codes the API throws as ordinary control flow — a signed-out visitor, a
+ * rejected cross-origin mutation, a missing collection, a failed zod parse.
+ * Logging them buries the errors that actually need attention in routine noise.
+ */
+const EXPECTED_ERROR_CODES = new Set(["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "BAD_REQUEST"]);
+
 export const OPTIONS = () => {
   const response = new Response(null, {
     status: 204,
@@ -32,7 +39,9 @@ const handler = async (req: NextRequest) => {
     req,
     createContext: () => createTRPCContext({ headers: req.headers }),
     onError: ({ error, path }) => {
-      console.error(`>>> tRPC Error on '${path}'`, error);
+      if (!EXPECTED_ERROR_CODES.has(error.code)) {
+        console.error(`>>> tRPC Error on '${path}'`, error);
+      }
     },
   });
 

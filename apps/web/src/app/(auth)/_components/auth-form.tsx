@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
@@ -10,42 +10,21 @@ import { cn } from "@repo/ui/lib/utils";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { authClient, signInWithGithub } from "@/lib/auth-client";
 
 type AuthFormProps = {
   type: "login" | "register";
+  /**
+   * Resolved server-side (see next-path.ts) and passed in, so the form has no
+   * `useSearchParams` hook and renders in a single pass — no Suspense boundary,
+   * and therefore no hydration gap where the Github button is missing from the
+   * server-rendered DOM.
+   */
+  nextPath: string;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-const DEFAULT_AUTH_PATH = "/dashboard";
-const AUTH_REDIRECT_ORIGIN = "https://loremllm.invalid";
-
-const getSafeNextPath = (value: string | null) => {
-  if (!value?.startsWith("/") || value.startsWith("//")) {
-    return DEFAULT_AUTH_PATH;
-  }
-
-  try {
-    const url = new URL(value, AUTH_REDIRECT_ORIGIN);
-    if (url.origin !== AUTH_REDIRECT_ORIGIN) {
-      return DEFAULT_AUTH_PATH;
-    }
-
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return DEFAULT_AUTH_PATH;
-  }
-};
-
-export const AuthForm = (props: AuthFormProps) => (
-  <Suspense>
-    <AuthFormInner {...props} />
-  </Suspense>
-);
-
-const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
+export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextPath = getSafeNextPath(searchParams.get("next"));
   const [submittingGithub, setSubmittingGithub] = useState(false);
 
   const form = useForm({
@@ -96,12 +75,11 @@ const AuthFormInner = ({ className, type, ...props }: AuthFormProps) => {
 
   const handleAuthWithGithub = async () => {
     setSubmittingGithub(true);
-    await authClient.signIn.social({
-      provider: "github",
+    await signInWithGithub({
+      // OAuth is a full-page redirect; the server sends the user here after the
+      // callback, so a client-side onSuccess would never fire.
+      callbackURL: nextPath,
       fetchOptions: {
-        onSuccess: () => {
-          router.replace(nextPath);
-        },
         onError: (ctx) => {
           toast.error(ctx.error.message);
         },

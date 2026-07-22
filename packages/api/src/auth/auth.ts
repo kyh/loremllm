@@ -4,8 +4,9 @@ import { db } from "@repo/db/drizzle-client";
 import { user as userSchema } from "@repo/db/drizzle-schema-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, oAuthProxy, organization } from "better-auth/plugins";
+import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
+import { env } from "../env";
 import { FALLBACK_ORGANIZATION_SLUG, slugify } from "./utils";
 
 export const baseUrl =
@@ -19,18 +20,52 @@ export const baseUrl =
 // Origin checks and by the tRPC mutation guard (see packages/api/src/trpc.ts).
 export const trustedOrigins = [baseUrl];
 
+// Set (to the local `emulate` server URL) in dev to exercise GitHub OAuth
+// offline; drives the dev-only genericOAuth provider in `plugins` below.
+// Unset in production.
+const emulatorUrl = env.NEXT_PUBLIC_GITHUB_EMULATOR_URL;
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),
   baseURL: baseUrl,
   plugins: [
+    // Proxies the OAuth callback through the production deployment so preview
+    // deployments can share one registered GitHub callback URL. Off the
+    // platform (local dev) there is no production URL to proxy to — falling
+    // back to baseUrl makes the plugin a no-op instead of rewriting the
+    // callback to a host the local server can't receive.
     oAuthProxy({
       currentURL: baseUrl,
-      productionURL: `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "loremllm.com"}`,
+      productionURL: process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : baseUrl,
     }),
     organization(),
     admin(),
+    // Dev-only: route GitHub OAuth to the local `emulate` server so the shipped
+    // "Continue with Github" button works offline (agents and tests included);
+    // production uses the real socialProviders.github below. The built-in github
+    // provider has hardcoded endpoints, so the emulated flow rides on
+    // genericOAuth — the signInWithGithub() client helper picks signIn.oauth2 to
+    // match. Creds are local fixtures matching emulate.config.yaml, not secrets.
+    ...(emulatorUrl
+      ? [
+          genericOAuth({
+            config: [
+              {
+                providerId: "github",
+                clientId: "loremllm-local-github",
+                clientSecret: "loremllm-local-github-secret",
+                authorizationUrl: `${emulatorUrl}/login/oauth/authorize`,
+                tokenUrl: `${emulatorUrl}/login/oauth/access_token`,
+                userInfoUrl: `${emulatorUrl}/user`,
+              },
+            ],
+          }),
+        ]
+      : []),
   ],
   trustedOrigins,
   // Persist rate-limit counters in the database. The default in-memory store
@@ -48,8 +83,8 @@ export const auth = betterAuth({
   },
   socialProviders: {
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID ?? "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
       redirectURI: `${baseUrl}/api/auth/callback/github`,
     },
   },

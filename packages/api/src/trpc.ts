@@ -151,7 +151,6 @@ export const publicProcedure = t.procedure.use(enforceTrustedOriginOnMutation);
 export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
   const session = ctx.session;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }

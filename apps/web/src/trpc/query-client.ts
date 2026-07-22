@@ -9,12 +9,11 @@ export const createQueryClient = () => {
         // above 0 to avoid refetching immediately on the client
         staleTime: 30 * 1000,
       },
-      mutations: {
-        onSuccess: async () => {
-          // Invalidate all queries in the react-query cache:
-          await queryClient.invalidateQueries();
-        },
-      },
+      // No blanket mutation `onSuccess` here on purpose: every mutation
+      // declares the query filters it actually invalidates (see the dashboard
+      // components). Invalidating the whole cache refetches unrelated queries
+      // on every write, and — because a default is fully overridden by any
+      // per-mutation `onSuccess` — it silently protected nothing anyway.
       dehydrate: {
         serializeData: SuperJSON.serialize,
         shouldDehydrateQuery: (query) =>

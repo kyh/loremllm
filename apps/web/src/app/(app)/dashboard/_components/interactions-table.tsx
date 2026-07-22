@@ -160,6 +160,9 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
     ...trpc.interaction.update.mutationOptions(),
     onSuccess: () => {
       void queryClient.invalidateQueries(trpc.collection.byId.queryFilter());
+      // The server touches the parent collection's updatedAt, and the sidebar
+      // list is ordered by it — so an edit reorders the list too.
+      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
       toast.success("Mock interaction updated");
       setOpen(false);
     },
