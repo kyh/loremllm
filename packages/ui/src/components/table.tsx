@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { flexRender, type Table as UseReactTable } from "@tanstack/react-table";
+import {
+  columnVisibilityFeature,
+  flexRender,
+  rowSelectionFeature,
+  tableFeatures,
+  type RowData,
+  type Table as UseReactTable,
+} from "@tanstack/react-table";
 
 import { cn } from "@repo/ui/lib/utils";
 
@@ -89,11 +96,25 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
 
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };
 
-type AutoTableProps<TData> = {
-  table: UseReactTable<TData>;
+/**
+ * The feature set every AutoTable is built on. Features are opt-in, and
+ * AutoTable's markup reads `row.getVisibleCells()` and `row.getIsSelected()`,
+ * which column visibility and row selection provide. Build tables with
+ * `useTable({ features: autoTableFeatures, ... })` so the instance carries the
+ * APIs AutoTable renders with.
+ */
+export const autoTableFeatures = tableFeatures({
+  columnVisibilityFeature,
+  rowSelectionFeature,
+});
+
+export type AutoTableFeatures = typeof autoTableFeatures;
+
+type AutoTableProps<TData extends RowData> = {
+  table: UseReactTable<AutoTableFeatures, TData>;
 } & React.HTMLAttributes<HTMLTableElement>;
 
-export const AutoTable = <TData,>({ table, ...props }: AutoTableProps<TData>) => {
+export const AutoTable = <TData extends RowData>({ table, ...props }: AutoTableProps<TData>) => {
   const columns = table.getAllColumns();
 
   return (

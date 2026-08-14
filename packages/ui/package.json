@@ -16,7 +16,7 @@
   "dependencies": {
     "@base-ui/react": "catalog:",
     "@radix-ui/react-use-controllable-state": "^1.2.6",
-    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-table": "^9.1.2",
     "ai": "^7.0.66",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
