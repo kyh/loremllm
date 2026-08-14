@@ -44,9 +44,9 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^4.0.40",
-    "ai": "^7.0.37",
-    "eve": "^0.27.5",
+    "@ai-sdk/react": "^4.0.69",
+    "ai": "^7.0.66",
+    "eve": "^0.38.3",
     "typescript": "catalog:",
     "vitest": "^4.1.10"
   },

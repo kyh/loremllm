@@ -18,7 +18,7 @@
   "dependencies": {
     "@repo/db": "workspace:^",
     "@trpc/server": "catalog:",
-    "ai": "^7.0.37",
+    "ai": "^7.0.66",
     "better-auth": "catalog:",
     "superjson": "catalog:",
     "zod": "catalog:"
