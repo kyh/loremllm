@@ -65,7 +65,9 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
       description: "This mock response will stop matching queries immediately.",
       action: {
         label: "Delete",
-        onClick: () => deleteInteraction.mutateAsync({ interactionId: interaction.id }),
+        onClick: async () => {
+          await deleteInteraction.mutateAsync({ interactionId: interaction.id });
+        },
       },
     });
   };

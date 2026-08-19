@@ -1,6 +1,5 @@
 import { waitlist } from "@repo/db/drizzle-schema";
 
-import type { AuthenticatedSession } from "../trpc";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { joinWaitlistInput } from "./waitlist-schema";
 
@@ -11,7 +10,7 @@ export const waitlistRouter = createTRPCRouter({
       .values({
         ...input,
         source: process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "",
-        userId: (ctx.session as AuthenticatedSession | null)?.user.id ?? null,
+        userId: ctx.session?.user.id ?? null,
       })
       .returning();
 

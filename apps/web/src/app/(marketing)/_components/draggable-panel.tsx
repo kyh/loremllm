@@ -83,7 +83,7 @@ export const DraggablePanel = ({
       e.stopPropagation();
       setIsDragging(true);
 
-      const target = e.currentTarget as HTMLElement;
+      const target = e.currentTarget;
       target.setPointerCapture(e.pointerId);
 
       if (panelRef.current) {

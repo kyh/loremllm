@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** Any JSON value — the shape `request.json()` guarantees at the HTTP boundary. */
+const jsonValue = z.json();
+
+export type JsonBody = z.infer<typeof jsonValue>;
+
 /**
  * Schema for lorem ipsum generation parameters. All fields are optional and
  * have sensible defaults so the lorem endpoint can be called with an empty
@@ -22,12 +27,12 @@ export const MarkdownRequestSchema = z.object({
 
 export const ChatRequestSchema = z.object({
   collectionId: z.string().min(1),
-  messages: z.array(z.unknown()).optional(),
+  messages: z.array(jsonValue).optional(),
 });
 
 export const LoremRequestSchema = LoremParamsSchema.merge(
   z.object({
-    messages: z.array(z.unknown()).optional(),
+    messages: z.array(jsonValue).optional(),
   }),
 );
 
@@ -44,7 +49,7 @@ export type ParsedRequestPayload =
 /** Invalid request body — mapped to a 400 response by the route handler */
 export class PayloadError extends Error {}
 
-const parseOrThrow = <T>(schema: z.ZodType<T>, body: unknown, label: string): T => {
+const parseOrThrow = <T>(schema: z.ZodType<T>, body: JsonBody, label: string): T => {
   const result = schema.safeParse(body);
 
   if (!result.success) {
@@ -66,11 +71,11 @@ const parseOrThrow = <T>(schema: z.ZodType<T>, body: unknown, label: string): T 
  * handler. Bodies without `type` fall back to shape inference for backwards
  * compatibility.
  */
-export const parseRequestPayload = (body: unknown): ParsedRequestPayload => {
-  const explicitType =
-    typeof body === "object" && body !== null && "type" in body && typeof body.type === "string"
-      ? body.type
-      : null;
+const explicitlyTypedBody = z.object({ type: z.string() });
+
+export const parseRequestPayload = (body: JsonBody): ParsedRequestPayload => {
+  const explicitBody = explicitlyTypedBody.safeParse(body);
+  const explicitType = explicitBody.success ? explicitBody.data.type : null;
 
   if (explicitType !== null) {
     switch (explicitType) {

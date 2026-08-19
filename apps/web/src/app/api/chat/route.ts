@@ -37,9 +37,7 @@ export function GET(request: Request) {
 export async function POST(request: Request) {
   const origin = request.headers.get("origin") ?? undefined;
   try {
-    const body = (await request.json()) as unknown;
-
-    const payload = parseRequestPayload(body);
+    const payload = parseRequestPayload(await request.json());
 
     switch (payload.type) {
       case "markdown": {

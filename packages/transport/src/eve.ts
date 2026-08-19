@@ -1,4 +1,5 @@
-import type { UIMessage } from "ai";
+import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from "ai";
+import { z } from "zod";
 
 import type { SpecialToolPart, StaticChatTransportInit, StaticTransportContext } from "./index.ts";
 import type { DelayResolver } from "./shared.ts";
@@ -29,7 +30,8 @@ const EVE_MESSAGE_STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 const EVE_MESSAGE_STREAM_FORMAT = "ndjson";
 const EVE_MESSAGE_STREAM_VERSION = "18";
 
-type JsonObject = { [key: string]: unknown };
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
 
 type AssistantStepFinishReason =
   | "content-filter"
@@ -201,43 +203,35 @@ export function createMemoryEveSessionStore<
  * Validation is structural on the record and shallow on `events`/`messages`
  * elements — the record is trusted to have been written by this handler.
  */
+const storedEveStreamEvent = z.looseObject({ type: z.string() });
+const storedUiMessage = z.looseObject({
+  id: z.string(),
+  role: z.string(),
+  parts: z.array(z.unknown()),
+});
+const storedEveSessionRecord = z.looseObject({
+  continuationToken: z.string(),
+  events: z.array(storedEveStreamEvent),
+  messages: z.array(storedUiMessage),
+  nextSequence: z.number(),
+  turnCount: z.number(),
+});
+
 export function parseEveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage>(
-  value: unknown,
+  value: JsonValue,
 ): EveSessionRecord<UI_MESSAGE> | undefined {
-  if (typeof value !== "object" || value === null) {
+  const result = storedEveSessionRecord.safeParse(value);
+  if (!result.success) {
     return undefined;
   }
-  const record: Partial<Record<keyof EveSessionRecord, unknown>> = value;
-  if (
-    typeof record.continuationToken !== "string" ||
-    typeof record.nextSequence !== "number" ||
-    typeof record.turnCount !== "number" ||
-    !Array.isArray(record.events) ||
-    !Array.isArray(record.messages)
-  ) {
-    return undefined;
-  }
-  const isEventShaped = (event: unknown): event is EveStreamEvent =>
-    typeof event === "object" &&
-    event !== null &&
-    "type" in event &&
-    typeof event.type === "string";
-  const isMessageShaped = (message: unknown): message is UI_MESSAGE =>
-    typeof message === "object" &&
-    message !== null &&
-    "id" in message &&
-    typeof message.id === "string" &&
-    "role" in message &&
-    typeof message.role === "string" &&
-    "parts" in message &&
-    Array.isArray(message.parts);
-  if (!record.events.every(isEventShaped) || !record.messages.every(isMessageShaped)) {
-    return undefined;
-  }
+  const record = result.data;
+  // SAFETY: validation is deliberately shallow (see doc comment) — the record
+  // was written by this handler, so beyond the structural checks above its
+  // events and messages are trusted to be EveStreamEvent / UI_MESSAGE values.
   return {
     continuationToken: record.continuationToken,
-    events: record.events,
-    messages: record.messages,
+    events: record.events as EveStreamEvent[],
+    messages: record.messages as UI_MESSAGE[],
     nextSequence: record.nextSequence,
     turnCount: record.turnCount,
   };
@@ -305,46 +299,46 @@ type ParsedUserMessage = {
   receivedParts: EveMessageReceivedPart[];
 };
 
-function isJsonObject(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const jsonObject: z.ZodType<JsonObject> = z.record(z.string(), z.json());
+
+const stringValue = z.string();
+
+const userTextPart = z.object({ type: z.literal("text"), text: z.string().min(1) });
+// A mistyped filename degrades to undefined rather than rejecting the part.
+const userFilePart = z.object({
+  type: z.literal("file"),
+  mediaType: z.string(),
+  filename: z.string().optional().catch(undefined),
+});
+const userMessageParts = z.array(z.union([userTextPart, userFilePart])).min(1);
 
 /**
  * Validates and flattens the `message` field of a create/continue body
  * (`string | Array<TextPart | FilePart>`). Returns `undefined` when invalid.
  */
-function parseUserMessage(message: unknown): ParsedUserMessage | undefined {
-  if (typeof message === "string") {
-    if (message.length === 0) {
+function parseUserMessage(message: JsonValue | undefined): ParsedUserMessage | undefined {
+  const text = stringValue.safeParse(message);
+  if (text.success) {
+    if (text.data.length === 0) {
       return undefined;
     }
-    return { text: message, receivedParts: [{ type: "text", text: message }] };
+    return { text: text.data, receivedParts: [{ type: "text", text: text.data }] };
   }
 
-  if (!Array.isArray(message) || message.length === 0) {
+  const parts = userMessageParts.safeParse(message);
+  if (!parts.success) {
     return undefined;
   }
 
   const texts: string[] = [];
   const receivedParts: EveMessageReceivedPart[] = [];
-  for (const part of message) {
-    if (!isJsonObject(part)) {
-      return undefined;
-    }
-    if (part.type === "text" && typeof part.text === "string" && part.text.length > 0) {
+  for (const part of parts.data) {
+    if (part.type === "text") {
       texts.push(part.text);
       receivedParts.push({ type: "text", text: part.text });
-      continue;
+    } else {
+      receivedParts.push({ type: "file", mediaType: part.mediaType, filename: part.filename });
     }
-    if (part.type === "file" && typeof part.mediaType === "string") {
-      receivedParts.push({
-        type: "file",
-        mediaType: part.mediaType,
-        filename: typeof part.filename === "string" ? part.filename : undefined,
-      });
-      continue;
-    }
-    return undefined;
   }
 
   if (texts.length === 0) {
@@ -369,7 +363,7 @@ type ToolLikePart = {
 };
 
 function toolNameForPart(part: ToolLikePart): string {
-  if (typeof part.toolName === "string" && part.toolName.length > 0) {
+  if (part.toolName !== undefined && part.toolName.length > 0) {
     return part.toolName;
   }
   if (part.type.startsWith("tool-")) {
@@ -448,8 +442,10 @@ function breakStepIf(builder: TurnBuilder, condition: boolean, at: string): void
  * default `useEveAgent` reducer renders. Steps mirror the real runtime: one
  * text message per step, tool calls break to a fresh step after streamed text.
  */
-function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
-  parts: Array<UI_MESSAGE["parts"][number] | SpecialToolPart>;
+type TurnEvents = { events: EveStreamEvent[]; nextSequence: number };
+
+function createTurnEvents(input: {
+  parts: Array<UIMessagePart<UIDataTypes, UITools> | SpecialToolPart>;
   turnId: string;
   isFirstTurn: boolean;
   startSequence: number;
@@ -457,7 +453,7 @@ function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
   autoChunkText: boolean | RegExp;
   autoChunkReasoning: boolean | RegExp;
   at: () => string;
-}): { events: EveStreamEvent[]; nextSequence: number } {
+}): TurnEvents {
   const builder: TurnBuilder = {
     events: [],
     nextSequence: input.startSequence,
@@ -494,7 +490,7 @@ function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
   for (const part of input.parts) {
     switch (part.type) {
       case "text": {
-        const textPart = part as { text: string };
+        const textPart = part;
         breakStepIf(builder, builder.stepHasText, at());
         openStep(builder, at());
         let soFar = "";
@@ -533,7 +529,7 @@ function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
         break;
       }
       case "reasoning": {
-        const reasoningPart = part as { text: string };
+        const reasoningPart = part;
         breakStepIf(builder, builder.stepHasText, at());
         openStep(builder, at());
         let soFar = "";
@@ -574,10 +570,10 @@ function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
         break;
       }
       default: {
-        if (
-          (typeof part.type === "string" && part.type.startsWith("tool-")) ||
-          part.type === "dynamic-tool"
-        ) {
+        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
+          // SAFETY: at runtime this array also carries SpecialToolPart values
+          // and ToolPart extras (toolName) that the static part union cannot
+          // express; ToolLikePart names exactly the fields read below.
           const toolPart = part as ToolLikePart;
 
           // Special tool parts (e.g. tool-approval-request) have no `state`;
@@ -589,7 +585,8 @@ function createTurnEvents<UI_MESSAGE extends UIMessage>(input: {
           breakStepIf(builder, builder.stepHasText, at());
           openStep(builder, at());
           const toolName = toolNameForPart(toolPart);
-          const toolInput = isJsonObject(toolPart.input) ? toolPart.input : {};
+          const parsedInput = jsonObject.safeParse(toolPart.input);
+          const toolInput = parsedInput.success ? parsedInput.data : {};
           stamp(
             builder,
             {
@@ -680,7 +677,7 @@ function createFailureEvents(input: {
   startSequence: number;
   userMessage: ParsedUserMessage;
   at: () => string;
-}): { events: EveStreamEvent[]; nextSequence: number } {
+}): TurnEvents {
   const message = input.error instanceof Error ? input.error.message : "The mock response failed.";
   const events: EveStreamEvent[] = [];
   let sequence = input.startSequence;
@@ -735,17 +732,21 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
   const at = () => now().toISOString();
   const cors = init.cors ?? true;
 
-  const corsHeaders = (): Record<string, string> => {
+  const corsHeaderEntries = (): Array<[string, string]> => {
     if (cors === false) {
-      return {};
+      return [];
     }
-    return {
-      "access-control-allow-origin": cors === true ? "*" : cors.origin,
-      "access-control-allow-methods": "GET, POST, OPTIONS",
-      "access-control-allow-headers": "content-type, authorization",
-      "access-control-expose-headers": `${EVE_SESSION_ID_HEADER}, ${EVE_STREAM_FORMAT_HEADER}, ${EVE_STREAM_VERSION_HEADER}`,
-    };
+    return [
+      ["access-control-allow-origin", cors === true ? "*" : cors.origin],
+      ["access-control-allow-methods", "GET, POST, OPTIONS"],
+      ["access-control-allow-headers", "content-type, authorization"],
+      [
+        "access-control-expose-headers",
+        `${EVE_SESSION_ID_HEADER}, ${EVE_STREAM_FORMAT_HEADER}, ${EVE_STREAM_VERSION_HEADER}`,
+      ],
+    ];
   };
+  const corsHeaders = () => Object.fromEntries(corsHeaderEntries());
 
   const json = (status: number, body: JsonObject, headers: Record<string, string> = {}): Response =>
     new Response(JSON.stringify(body), {
@@ -762,11 +763,14 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
     sessionId: string,
     record: EveSessionRecord<UI_MESSAGE>,
     userMessage: ParsedUserMessage,
-    clientContext: unknown,
+    clientContext: JsonValue | undefined,
   ): Promise<void> => {
     const turnId = `turn-${record.turnCount + 1}`;
     const isFirstTurn = record.turnCount === 0;
 
+    // SAFETY: UI_MESSAGE is only constrained by UIMessage, so a concrete
+    // instance cannot be constructed generically; this minimal user message
+    // carries every field `mockResponse` and the session log read.
     const userUiMessage = {
       id: `${turnId}:user`,
       role: "user",
@@ -819,6 +823,8 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
     record.turnCount += 1;
     record.messages.push(userUiMessage);
     if (assistantParts.length > 0) {
+      // SAFETY: same generic-construction constraint as the user message above;
+      // assistantParts may additionally carry SpecialToolPart values by design.
       record.messages.push({
         id: `${turnId}:assistant`,
         role: "assistant",
@@ -910,15 +916,17 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       if (request.method !== "POST") {
         return json(405, { error: "Method not allowed.", ok: false });
       }
-      let body: unknown;
+      let rawBody;
       try {
-        body = await request.json();
+        rawBody = await request.json();
       } catch {
         return json(400, { error: "Request body must be JSON.", ok: false });
       }
-      if (!isJsonObject(body)) {
+      const parsedBody = jsonObject.safeParse(rawBody);
+      if (!parsedBody.success) {
         return json(400, { error: "Request body must be an object.", ok: false });
       }
+      const body = parsedBody.data;
       const userMessage = parseUserMessage(body.message);
       if (!userMessage) {
         return json(400, { error: "A non-empty message is required.", ok: false });
@@ -955,16 +963,19 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       if (!record) {
         return json(404, { error: "Session not found.", ok: false });
       }
-      let body: unknown;
+      let rawBody;
       try {
-        body = await request.json();
+        rawBody = await request.json();
       } catch {
         return json(400, { error: "Request body must be JSON.", ok: false });
       }
-      if (!isJsonObject(body)) {
+      const parsedBody = jsonObject.safeParse(rawBody);
+      if (!parsedBody.success) {
         return json(400, { error: "Request body must be an object.", ok: false });
       }
-      if (typeof body.continuationToken !== "string" || body.continuationToken.length === 0) {
+      const body = parsedBody.data;
+      const continuationToken = stringValue.safeParse(body.continuationToken);
+      if (!continuationToken.success || continuationToken.data.length === 0) {
         return json(400, { error: "continuationToken is required.", ok: false });
       }
       const userMessage = parseUserMessage(body.message);

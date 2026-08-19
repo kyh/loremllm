@@ -45,6 +45,11 @@ import { getToolOrDynamicToolName, isToolUIPart } from "ai";
 import type { Demo } from "./demo-data";
 import type { PromptInputMessage } from "@repo/ui/components/ai-elements/prompt-input";
 
+type DemoChatBody =
+  | { type: "lorem" }
+  | { type: "chat"; collectionId: string }
+  | { type: "markdown"; markdown: string };
+
 export const DemoChat = ({ demo }: { demo: Demo }) => {
   const [input, setInput] = useState(() => demo.preset ?? "");
   const { messages, sendMessage, status } = useChat({
@@ -54,20 +59,19 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim();
     if (!text) return;
-    const body: Record<string, unknown> = {};
+
+    let body: DemoChatBody | undefined;
 
     if (demo.id === "lorem") {
-      body.type = "lorem";
+      body = { type: "lorem" };
     }
 
     if (demo.id === "demo") {
-      body.type = "chat";
-      body.collectionId = "demo";
+      body = { type: "chat", collectionId: "demo" };
     }
 
     if (demo.id === "markdown") {
-      body.type = "markdown";
-      body.markdown = text;
+      body = { type: "markdown", markdown: text };
     }
 
     void sendMessage({ text }, { body });
@@ -175,7 +179,7 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
             }
 
             // Handle data-* parts (custom data parts)
-            if (typeof part.type === "string" && part.type.startsWith("data-")) {
+            if (part.type.startsWith("data-")) {
               return (
                 <div
                   key={key}

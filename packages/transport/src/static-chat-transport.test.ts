@@ -7,12 +7,24 @@ import { StaticChatTransport } from "./index";
 // Test Helpers
 // ============================================================================
 
-const createUserMessage = (text: string, id = "user-1"): UIMessage =>
-  ({
-    id,
-    role: "user",
-    parts: [{ type: "text", text }],
-  }) as UIMessage;
+const createUserMessage = (text: string, id = "user-1"): UIMessage => ({
+  id,
+  role: "user",
+  parts: [{ type: "text", text }],
+});
+
+/** Narrows a chunk to one union member, failing the test when the discriminant differs. */
+function chunkOfType<TYPE extends UIMessageChunk["type"]>(
+  chunk: UIMessageChunk | undefined,
+  type: TYPE,
+): Extract<UIMessageChunk, { type: TYPE }> {
+  if (chunk?.type !== type) {
+    throw new Error(`Expected chunk of type "${type}", got "${chunk?.type}".`);
+  }
+  // SAFETY: the discriminant was checked just above; TypeScript cannot relate
+  // the generic TYPE parameter back to the matching union member on its own.
+  return chunk as Extract<UIMessageChunk, { type: TYPE }>;
+}
 
 const readAllChunks = async (stream: ReadableStream<UIMessageChunk>): Promise<UIMessageChunk[]> => {
   const reader = stream.getReader();
@@ -141,7 +153,7 @@ describe("StaticChatTransport", () => {
         id: "assistant-1",
         role: "assistant",
         parts: [{ type: "text", text: "Old response" }],
-      } as UIMessage;
+      };
 
       const transport = new StaticChatTransport({
         async *mockResponse({ messageId }) {
@@ -256,7 +268,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "cats" },
             output: { results: [{ title: "All About Cats" }] },
-          } as UIMessage["parts"][number] & { toolName?: string };
+          };
         },
       });
 
@@ -307,7 +319,7 @@ describe("StaticChatTransport", () => {
             state: "output-error",
             input: { reservationId: 123 },
             errorText: "Reservation not found",
-          } as UIMessage["parts"][number] & { toolName?: string };
+          };
         },
       });
 
@@ -347,7 +359,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { action: "perform" },
             output: { result: "success" },
-          } as UIMessage["parts"][number] & { toolName?: string };
+          };
         },
       });
 
@@ -385,7 +397,7 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_no_name",
             state: "input-streaming",
             input: { data: "test" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -419,7 +431,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "test" },
             output: { results: [] },
-          } as any;
+          };
         },
       });
 
@@ -451,7 +463,7 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_input_only",
             state: "input-streaming",
             input: { task: "do something" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -480,14 +492,14 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "coffee" },
             output: { results: [] },
-          } as UIMessage["parts"][number];
+          };
           yield {
             type: "tool-map",
             toolCallId: "call_b",
             state: "output-available",
             input: { origin: "A", destination: "B" },
             output: { etaMinutes: 5 },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -503,13 +515,10 @@ describe("StaticChatTransport", () => {
       );
       expect(toolChunks).toHaveLength(4); // 2 input + 2 output
 
-      const firstInput = toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>;
+      const firstInput = chunkOfType(toolChunks[0], "tool-input-available");
       expect(firstInput.toolCallId).toBe("call_a");
 
-      const secondInput = toolChunks[2] as Extract<
-        UIMessageChunk,
-        { type: "tool-input-available" }
-      >;
+      const secondInput = chunkOfType(toolChunks[2], "tool-input-available");
       expect(secondInput.toolCallId).toBe("call_b");
     });
 
@@ -525,7 +534,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "something" },
             output: { results: [] },
-          } as UIMessage["parts"][number];
+          };
           yield { type: "text", text: "Here are the results!" };
         },
         autoChunkText: false,
@@ -565,7 +574,7 @@ describe("StaticChatTransport", () => {
             toolName: "weather",
             state: "input-available",
             input: { location: "San Francisco" },
-          } as UIMessage["parts"][number];
+          };
 
           await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -576,7 +585,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { location: "San Francisco" },
             output: { temperature: 72, condition: "sunny" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -593,15 +602,12 @@ describe("StaticChatTransport", () => {
 
       expect(toolChunks).toHaveLength(2);
 
-      const inputChunk = toolChunks[0] as Extract<UIMessageChunk, { type: "tool-input-available" }>;
+      const inputChunk = chunkOfType(toolChunks[0], "tool-input-available");
       expect(inputChunk.type).toBe("tool-input-available");
       expect(inputChunk.toolCallId).toBe("call_weather_1");
       expect(inputChunk.toolName).toBe("weather");
 
-      const outputChunk = toolChunks[1] as Extract<
-        UIMessageChunk,
-        { type: "tool-output-available" }
-      >;
+      const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
       expect(outputChunk.type).toBe("tool-output-available");
       expect(outputChunk.toolCallId).toBe("call_weather_1");
       expect(outputChunk.output).toEqual({
@@ -620,14 +626,14 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_process_1",
             state: "input-available",
             input: { data: "test" },
-          } as UIMessage["parts"][number];
+          };
 
           yield {
             type: "tool-process",
             toolCallId: "call_process_1",
             state: "input-available",
             input: { data: "test" },
-          } as UIMessage["parts"][number];
+          };
 
           yield {
             type: "tool-process",
@@ -635,7 +641,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { data: "test" },
             output: { result: "processed" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -665,7 +671,7 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_error_1",
             state: "input-available",
             input: { data: "test" },
-          } as UIMessage["parts"][number];
+          };
 
           await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -675,7 +681,7 @@ describe("StaticChatTransport", () => {
             state: "output-error",
             input: { data: "test" },
             errorText: "Processing failed",
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -694,7 +700,7 @@ describe("StaticChatTransport", () => {
       expect(toolChunks[0].type).toBe("tool-input-available");
       expect(toolChunks[1].type).toBe("tool-output-error");
 
-      const errorChunk = toolChunks[1] as Extract<UIMessageChunk, { type: "tool-output-error" }>;
+      const errorChunk = chunkOfType(toolChunks[1], "tool-output-error");
       expect(errorChunk.toolCallId).toBe("call_error_1");
       expect(errorChunk.errorText).toBe("Processing failed");
     });
@@ -1056,7 +1062,7 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_delayed",
             state: "input-available",
             input: { test: true },
-          } as UIMessage["parts"][number];
+          };
 
           yield {
             type: "tool-test",
@@ -1064,7 +1070,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { test: true },
             output: { result: "done" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -1133,7 +1139,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "test" },
             output: { results: [] },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -1289,7 +1295,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "test query" },
             output: { results: [{ title: "Result 1" }] },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -1466,14 +1472,14 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "coffee" },
             output: { results: [{ title: "Coffee Shop" }] },
-          } as UIMessage["parts"][number];
+          };
           yield {
             type: "tool-map",
             toolCallId: "call_map",
             state: "output-available",
             input: { origin: "A", destination: "B" },
             output: { etaMinutes: 15 },
-          } as UIMessage["parts"][number];
+          };
           yield {
             type: "text",
             text: "I found a coffee shop and calculated the route.",
@@ -1515,7 +1521,7 @@ describe("StaticChatTransport", () => {
             state: "output-error",
             input: { data: "test" },
             errorText: "Processing failed: Invalid input",
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -1545,7 +1551,7 @@ describe("StaticChatTransport", () => {
             toolCallId: "call_weather",
             state: "input-available",
             input: { location: "NYC" },
-          } as UIMessage["parts"][number];
+          };
           await new Promise((resolve) => setTimeout(resolve, 10));
           yield {
             type: "tool-weather",
@@ -1553,7 +1559,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { location: "NYC" },
             output: { temperature: 68, condition: "sunny" },
-          } as UIMessage["parts"][number];
+          };
         },
       });
 
@@ -1573,10 +1579,7 @@ describe("StaticChatTransport", () => {
       expect(toolChunks[0].type).toBe("tool-input-available");
       expect(toolChunks[1].type).toBe("tool-output-available");
 
-      const outputChunk = toolChunks[1] as Extract<
-        UIMessageChunk,
-        { type: "tool-output-available" }
-      >;
+      const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
       expect(outputChunk.output).toEqual({
         temperature: 68,
         condition: "sunny",
@@ -1593,7 +1596,7 @@ describe("StaticChatTransport", () => {
             state: "output-available",
             input: { query: "something" },
             output: { results: [] },
-          } as UIMessage["parts"][number];
+          };
           yield {
             type: "data-status",
             id: "status-1",

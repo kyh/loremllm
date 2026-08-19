@@ -31,9 +31,11 @@ export const FALLBACK_ORGANIZATION_SLUG = "workspace";
  * authMetadataSchema.parse('{"personal": true}'); // { personal: true }
  * ```
  */
+const jsonValue = z.json();
+
 export const zJsonString = z
   .string()
-  .transform((str, ctx): unknown => {
+  .transform((str, ctx): z.infer<typeof jsonValue> => {
     try {
       return JSON.parse(str);
     } catch {
@@ -41,4 +43,4 @@ export const zJsonString = z
       return z.NEVER;
     }
   })
-  .pipe(z.json());
+  .pipe(jsonValue);

@@ -165,17 +165,22 @@ export const interactionRouter = createTRPCRouter({
 
     const now = new Date();
 
+    const fieldUpdates = {
+      title,
+      description,
+      input: matchInput,
+      output,
+      updatedAt: now,
+    };
+
     const result = await ctx.db.transaction(async (tx) => {
       const [updatedInteraction] = await tx
         .update(mockInteraction)
-        .set({
-          title,
-          description,
-          input: matchInput,
-          output,
-          ...(embedding ? { vector: sql`vector32(${JSON.stringify(embedding)})` } : {}),
-          updatedAt: now,
-        })
+        .set(
+          embedding
+            ? { ...fieldUpdates, vector: sql`vector32(${JSON.stringify(embedding)})` }
+            : fieldUpdates,
+        )
         .where(eq(mockInteraction.id, interaction.id))
         .returning(interactionReturning);
 

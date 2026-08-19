@@ -17,36 +17,36 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { MessageResponse } from "@repo/ui/components/ai-elements/message";
 import { getToolOrDynamicToolName, isToolUIPart } from "ai";
+import { z } from "zod";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const roleLabel: Record<UIMessage["role"], string> = {
+const roleLabel = {
   system: "System",
   user: "You",
   assistant: "Assistant",
-};
+} satisfies Record<UIMessage["role"], string>;
 
-type MatchMetadata = {
-  interactionId: string | null;
-  title: string | null;
-  similarity: number | null;
-};
+// Each field falls back to null when absent or mistyped; the match banner
+// renders whatever subset the server managed to attach.
+const matchMetadata = z.object({
+  interactionId: z.string().nullable().catch(null),
+  title: z.string().nullable().catch(null),
+  similarity: z.number().nullable().catch(null),
+});
 
-const parseMatchMetadata = (metadata: unknown): MatchMetadata | null => {
-  if (!isRecord(metadata)) {
+type MatchMetadata = z.infer<typeof matchMetadata>;
+
+const parseMatchMetadata = (metadata: UIMessage["metadata"]): MatchMetadata | null => {
+  const parsed = matchMetadata.safeParse(metadata);
+  if (!parsed.success) {
     return null;
   }
 
-  const interactionId = typeof metadata.interactionId === "string" ? metadata.interactionId : null;
-  const title = typeof metadata.title === "string" ? metadata.title : null;
-  const similarity = typeof metadata.similarity === "number" ? metadata.similarity : null;
-
+  const { interactionId, title, similarity } = parsed.data;
   if (interactionId === null && title === null && similarity === null) {
     return null;
   }
 
-  return { interactionId, title, similarity };
+  return parsed.data;
 };
 
 type CollectionChatDrawerProps = {

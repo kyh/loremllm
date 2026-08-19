@@ -12,6 +12,16 @@ import { z } from "zod";
 
 import { authClient, signInWithGithub } from "@/lib/auth-client";
 
+/**
+ * TanStack validators return either a raw string or a `{ message }` object.
+ * FieldError reads `.message`, so normalize both to it. Parsed with a schema
+ * rather than cast so a malformed error never slips through typed.
+ */
+const fieldError = z.union([
+  z.string().transform((message) => ({ message })),
+  z.object({ message: z.string() }),
+]);
+
 type AuthFormProps = {
   type: "login" | "register";
   /**
@@ -407,9 +417,10 @@ export const UpdatePasswordForm = () => {
                 </FieldContent>
                 {isInvalid && (
                   <FieldError
-                    errors={field.state.meta.errors.map((error) =>
-                      typeof error === "string" ? { message: error } : error,
-                    )}
+                    errors={field.state.meta.errors.map((error) => {
+                      const parsed = fieldError.safeParse(error);
+                      return parsed.success ? parsed.data : {};
+                    })}
                   />
                 )}
               </Field>

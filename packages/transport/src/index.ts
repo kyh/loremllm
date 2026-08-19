@@ -1,4 +1,15 @@
-import type { ChatRequestOptions, ChatTransport, ToolUIPart, UIMessage, UIMessageChunk } from "ai";
+import type {
+  ChatRequestOptions,
+  ChatTransport,
+  DataUIPart,
+  JSONValue,
+  ProviderMetadata,
+  ToolUIPart,
+  UIDataTypes,
+  UIMessage,
+  UIMessageChunk,
+} from "ai";
+import { isDataUIPart } from "ai";
 
 import type { DelayResolver } from "./shared.ts";
 import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
@@ -33,7 +44,7 @@ export type ToolPart = ToolUIPart & {
 export type SpecialToolPart = {
   type: `tool-${string}`;
   toolCallId: string;
-  [key: string]: unknown;
+  [key: string]: JSONValue | undefined;
 };
 
 export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
@@ -181,8 +192,10 @@ export class StaticChatTransport<
     const generator = this.mockResponseOption(context);
 
     for await (const part of generator) {
-      // Special tool parts (like tool-approval-request) are cast to parts array type
-      // They'll be handled specially during chunk processing (skipped if no state)
+      // SAFETY: special tool parts (like tool-approval-request) are deliberately
+      // carried in the parts array even though the message part union cannot
+      // express them; chunk processing detects them by their missing `state`
+      // and skips standard tool handling.
       parts.push(part as UI_MESSAGE["parts"][number]);
     }
 
@@ -192,6 +205,9 @@ export class StaticChatTransport<
 
     const messageId = context.messageId ?? generateMessageId();
 
+    // SAFETY: UI_MESSAGE is only constrained by UIMessage, so a concrete
+    // instance cannot be constructed generically; this minimal assistant
+    // message carries every field the chunk stream reads.
     const assistantMessage: UI_MESSAGE = {
       id: messageId,
       role: "assistant",
@@ -235,7 +251,7 @@ export class StaticChatTransport<
               chunk.type === "tool-input-available" ||
               chunk.type === "tool-output-available" ||
               chunk.type === "tool-output-error";
-            const isDataChunk = typeof chunk.type === "string" && chunk.type.startsWith("data-");
+            const isDataChunk = chunk.type.startsWith("data-");
 
             // Delay on delta chunks (actual content chunks), tool chunks, and data chunks
             // Control chunks (start, end, text-start, etc.) are sent immediately
@@ -272,15 +288,16 @@ function createTextLikeChunks(
   chunks: UIMessageChunk[],
   type: "text" | "reasoning",
   id: string,
-  part: { text: string; providerMetadata?: unknown },
+  part: { text: string; providerMetadata?: ProviderMetadata },
   autoChunk: boolean | RegExp,
 ): void {
-  const prefix = type === "text" ? "text" : "reasoning";
-  chunks.push({
-    type: `${prefix}-start` as const,
-    id,
-    providerMetadata: part.providerMetadata,
-  } as UIMessageChunk);
+  const { providerMetadata } = part;
+
+  chunks.push(
+    type === "text"
+      ? { type: "text-start", id, providerMetadata }
+      : { type: "reasoning-start", id, providerMetadata },
+  );
 
   if (part.text.length === 0) {
     return;
@@ -289,12 +306,11 @@ function createTextLikeChunks(
   // Helper to push a delta chunk
   const pushDelta = (delta: string) => {
     if (delta.length > 0) {
-      chunks.push({
-        type: `${prefix}-delta` as const,
-        id,
-        delta,
-        providerMetadata: part.providerMetadata,
-      } as UIMessageChunk);
+      chunks.push(
+        type === "text"
+          ? { type: "text-delta", id, delta, providerMetadata }
+          : { type: "reasoning-delta", id, delta, providerMetadata },
+      );
     }
   };
 
@@ -302,29 +318,23 @@ function createTextLikeChunks(
     pushDelta(segment);
   }
 
-  chunks.push({
-    type: `${prefix}-end` as const,
-    id,
-    providerMetadata: part.providerMetadata,
-  } as UIMessageChunk);
+  chunks.push(
+    type === "text"
+      ? { type: "text-end", id, providerMetadata }
+      : { type: "reasoning-end", id, providerMetadata },
+  );
 }
 
-function createDataChunks(
-  chunks: UIMessageChunk[],
-  part: { type: string; [key: string]: unknown },
-): void {
-  const dataPart = part as {
-    type: `data-${string}`;
-    id?: string;
-    data: unknown;
-    transient?: boolean;
-  };
+function createDataChunks(chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>): void {
+  // SAFETY: mock authors may attach the chunk-level `transient` flag to a data
+  // part; DataUIPart's type omits it, and the transport forwards it verbatim.
+  const { transient } = part as DataUIPart<UIDataTypes> & { transient?: boolean };
   chunks.push({
-    type: dataPart.type,
-    id: dataPart.id,
-    data: dataPart.data,
-    transient: dataPart.transient,
-  } as UIMessageChunk);
+    type: part.type,
+    id: part.id,
+    data: part.data,
+    transient,
+  });
 }
 
 function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
@@ -423,10 +433,11 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
         break;
       }
       default: {
-        if (
-          (typeof part.type === "string" && part.type.startsWith("tool-")) ||
-          part.type === "dynamic-tool"
-        ) {
+        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
+          // SAFETY: at runtime this array also carries SpecialToolPart values
+          // and ToolPart extras (toolName, providerMetadata) that the static
+          // part union cannot express; this local shape names exactly the
+          // fields the state machine below reads.
           const toolPart = part as {
             type: `tool-${string}` | "dynamic-tool";
             toolCallId: string;
@@ -435,8 +446,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
             input?: unknown;
             output?: unknown;
             errorText?: string;
-            providerMetadata?: unknown;
-            [key: string]: unknown;
+            providerMetadata?: ProviderMetadata;
           };
 
           // Skip state-based processing for special tool parts that don't follow the standard pattern
@@ -455,7 +465,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
                 toolName: toolPart.toolName ?? "tool",
                 input: toolPart.input ?? {},
                 providerMetadata: toolPart.providerMetadata,
-              } as UIMessageChunk);
+              });
             }
 
             // Emit output chunks only when state changes from a non-output state to an output state
@@ -471,7 +481,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
                   toolCallId: toolPart.toolCallId,
                   errorText: toolPart.errorText ?? "An unknown tool error occurred.",
                   providerMetadata: toolPart.providerMetadata,
-                } as UIMessageChunk);
+                });
               }
             } else if (currentState === "output-available") {
               // Only emit if we haven't already emitted output-available
@@ -481,7 +491,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
                   toolCallId: toolPart.toolCallId,
                   output: toolPart.output ?? null,
                   providerMetadata: toolPart.providerMetadata,
-                } as UIMessageChunk);
+                });
               }
             }
 
@@ -498,7 +508,7 @@ function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
           // we skip the standard processing to avoid type errors
           break;
         }
-        if (part.type.startsWith("data-")) {
+        if (isDataUIPart(part)) {
           createDataChunks(chunks, part);
           break;
         }

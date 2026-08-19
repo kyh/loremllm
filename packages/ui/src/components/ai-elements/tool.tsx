@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
+import { z } from "zod";
 import { CodeBlock } from "./code-block";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
@@ -33,7 +34,7 @@ export type ToolHeaderProps = {
   className?: string;
 };
 
-const TOOL_STATE_LABELS: Record<ToolUIPart["state"], string> = {
+const TOOL_STATE_LABELS = {
   "input-streaming": "Pending",
   "input-available": "Running",
   "approval-requested": "Awaiting Approval",
@@ -41,9 +42,9 @@ const TOOL_STATE_LABELS: Record<ToolUIPart["state"], string> = {
   "output-available": "Completed",
   "output-error": "Error",
   "output-denied": "Denied",
-};
+} satisfies Record<ToolUIPart["state"], string>;
 
-const TOOL_STATE_ICONS: Record<ToolUIPart["state"], ReactNode> = {
+const TOOL_STATE_ICONS = {
   "input-streaming": <CircleIcon className="size-4" />,
   "input-available": <ClockIcon className="size-4 animate-pulse" />,
   "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,
@@ -51,7 +52,7 @@ const TOOL_STATE_ICONS: Record<ToolUIPart["state"], ReactNode> = {
   "output-available": <CheckCircleIcon className="size-4 text-green-600" />,
   "output-error": <XCircleIcon className="size-4 text-red-600" />,
   "output-denied": <XCircleIcon className="size-4 text-orange-600" />,
-};
+} satisfies Record<ToolUIPart["state"], ReactNode>;
 
 const getStatusBadge = (status: ToolUIPart["state"]) => (
   <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
@@ -106,17 +107,32 @@ export type ToolOutputProps = ComponentProps<"div"> & {
   errorText: ToolUIPart["errorText"];
 };
 
+const textOutput = z.string();
+const structuredOutput = z.union([
+  z.null(),
+  z.array(z.unknown()),
+  z.record(z.string(), z.unknown()),
+]);
+const renderablePrimitive = z.union([z.number(), z.boolean(), z.null(), z.undefined()]);
+
 export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutputProps) => {
   if (!(output || errorText)) {
     return null;
   }
 
-  let Output = <div>{output as ReactNode}</div>;
+  const structured = structuredOutput.safeParse(output);
+  const text = textOutput.safeParse(output);
 
-  if (typeof output === "object" && !isValidElement(output)) {
-    Output = <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />;
-  } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
+  let Output: ReactNode;
+  if (structured.success && !isValidElement(output)) {
+    Output = <CodeBlock code={JSON.stringify(structured.data, null, 2)} language="json" />;
+  } else if (text.success) {
+    Output = <CodeBlock code={text.data} language="json" />;
+  } else if (isValidElement(output)) {
+    Output = <div>{output}</div>;
+  } else {
+    const primitive = renderablePrimitive.safeParse(output);
+    Output = <div>{primitive.success ? primitive.data : null}</div>;
   }
 
   return (

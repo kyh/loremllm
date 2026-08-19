@@ -6,6 +6,9 @@ import { customType, sqliteTable } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./drizzle-schema-auth";
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+
 const float32Array = customType<{
   data: number[];
   config: { dimensions: number };
@@ -48,7 +51,7 @@ export const mockCollection = sqliteTable("mock_collection", (t) => ({
   isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
   // Minimum cosine similarity (0-1) a query must reach to match; 0 disables the threshold
   minSimilarity: t.real().notNull().default(0),
-  metadata: t.text({ mode: "json" }).$type<Record<string, unknown>>().default({}),
+  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -81,7 +84,7 @@ export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
   vector: float32Array("vector", { dimensions: 1536 }),
   output: t.text().notNull(), // Markdown response string
   responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
-  metadata: t.text({ mode: "json" }).$type<Record<string, unknown>>().default({}).notNull(),
+  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}).notNull(),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())

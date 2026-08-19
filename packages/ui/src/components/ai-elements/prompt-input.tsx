@@ -123,7 +123,7 @@ const localAttachmentsReducer = (
   switch (action.type) {
     case "add": {
       const capacity =
-        typeof action.maxFiles === "number"
+        action.maxFiles !== undefined
           ? Math.max(0, action.maxFiles - state.items.length)
           : action.additions.length;
       const acceptedAdditions = action.additions.slice(0, capacity);
@@ -308,7 +308,10 @@ const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
     const blob = await response.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onloadend = () => {
+        const { result } = reader;
+        resolve(result === null || result instanceof ArrayBuffer ? null : result);
+      };
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
@@ -695,7 +698,7 @@ export const PromptInput = ({
       : (() => {
           const formData = new FormData(form);
           const message = formData.get("message");
-          return typeof message === "string" ? message : "";
+          return message === null || message instanceof File ? "" : message;
         })();
 
     // Reset form immediately after capturing text to avoid race condition

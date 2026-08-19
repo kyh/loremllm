@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { EveStreamEvent } from "./eve";
 import { createMemoryEveSessionStore, createStaticEveHandler } from "./eve";
@@ -10,7 +11,9 @@ function createRequest(path: string, init?: RequestInit): Request {
   return new Request(`${HOST}${path}`, init);
 }
 
-function postJson(path: string, body: unknown): Request {
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+function postJson(path: string, body: JsonValue): Request {
   return createRequest(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -23,22 +26,29 @@ async function readEvents(response: Response): Promise<EveStreamEvent[]> {
   return text
     .split("\n")
     .filter((line) => line.length > 0)
-    .map((line) => JSON.parse(line) as EveStreamEvent);
+    .map(
+      (line) =>
+        // SAFETY: the handler under test serializes its own EveStreamEvents to
+        // NDJSON; each test then asserts the event shapes it relies on.
+        JSON.parse(line) as EveStreamEvent,
+    );
 }
 
 type CreateResult = { sessionId: string; continuationToken: string };
 
+const createSessionResponse = z.object({
+  sessionId: z.string(),
+  continuationToken: z.string(),
+  ok: z.boolean(),
+});
+
 async function createSession(
   handler: (request: Request) => Promise<Response>,
-  message: unknown = "hello",
+  message: JsonValue = "hello",
 ): Promise<CreateResult> {
   const response = await handler(postJson("/eve/v1/session", { message }));
   expect(response.status).toBe(202);
-  const body = (await response.json()) as {
-    sessionId: string;
-    continuationToken: string;
-    ok: boolean;
-  };
+  const body = createSessionResponse.parse(await response.json());
   expect(body.ok).toBe(true);
   return { sessionId: body.sessionId, continuationToken: body.continuationToken };
 }
@@ -74,10 +84,10 @@ describe("createStaticEveHandler", () => {
       const response = await handler(postJson("/eve/v1/session", { message: "hi" }));
 
       expect(response.status).toBe(202);
-      const body = (await response.json()) as Record<string, unknown>;
+      const body = createSessionResponse.parse(await response.json());
       expect(body.ok).toBe(true);
-      expect(typeof body.sessionId).toBe("string");
-      expect(typeof body.continuationToken).toBe("string");
+      expect(body.sessionId).toEqual(expect.any(String));
+      expect(body.continuationToken).toEqual(expect.any(String));
       expect(response.headers.get("x-eve-session-id")).toBe(body.sessionId);
     });
 
@@ -189,7 +199,9 @@ describe("createStaticEveHandler", () => {
       const all = await streamEvents(handler, sessionId);
       const sliced = await streamEvents(handler, sessionId, 4);
       expect(sliced).toEqual(all.slice(4));
-      expect(all.every((event) => typeof event.meta?.at === "string")).toBe(true);
+      for (const event of all) {
+        expect(event.meta?.at).toEqual(expect.any(String));
+      }
     });
 
     it("rejects invalid startIndex and unknown sessions", async () => {
@@ -372,7 +384,7 @@ describe("createStaticEveHandler", () => {
         postJson(`/eve/v1/session/${sessionId}`, { continuationToken, message: "two" }),
       );
       expect(continueResponse.status).toBe(200);
-      const continueBody = (await continueResponse.json()) as Record<string, unknown>;
+      const continueBody: unknown = await continueResponse.json();
       expect(continueBody).toEqual({ ok: true, sessionId });
 
       const secondTurn = await streamEvents(handler, sessionId, firstTurn.length);
@@ -399,9 +411,7 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const sequences = events.flatMap((event) =>
-        "sequence" in event.data && typeof event.data.sequence === "number"
-          ? [event.data.sequence]
-          : [],
+        "sequence" in event.data ? [event.data.sequence] : [],
       );
       const sorted = [...sequences].sort((a, b) => a - b);
       expect(sequences).toEqual(sorted);
@@ -429,7 +439,7 @@ describe("createStaticEveHandler", () => {
         }),
       );
       expect(hitlOnly.status).toBe(400);
-      const body = (await hitlOnly.json()) as { error: string };
+      const body = z.object({ error: z.string() }).parse(await hitlOnly.json());
       expect(body.error).toContain("inputResponses");
     });
   });
@@ -491,7 +501,7 @@ describe("createStaticEveHandler", () => {
 
       const health = await handler(createRequest("/eve/v1/health"));
       expect(health.status).toBe(200);
-      const healthBody = (await health.json()) as { ok: boolean; status: string };
+      const healthBody: unknown = await health.json();
       expect(healthBody).toMatchObject({ ok: true, status: "ready" });
 
       const notEve = await handler(createRequest("/api/chat"));

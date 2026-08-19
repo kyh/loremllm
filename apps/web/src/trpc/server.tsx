@@ -5,7 +5,7 @@ import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
 import type { AppRouter } from "@repo/api";
-import type { TRPCQueryOptions } from "@trpc/tanstack-react-query";
+import type { FetchQueryOptions, QueryKey } from "@tanstack/react-query";
 import { getSession } from "@/lib/auth-server";
 import { createQueryClient } from "./query-client";
 
@@ -40,13 +40,10 @@ export const HydrateClient = (props: { children: React.ReactNode }) => {
   return <HydrationBoundary state={dehydrate(queryClient)}>{props.children}</HydrationBoundary>;
 };
 
-export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
-  const queryClient = getQueryClient();
-  if (queryOptions.queryKey[1]?.type === "infinite") {
-    void queryClient.prefetchInfiniteQuery(queryOptions as any);
-  } else {
-    void queryClient.prefetchQuery(queryOptions);
-  }
-}
+export const prefetch = <TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
+  queryOptions: FetchQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+) => {
+  void getQueryClient().prefetchQuery(queryOptions);
+};
 
 export const caller = appRouter.createCaller(createContext);

@@ -32,20 +32,20 @@ export async function resolveChunkDelay<CHUNK>(
     return undefined;
   }
 
-  if (typeof resolver === "number") {
-    return resolver;
-  }
-
   if (Array.isArray(resolver)) {
     return randomDelay(resolver[0], resolver[1]);
   }
 
-  const result = await resolver(chunk);
-  if (result == null) {
-    return undefined;
+  if (resolver instanceof Function) {
+    const result = await resolver(chunk);
+    if (result == null) {
+      return undefined;
+    }
+
+    return Array.isArray(result) ? randomDelay(result[0], result[1]) : result;
   }
 
-  return Array.isArray(result) ? randomDelay(result[0], result[1]) : result;
+  return resolver;
 }
 
 /**

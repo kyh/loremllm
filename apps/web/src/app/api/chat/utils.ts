@@ -1,20 +1,34 @@
-import type { ToolUIPart, UIMessage } from "ai";
+import type { ToolUIPart } from "ai";
 import type { JSONValue, LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { parse as parseYaml } from "yaml";
+import { z } from "zod";
+
+import type { JsonBody } from "./schema";
+
+// Lenient by design: a malformed message or part degrades to empty/ignored
+// instead of failing the whole request, mirroring how unmatched shapes were
+// previously skipped.
+const inboundTextPart = z
+  .object({ type: z.literal("text"), text: z.string() })
+  .nullable()
+  .catch(null);
+
+const inboundMessage = z
+  .object({
+    role: z.string().catch(""),
+    parts: z.array(inboundTextPart).catch([]),
+  })
+  .catch({ role: "", parts: [] });
 
 /**
  * Extract the user query from the messages array
  */
-export const extractUserQuery = (messages: unknown[]): string => {
-  const uiMessages = messages as UIMessage[];
-  const lastUserMessage = uiMessages.toReversed().find((message) => message.role === "user");
-  const textParts =
-    lastUserMessage?.parts.filter(
-      (part) => typeof part === "object" && "type" in part && part.type === "text",
-    ) ?? [];
+export const extractUserQuery = (messages: readonly JsonBody[]): string => {
+  const inboundMessages = messages.map((message) => inboundMessage.parse(message));
+  const lastUserMessage = inboundMessages.toReversed().find((message) => message.role === "user");
 
-  return textParts
-    .map((part) => part.text)
+  return (lastUserMessage?.parts ?? [])
+    .flatMap((part) => (part === null ? [] : [part.text]))
     .join("")
     .trim();
 };
@@ -32,8 +46,8 @@ export type ToolCallChunk = {
   toolCallId: string;
   toolName: string;
   state?: ToolInvocationState;
-  input?: unknown;
-  output?: unknown;
+  input?: JSONValue;
+  output?: JSONValue;
   errorText?: string;
 };
 
@@ -52,9 +66,9 @@ const stripSurroundingQuotes = (value: string): string => {
   return value;
 };
 
-const parseToolFenceInfo = (
-  infoString: string,
-): { headerToolName?: string; headerToolCallId?: string } => {
+type ToolFenceHeader = { headerToolName?: string; headerToolCallId?: string };
+
+const parseToolFenceInfo = (infoString: string): ToolFenceHeader => {
   const tokens = infoString.trim().split(/\s+/).filter(Boolean);
 
   if (!tokens.length) {
@@ -96,32 +110,34 @@ const parseToolFenceInfo = (
   return { headerToolName, headerToolCallId };
 };
 
-const isValidToolState = (value: unknown): ToolInvocationState | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+const toolInvocationState = z.enum([
+  "input-streaming",
+  "input-available",
+  "approval-requested",
+  "approval-responded",
+  "output-available",
+  "output-error",
+  "output-denied",
+]);
 
-  const allowedStates: ToolInvocationState[] = [
-    "input-streaming",
-    "input-available",
-    "approval-requested",
-    "approval-responded",
-    "output-available",
-    "output-error",
-    "output-denied",
-  ];
-
-  return allowedStates.includes(value as ToolInvocationState)
-    ? (value as ToolInvocationState)
-    : undefined;
+const parseToolState = (value: JSONValue | undefined): ToolInvocationState | undefined => {
+  const result = toolInvocationState.safeParse(value);
+  return result.success ? result.data : undefined;
 };
 
-const getStringField = (data: Record<string, unknown>, keys: string[]): string | undefined => {
-  for (const key of keys) {
-    const value = data[key];
+const stringValue = z.string();
 
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
+// YAML tool-fence bodies only carry JSON-shaped values under the default schema.
+const toolFenceData = z.record(z.string(), z.json());
+
+type ToolFenceData = z.infer<typeof toolFenceData>;
+
+const getStringField = (data: ToolFenceData, keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = stringValue.safeParse(data[key]);
+
+    if (value.success && value.data.trim().length > 0) {
+      return value.data;
     }
   }
 
@@ -158,22 +174,25 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
 
   const bodyContent = bodyLines.join("\n").trim();
 
-  let parsed: unknown = {};
+  let data: ToolFenceData = {};
 
   if (bodyContent.length) {
+    let parsedYaml;
     try {
-      parsed = parseYaml(bodyContent);
+      parsedYaml = parseYaml(bodyContent);
     } catch (error) {
       console.error("Failed to parse tool call fence:", error);
       return null;
     }
-  }
 
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return null;
-  }
+    const result = toolFenceData.safeParse(parsedYaml);
 
-  const data = parsed as Record<string, unknown>;
+    if (!result.success) {
+      return null;
+    }
+
+    data = result.data;
+  }
 
   const toolCallId =
     headerToolCallId ??
@@ -181,7 +200,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
     fallbackId;
   const toolName =
     headerToolName ?? getStringField(data, ["toolName", "tool_name", "name", "tool"]) ?? "tool";
-  const state = isValidToolState(data.state);
+  const state = parseToolState(data.state);
   const errorText = getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
 
   const chunk: ToolCallChunk = {
@@ -250,9 +269,11 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
 /**
  * Create streaming chunks for the AI SDK
  */
-const stringifyToolInput = (input: unknown): string => {
-  if (typeof input === "string") {
-    return input;
+const stringifyToolInput = (input: JSONValue | undefined): string => {
+  const text = stringValue.safeParse(input);
+
+  if (text.success) {
+    return text.data;
   }
 
   try {
@@ -263,13 +284,7 @@ const stringifyToolInput = (input: unknown): string => {
   }
 };
 
-const normalizeToolResult = (output: unknown): NonNullable<JSONValue> => {
-  if (output === null || output === undefined) {
-    return {};
-  }
-
-  return output as NonNullable<JSONValue>;
-};
+const normalizeToolResult = (output: JSONValue | undefined): NonNullable<JSONValue> => output ?? {};
 
 export const createStreamChunks = (
   chunks: MarkdownChunk[],

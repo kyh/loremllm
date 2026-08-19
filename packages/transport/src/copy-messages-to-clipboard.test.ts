@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { copyMessagesToClipboard } from "./copy-messages-to-clipboard";
+import type { ToolPart } from "./index";
 
 type MessagePart = UIMessage["parts"][number];
 type NavigatorWithClipboard = {
@@ -10,24 +11,28 @@ type NavigatorWithClipboard = {
   };
 };
 
+// SAFETY: only loosens globalThis — navigator and alert become optional and
+// writable so the tests can install and remove fakes.
 const globalScope = globalThis as typeof globalThis & {
   navigator?: NavigatorWithClipboard;
-  alert?: (message?: string) => unknown;
+  alert?: (message?: string) => void;
 };
 
 const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalScope, "navigator");
 const originalAlert = globalScope.alert;
 const hadAlert = Object.prototype.hasOwnProperty.call(globalScope, "alert");
 
-let alertSpy: ReturnType<typeof vi.fn<(message?: string) => unknown>>;
+let alertSpy: ReturnType<typeof vi.fn<(message?: string) => void>>;
 let messageId = 0;
 
-const createMessage = (role: UIMessage["role"], parts: MessagePart[]): UIMessage =>
-  ({
-    id: `${role}-${++messageId}`,
-    role,
-    parts,
-  }) as UIMessage;
+const createMessage = (
+  role: UIMessage["role"],
+  parts: Array<MessagePart | ToolPart>,
+): UIMessage => ({
+  id: `${role}-${++messageId}`,
+  role,
+  parts,
+});
 
 const setNavigator = (value: NavigatorWithClipboard | undefined): void => {
   Object.defineProperty(globalScope, "navigator", {
@@ -49,13 +54,13 @@ afterEach(() => {
   if (navigatorDescriptor) {
     Object.defineProperty(globalScope, "navigator", navigatorDescriptor);
   } else {
-    (globalScope as { navigator?: NavigatorWithClipboard }).navigator = undefined;
+    globalScope.navigator = undefined;
   }
 
   if (hadAlert) {
     globalScope.alert = originalAlert;
   } else {
-    (globalScope as { alert?: (message?: string) => unknown }).alert = undefined;
+    globalScope.alert = undefined;
   }
 
   vi.restoreAllMocks();
@@ -79,7 +84,7 @@ describe("copyMessagesToClipboard", () => {
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const [template] = writeText.mock.calls[0] ?? [];
-    expect(typeof template).toBe("string");
+    expect(template).toEqual(expect.any(String));
     expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
     expect(template).toContain("chunkDelayMs: [50, 100],");
     expect(template).toContain("async *mockResponse() {");
@@ -155,7 +160,7 @@ describe("copyMessagesToClipboard", () => {
           toolName: "weather",
           state: "input-available",
           input: { location: "San Francisco" },
-        } as MessagePart,
+        },
         {
           type: "text",
           text: "The weather is sunny.",
@@ -168,7 +173,7 @@ describe("copyMessagesToClipboard", () => {
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const [template] = writeText.mock.calls[0] ?? [];
-    expect(typeof template).toBe("string");
+    expect(template).toEqual(expect.any(String));
     expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
     expect(template).toContain("chunkDelayMs: [50, 100],");
     expect(template).toContain('"type": "tool-weather"');
@@ -195,7 +200,7 @@ describe("copyMessagesToClipboard", () => {
           state: "output-available",
           input: { location: "New York" },
           output: { temperature: 75, condition: "sunny" },
-        } as MessagePart,
+        },
       ]),
     ];
 
@@ -204,7 +209,7 @@ describe("copyMessagesToClipboard", () => {
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const [template] = writeText.mock.calls[0] ?? [];
-    expect(typeof template).toBe("string");
+    expect(template).toEqual(expect.any(String));
 
     // Should contain both input-available and output-available parts
     const inputAvailableIndex = template.indexOf('"state": "input-available"');

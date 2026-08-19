@@ -43,6 +43,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@ai-sdk/react": "^4.0.69",
     "ai": "^7.0.66",

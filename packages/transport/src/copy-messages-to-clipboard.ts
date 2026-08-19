@@ -9,35 +9,37 @@ type RuntimeGlobal = Omit<typeof globalThis, "navigator" | "alert"> & {
       writeText?: (value: string) => Promise<void> | void;
     };
   };
-  alert?: (message?: string) => unknown;
+  alert?: (message?: string) => void;
 };
 
 type CopyMessagesOptions<UI_MESSAGE extends UIMessage = UIMessage> = {
   messages: UI_MESSAGE[];
 };
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
+function getErrorMessage(cause: unknown): string {
+  if (cause instanceof Error) {
     // Handle DOMException (clipboard API errors)
-    if (error.name === "NotAllowedError" || error.name === "SecurityError") {
+    if (cause.name === "NotAllowedError" || cause.name === "SecurityError") {
       return "Clipboard access denied. Please grant clipboard permissions.";
     }
-    if (error.name === "NotFoundError") {
+    if (cause.name === "NotFoundError") {
       return "Clipboard not available.";
     }
-    return error.message;
+    return cause.message;
   }
   return "Unknown clipboard error.";
 }
 
-function handleCopyError(runtime: RuntimeGlobal, error: unknown): void {
-  const reason = getErrorMessage(error);
+function handleCopyError(runtime: RuntimeGlobal, cause: unknown): void {
+  const reason = getErrorMessage(cause);
   notify(runtime, `Failed to copy the static transport template.\n\n${reason}`);
 }
 
 export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage>(
   options: CopyMessagesOptions<UI_MESSAGE>,
 ): void {
+  // SAFETY: RuntimeGlobal only loosens globalThis — navigator and alert become
+  // optional so SSR and test runtimes without them are handled explicitly.
   const runtime = globalThis as RuntimeGlobal;
 
   try {
@@ -62,7 +64,7 @@ export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage
     const template = buildStaticTransportTemplate(assistantMessages);
     const clipboard = runtime.navigator?.clipboard;
 
-    if (!clipboard || typeof clipboard.writeText !== "function") {
+    if (!clipboard || !(clipboard.writeText instanceof Function)) {
       const errorMessage = "Clipboard access is not available in this environment.";
       notify(runtime, errorMessage);
       throw new Error(errorMessage);
@@ -76,8 +78,8 @@ export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage
         .then(() => {
           notify(runtime, SUCCESS_MESSAGE);
         })
-        .catch((error: unknown) => {
-          handleCopyError(runtime, error);
+        .catch((cause: unknown) => {
+          handleCopyError(runtime, cause);
         });
     } else {
       notify(runtime, SUCCESS_MESSAGE);
@@ -93,9 +95,9 @@ export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage
 }
 
 function notify(runtime: RuntimeGlobal, message: string): void {
-  if (typeof runtime.alert === "function") {
+  if (runtime.alert instanceof Function) {
     runtime.alert(message);
-  } else if (typeof console !== "undefined" && typeof console.info === "function") {
+  } else if (globalThis.console?.info instanceof Function) {
     console.info(message);
   }
 }
@@ -111,11 +113,12 @@ function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
     const reconstructedParts: UI_MESSAGE["parts"][number][] = [];
     for (const part of parts) {
       // Check if this is a tool part with output state that has input data
-      const isToolPart =
-        (typeof part.type === "string" && part.type.startsWith("tool-")) ||
-        part.type === "dynamic-tool";
+      const isToolPart = part.type.startsWith("tool-") || part.type === "dynamic-tool";
 
       if (isToolPart) {
+        // SAFETY: at runtime the parts array may carry tool parts with extras
+        // (toolName) the static part union cannot express; this local shape
+        // names exactly the fields read below.
         const toolPart = part as {
           type: `tool-${string}` | "dynamic-tool";
           toolCallId: string;
@@ -124,7 +127,6 @@ function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
           input?: unknown;
           output?: unknown;
           errorText?: string;
-          [key: string]: unknown;
         };
 
         // If tool part has output-available or output-error state with input,
@@ -133,16 +135,26 @@ function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
           (toolPart.state === "output-available" || toolPart.state === "output-error") &&
           toolPart.input !== undefined
         ) {
-          // Create input-available part
-          const inputPart = {
-            type: toolPart.type,
-            toolCallId: toolPart.toolCallId,
-            ...(toolPart.type === "dynamic-tool" && toolPart.toolName
-              ? { toolName: toolPart.toolName }
-              : {}),
-            state: "input-available",
-            input: toolPart.input,
-          } as UI_MESSAGE["parts"][number];
+          // Create input-available part. Key order is user-visible in the
+          // copied template, so toolName stays between toolCallId and state.
+          // SAFETY: the reconstructed part mirrors a tool part the message
+          // already carried; only its state is rewound to input-available.
+          const inputPart = (
+            toolPart.type === "dynamic-tool" && toolPart.toolName
+              ? {
+                  type: toolPart.type,
+                  toolCallId: toolPart.toolCallId,
+                  toolName: toolPart.toolName,
+                  state: "input-available",
+                  input: toolPart.input,
+                }
+              : {
+                  type: toolPart.type,
+                  toolCallId: toolPart.toolCallId,
+                  state: "input-available",
+                  input: toolPart.input,
+                }
+          ) as UI_MESSAGE["parts"][number];
           reconstructedParts.push(inputPart);
         }
       }
@@ -173,7 +185,7 @@ ${partsSection}
 `;
 }
 
-function formatYield(part: unknown, indent: string): string[] {
+function formatYield(part: UIMessage["parts"][number], indent: string): string[] {
   const json = JSON.stringify(part, null, 2);
 
   if (!json) {

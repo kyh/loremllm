@@ -108,7 +108,9 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
         "All mock interactions in this collection will be deleted and its endpoint will stop responding.",
       action: {
         label: "Delete",
-        onClick: () => deleteCollection.mutateAsync({ collectionId: collection.id }),
+        onClick: async () => {
+          await deleteCollection.mutateAsync({ collectionId: collection.id });
+        },
       },
     });
   };

@@ -24,7 +24,7 @@ const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
     const { theme } = useTheme();
     // Light theme = cursor-square (V1), Dark theme = bg (V2)
     const effectiveVariant: HoverTextVariant = theme === "dark" ? "bg" : "cursor-square";
-    const internalRef = React.useRef<HTMLSpanElement>(null);
+    const internalRef = React.useRef<HTMLElement>(null);
     const animatorRef = React.useRef<TextAnimator | null>(null);
 
     // Expose animate methods via imperative handle
@@ -43,7 +43,7 @@ const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
 
     // Set internal ref when element is available
     const setRef = React.useCallback((el: HTMLElement | null) => {
-      internalRef.current = el as HTMLSpanElement | null;
+      internalRef.current = el;
     }, []);
 
     // Initialize TextAnimator when component mounts and element is available
