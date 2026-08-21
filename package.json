@@ -37,11 +37,6 @@
       "@tailwindcss/oxide",
       "esbuild",
       "sharp"
-    ],
-    "updateConfig": {
-      "ignoreDependencies": [
-        "typescript"
-      ]
-    }
+    ]
   }
 }
