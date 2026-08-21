@@ -9,7 +9,7 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, memo, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Shimmer } from "./shimmer";
 
@@ -63,7 +63,9 @@ export const Reasoning = memo(
     });
 
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
-    const [startTime, setStartTime] = useState<number | null>(null);
+    // A ref, not state: the start instant is only read when streaming ends, so
+    // storing it in state would re-run this effect just to record the clock.
+    const startTimeRef = useRef<number | null>(null);
     const contextValue = useMemo(
       () => ({ isStreaming, isOpen, setIsOpen, duration }),
       [duration, isOpen, isStreaming, setIsOpen],
@@ -72,14 +74,12 @@ export const Reasoning = memo(
     // Track duration when streaming starts and ends
     useEffect(() => {
       if (isStreaming) {
-        if (startTime === null) {
-          setStartTime(Date.now());
-        }
-      } else if (startTime !== null) {
-        setDuration(Math.ceil((Date.now() - startTime) / MS_IN_S));
-        setStartTime(null);
+        startTimeRef.current ??= Date.now();
+      } else if (startTimeRef.current !== null) {
+        setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
+        startTimeRef.current = null;
       }
-    }, [isStreaming, startTime, setDuration]);
+    }, [isStreaming, setDuration]);
 
     // Auto-open when streaming starts, auto-close when streaming ends (once only)
     useEffect(() => {

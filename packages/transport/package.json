@@ -47,11 +47,11 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^4.0.69",
-    "ai": "^7.0.66",
-    "eve": "^0.38.3",
+    "@ai-sdk/react": "^4.0.74",
+    "ai": "^7.0.71",
+    "eve": "^0.42.0",
     "typescript": "catalog:",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "ai": "^6.0.0 || ^7.0.0"

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -42,24 +42,16 @@ export const MockDashboard = () => {
   const collections = collectionListQuery.data ?? emptyCollectionList;
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!collections.length) {
-      setSelectedCollectionId(null);
-      return;
-    }
-
-    const selectionExists = collections.some(
-      (collection) => collection.id === selectedCollectionId,
-    );
-
-    if (!selectionExists) {
-      setSelectedCollectionId(collections[0]?.id ?? null);
-    }
-  }, [collections, selectedCollectionId]);
+  // The stored id is a preference, not the source of truth — a not-yet-loaded
+  // list or a deleted collection leaves it dangling. Resolving it against the
+  // current list during render avoids a pass where the dashboard shows nothing.
+  const activeCollectionId = collections.some((item) => item.id === selectedCollectionId)
+    ? selectedCollectionId
+    : (collections[0]?.id ?? null);
 
   const selectedCollectionQuery = useQuery(
     trpc.collection.byId.queryOptions(
-      selectedCollectionId ? { collectionId: selectedCollectionId } : skipToken,
+      activeCollectionId ? { collectionId: activeCollectionId } : skipToken,
     ),
   );
   const collection = selectedCollectionQuery.data;
@@ -119,7 +111,7 @@ export const MockDashboard = () => {
               onClick={() => setSelectedCollectionId(item.id)}
               className={cn(
                 "hover:bg-muted flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                item.id === selectedCollectionId && "bg-muted font-medium",
+                item.id === activeCollectionId && "bg-muted font-medium",
               )}
             >
               <span className="truncate">{item.name ?? "Untitled"}</span>
