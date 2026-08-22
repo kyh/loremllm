@@ -12,7 +12,7 @@
     "dev:web": "turbo watch dev --filter=@loremllm/web --continue",
     "emulate": "npx emulate@0.9.0 --service github",
     "lint": "oxlint --report-unused-disable-directives",
-    "test": "turbo run test",
+    "test": "turbo run test --continue",
     "typecheck": "turbo run typecheck",
     "format": "oxfmt --check",
     "lint:fix": "oxlint --fix",
