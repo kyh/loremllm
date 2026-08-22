@@ -232,9 +232,15 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.18
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@electric-sql/pglite@0.3.15)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2))(typescript@7.0.2))(kysely@0.29.5)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.4.2(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(msw@2.14.6(@types/node@26.2.0)(typescript@7.0.2))(vite@7.3.0(@types/node@26.2.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/db:
     dependencies:
