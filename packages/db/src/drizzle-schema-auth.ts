@@ -47,7 +47,7 @@ export const session = sqliteTable(
     impersonatedBy: text("impersonated_by"),
   },
   // better-auth loads a user's sessions by user_id
-  (table) => [index("session_user_id_idx").on(table.userId)],
+  (table) => [index("session_userId_idx").on(table.userId)],
 );
 
 export const account = sqliteTable(
@@ -80,9 +80,9 @@ export const account = sqliteTable(
   },
   (table) => [
     // better-auth resolves a user's linked accounts by user_id
-    index("account_user_id_idx").on(table.userId),
+    index("account_userId_idx").on(table.userId),
     // 1.7 scopes account identity by (issuer, accountId) and requires it unique
-    uniqueIndex("account_issuer_account_id_uidx").on(table.issuer, table.accountId),
+    uniqueIndex("account_issuer_accountId_uidx").on(table.issuer, table.accountId),
   ],
 );
 
@@ -129,8 +129,8 @@ export const member = sqliteTable(
   },
   // membership is read by organization (member lists) and by user (active-org resolution)
   (table) => [
-    index("member_organization_id_idx").on(table.organizationId),
-    index("member_user_id_idx").on(table.userId),
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
   ],
 );
 
@@ -145,12 +145,18 @@ export const invitation = sqliteTable(
     role: text("role"),
     status: text("status").default("pending").notNull(),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
     inviterId: text("inviter_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  // pending invitations are listed per organization
-  (table) => [index("invitation_organization_id_idx").on(table.organizationId)],
+  // pending invitations are listed per organization, and looked up by email on accept
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
+  ],
 );
 
 // better-auth's database rate-limit store (rateLimit.storage = "database" in
