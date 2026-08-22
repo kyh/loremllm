@@ -10,7 +10,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
-import { authClient, signInWithGithub } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 /**
  * TanStack validators return either a raw string or a `{ message }` object.
@@ -85,7 +85,8 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
 
   const handleAuthWithGithub = async () => {
     setSubmittingGithub(true);
-    await signInWithGithub({
+    await authClient.signIn.social({
+      provider: "github",
       // OAuth is a full-page redirect; the server sends the user here after the
       // callback, so a client-side onSuccess would never fire.
       callbackURL: nextPath,

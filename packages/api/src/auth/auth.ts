@@ -48,8 +48,10 @@ export const auth = betterAuth({
     // "Continue with Github" button works offline (agents and tests included);
     // production uses the real socialProviders.github below. The built-in github
     // provider has hardcoded endpoints, so the emulated flow rides on
-    // genericOAuth — the signInWithGithub() client helper picks signIn.oauth2 to
-    // match. Creds are local fixtures matching emulate.config.yaml, not secrets.
+    // genericOAuth, which registers itself as a social provider and shadows the
+    // built-in github one under the same id — signIn.social({ provider:
+    // "github" }) drives both. Creds are local fixtures matching
+    // emulate.config.yaml, not secrets.
     ...(emulatorUrl
       ? [
           genericOAuth({

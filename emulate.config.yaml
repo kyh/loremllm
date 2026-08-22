@@ -9,8 +9,8 @@ github:
       client_secret: loremllm-local-github-secret
       name: loremllm (local)
       redirect_uris:
-        # better-auth genericOAuth callback path for providerId "github"
-        - http://localhost:3000/api/auth/oauth2/callback/github
+        # better-auth social-provider callback path for providerId "github"
+        - http://localhost:3000/api/auth/callback/github
   users:
     - login: octocat
       name: The Octocat

@@ -95,7 +95,7 @@ pnpm dev:web     # must be on :3000 — the registered redirect_uri is hardcoded
 
 With the var set, the shipped "Continue with Github" button routes through a dev-only `genericOAuth` provider aimed at the emulator — same button, no diverging prod path (unset ⇒ the real provider; see `packages/api/src/auth/auth.ts`). Open `/auth/login`, click it, and the emulator's user picker (`octocat`) completes sign-in.
 
-Pure HTTP: `POST /api/auth/sign-in/oauth2 {"providerId":"github"}` returns the authorize URL directly — the same flow the button triggers.
+Pure HTTP: `POST /api/auth/sign-in/social {"provider":"github"}` returns the authorize URL directly — the same flow the button triggers.
 
 If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next dev -p 3011`). `baseUrl` is derived from it, and it feeds both better-auth's trusted origins and the tRPC mutation origin guard — a mismatch turns every mutation into a 403.
 
