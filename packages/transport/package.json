@@ -40,7 +40,7 @@
     "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "dev": "tsc --watch --preserveWatchOutput",
-    "test": "vitest run",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -50,8 +50,8 @@
     "@ai-sdk/react": "^4.0.74",
     "ai": "^7.0.71",
     "eve": "^0.42.0",
-    "typescript": "catalog:",
-    "vitest": "^4.1.11"
+    "tsx": "^4.23.12",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "ai": "^6.0.0 || ^7.0.0"

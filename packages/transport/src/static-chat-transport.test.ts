@@ -1,5 +1,6 @@
+import assert from "node:assert/strict";
+import { describe, mock, test } from "node:test";
 import type { UIMessage, UIMessageChunk } from "ai";
-import { describe, expect, it, vi } from "vitest";
 
 import { StaticChatTransport } from "./index";
 
@@ -74,7 +75,7 @@ const extractTextFromChunks = (chunks: UIMessageChunk[]): string => {
 
 describe("StaticChatTransport", () => {
   describe("Basic Streaming", () => {
-    it("streams the assistant message as UI message chunks", async () => {
+    test("streams the assistant message as UI message chunks", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -90,21 +91,16 @@ describe("StaticChatTransport", () => {
       });
 
       const chunks = await readAllChunks(stream);
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "start-step",
-        "text-start",
-        "text-delta",
-        "text-end",
-        "finish-step",
-        "finish",
-      ]);
-      expect(chunks.filter((chunk) => chunk.type === "text-delta")[0]).toMatchObject({
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "start-step", "text-start", "text-delta", "text-end", "finish-step", "finish"],
+      );
+      assert.partialDeepStrictEqual(chunks.filter((chunk) => chunk.type === "text-delta")[0], {
         delta: "Hi there!",
       });
     });
 
-    it("requires mockResponse to yield at least one part", async () => {
+    test("requires mockResponse to yield at least one part", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -113,15 +109,16 @@ describe("StaticChatTransport", () => {
         },
       });
 
-      await expect(
+      await assert.rejects(
         transport.sendMessages({
           ...createSendContext({ messages: [userMessage] }),
           abortSignal: undefined,
         }),
-      ).rejects.toThrow(/at least one part/i);
+        /at least one part/i,
+      );
     });
 
-    it("yields multiple parts in sequence", async () => {
+    test("yields multiple parts in sequence", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -142,12 +139,12 @@ describe("StaticChatTransport", () => {
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
           chunk.type === "text-delta",
       );
-      expect(textChunks).toHaveLength(2);
-      expect(textChunks[0]?.delta).toBe("Response one");
-      expect(textChunks[1]?.delta).toBe("Response two");
+      assert.strictEqual(textChunks.length, 2);
+      assert.strictEqual(textChunks[0]?.delta, "Response one");
+      assert.strictEqual(textChunks[1]?.delta, "Response two");
     });
 
-    it("regenerates an existing assistant message by id", async () => {
+    test("regenerates an existing assistant message by id", async () => {
       const userMessage = createUserMessage("Hello");
       const previousAssistant: UIMessage = {
         id: "assistant-1",
@@ -178,7 +175,7 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
       const fullText = textChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Fresh response");
+      assert.strictEqual(fullText, "Fresh response");
     });
   });
 
@@ -187,7 +184,7 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Message Parts", () => {
-    it("supports data-* parts", async () => {
+    test("supports data-* parts", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -203,14 +200,17 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual(["start", "data-widget", "finish"]);
-      expect(chunks[1]).toMatchObject({
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "data-widget", "finish"],
+      );
+      assert.partialDeepStrictEqual(chunks[1], {
         type: "data-widget",
         data: { foo: "bar" },
       });
     });
 
-    it("handles reasoning and text parts together", async () => {
+    test("handles reasoning and text parts together", async () => {
       const userMessage = createUserMessage("Question");
 
       const transport = new StaticChatTransport({
@@ -241,14 +241,14 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(reasoningDeltas.length).toBeGreaterThan(0);
-      expect(textDeltas.length).toBeGreaterThan(0);
+      assert.ok(reasoningDeltas.length > 0);
+      assert.ok(textDeltas.length > 0);
 
       const reasoningText = reasoningDeltas.map((chunk) => chunk.delta).join("");
       const textContent = textDeltas.map((chunk) => chunk.delta).join("");
 
-      expect(reasoningText).toBe("First I think about this problem carefully step by step");
-      expect(textContent).toBe("Here is my final answer to you");
+      assert.strictEqual(reasoningText, "First I think about this problem carefully step by step");
+      assert.strictEqual(textContent, "Here is my final answer to you");
     });
   });
 
@@ -257,7 +257,7 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Tool Calls", () => {
-    it("streams tool-input-available and tool-output-available for tool parts with output", async () => {
+    test("streams tool-input-available and tool-output-available for tool parts with output", async () => {
       const userMessage = createUserMessage("Search for cats");
 
       const transport = new StaticChatTransport({
@@ -279,18 +279,16 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-available",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "tool-input-available", "tool-output-available", "finish"],
+      );
 
       const inputChunk = chunks.find(
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
-      expect(inputChunk).toMatchObject({
+      assert.partialDeepStrictEqual(inputChunk, {
         type: "tool-input-available",
         toolCallId: "call_123",
         toolName: "tool",
@@ -301,14 +299,14 @@ describe("StaticChatTransport", () => {
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-available" }> =>
           chunk.type === "tool-output-available",
       );
-      expect(outputChunk).toMatchObject({
+      assert.partialDeepStrictEqual(outputChunk, {
         type: "tool-output-available",
         toolCallId: "call_123",
         output: { results: [{ title: "All About Cats" }] },
       });
     });
 
-    it("streams tool-input-available and tool-output-error for tool parts with error", async () => {
+    test("streams tool-input-available and tool-output-error for tool parts with error", async () => {
       const userMessage = createUserMessage("Book a reservation");
 
       const transport = new StaticChatTransport({
@@ -330,25 +328,23 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-error",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "tool-input-available", "tool-output-error", "finish"],
+      );
 
       const errorChunk = chunks.find(
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-output-error" }> =>
           chunk.type === "tool-output-error",
       );
-      expect(errorChunk).toMatchObject({
+      assert.partialDeepStrictEqual(errorChunk, {
         type: "tool-output-error",
         toolCallId: "call_failure",
         errorText: "Reservation not found",
       });
     });
 
-    it("handles dynamic-tool type", async () => {
+    test("handles dynamic-tool type", async () => {
       const userMessage = createUserMessage("Use a tool");
 
       const transport = new StaticChatTransport({
@@ -370,24 +366,22 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-available",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "tool-input-available", "tool-output-available", "finish"],
+      );
 
       const inputChunk = chunks.find(
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
-      expect(inputChunk).toMatchObject({
+      assert.partialDeepStrictEqual(inputChunk, {
         toolCallId: "call_dynamic",
         toolName: "tool",
       });
     });
 
-    it("handles tool parts without toolName (defaults to 'tool')", async () => {
+    test("handles tool parts without toolName (defaults to 'tool')", async () => {
       const userMessage = createUserMessage("Call a tool");
 
       const transport = new StaticChatTransport({
@@ -412,14 +406,14 @@ describe("StaticChatTransport", () => {
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
-      expect(inputChunk).toMatchObject({
+      assert.partialDeepStrictEqual(inputChunk, {
         toolCallId: "call_no_name",
         toolName: "tool",
         input: { data: "test" },
       });
     });
 
-    it("handles tool parts with explicit toolName", async () => {
+    test("handles tool parts with explicit toolName", async () => {
       const userMessage = createUserMessage("Use named tool");
 
       const transport = new StaticChatTransport({
@@ -446,14 +440,14 @@ describe("StaticChatTransport", () => {
         (chunk): chunk is Extract<UIMessageChunk, { type: "tool-input-available" }> =>
           chunk.type === "tool-input-available",
       );
-      expect(inputChunk).toMatchObject({
+      assert.partialDeepStrictEqual(inputChunk, {
         toolCallId: "call_named",
         toolName: "search-tool",
         input: { query: "test" },
       });
     });
 
-    it("handles tool parts with only input (no output state)", async () => {
+    test("handles tool parts with only input (no output state)", async () => {
       const userMessage = createUserMessage("Start a tool");
 
       const transport = new StaticChatTransport({
@@ -474,14 +468,13 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "tool-input-available", "finish"],
+      );
     });
 
-    it("handles multiple tool parts in sequence", async () => {
+    test("handles multiple tool parts in sequence", async () => {
       const userMessage = createUserMessage("Check multiple sources");
 
       const transport = new StaticChatTransport({
@@ -513,16 +506,16 @@ describe("StaticChatTransport", () => {
       const toolChunks = chunks.filter(
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
-      expect(toolChunks).toHaveLength(4); // 2 input + 2 output
+      assert.strictEqual(toolChunks.length, 4); // 2 input + 2 output
 
       const firstInput = chunkOfType(toolChunks[0], "tool-input-available");
-      expect(firstInput.toolCallId).toBe("call_a");
+      assert.strictEqual(firstInput.toolCallId, "call_a");
 
       const secondInput = chunkOfType(toolChunks[2], "tool-input-available");
-      expect(secondInput.toolCallId).toBe("call_b");
+      assert.strictEqual(secondInput.toolCallId, "call_b");
     });
 
-    it("handles tool parts mixed with text parts", async () => {
+    test("handles tool parts mixed with text parts", async () => {
       const userMessage = createUserMessage("Search and explain");
 
       const transport = new StaticChatTransport({
@@ -547,23 +540,26 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "start-step",
-        "text-start",
-        "text-delta",
-        "text-end",
-        "tool-input-available",
-        "tool-output-available",
-        "text-start",
-        "text-delta",
-        "text-end",
-        "finish-step",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        [
+          "start",
+          "start-step",
+          "text-start",
+          "text-delta",
+          "text-end",
+          "tool-input-available",
+          "tool-output-available",
+          "text-start",
+          "text-delta",
+          "text-end",
+          "finish-step",
+          "finish",
+        ],
+      );
     });
 
-    it("handles progressive tool loading with state transitions", async () => {
+    test("handles progressive tool loading with state transitions", async () => {
       const userMessage = createUserMessage("Get weather");
 
       const transport = new StaticChatTransport({
@@ -600,23 +596,23 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
-      expect(toolChunks).toHaveLength(2);
+      assert.strictEqual(toolChunks.length, 2);
 
       const inputChunk = chunkOfType(toolChunks[0], "tool-input-available");
-      expect(inputChunk.type).toBe("tool-input-available");
-      expect(inputChunk.toolCallId).toBe("call_weather_1");
-      expect(inputChunk.toolName).toBe("weather");
+      assert.strictEqual(inputChunk.type, "tool-input-available");
+      assert.strictEqual(inputChunk.toolCallId, "call_weather_1");
+      assert.strictEqual(inputChunk.toolName, "weather");
 
       const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
-      expect(outputChunk.type).toBe("tool-output-available");
-      expect(outputChunk.toolCallId).toBe("call_weather_1");
-      expect(outputChunk.output).toEqual({
+      assert.strictEqual(outputChunk.type, "tool-output-available");
+      assert.strictEqual(outputChunk.toolCallId, "call_weather_1");
+      assert.deepEqual(outputChunk.output, {
         temperature: 72,
         condition: "sunny",
       });
     });
 
-    it("does not emit duplicate chunks for unchanged tool state", async () => {
+    test("does not emit duplicate chunks for unchanged tool state", async () => {
       const userMessage = createUserMessage("Process data");
 
       const transport = new StaticChatTransport({
@@ -656,12 +652,12 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
-      expect(toolChunks).toHaveLength(2);
-      expect(toolChunks[0].type).toBe("tool-input-available");
-      expect(toolChunks[1].type).toBe("tool-output-available");
+      assert.strictEqual(toolChunks.length, 2);
+      assert.strictEqual(toolChunks[0].type, "tool-input-available");
+      assert.strictEqual(toolChunks[1].type, "tool-output-available");
     });
 
-    it("handles tool error state in progressive loading", async () => {
+    test("handles tool error state in progressive loading", async () => {
       const userMessage = createUserMessage("Process with error");
 
       const transport = new StaticChatTransport({
@@ -696,13 +692,13 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-error",
       );
 
-      expect(toolChunks).toHaveLength(2);
-      expect(toolChunks[0].type).toBe("tool-input-available");
-      expect(toolChunks[1].type).toBe("tool-output-error");
+      assert.strictEqual(toolChunks.length, 2);
+      assert.strictEqual(toolChunks[0].type, "tool-input-available");
+      assert.strictEqual(toolChunks[1].type, "tool-output-error");
 
       const errorChunk = chunkOfType(toolChunks[1], "tool-output-error");
-      expect(errorChunk.toolCallId).toBe("call_error_1");
-      expect(errorChunk.errorText).toBe("Processing failed");
+      assert.strictEqual(errorChunk.toolCallId, "call_error_1");
+      assert.strictEqual(errorChunk.errorText, "Processing failed");
     });
   });
 
@@ -711,7 +707,7 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Auto-Chunking", () => {
-    it("chunks text word-by-word by default", async () => {
+    test("chunks text word-by-word by default", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -732,12 +728,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      assert.ok(textDeltaChunks.length > 1);
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Hello world test");
+      assert.strictEqual(fullText, "Hello world test");
     });
 
-    it("chunks reasoning word-by-word by default", async () => {
+    test("chunks reasoning word-by-word by default", async () => {
       const userMessage = createUserMessage("Think");
 
       const transport = new StaticChatTransport({
@@ -761,12 +757,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "reasoning-delta",
       );
 
-      expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
+      assert.ok(reasoningDeltaChunks.length > 1);
       const fullText = reasoningDeltaChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Let me think about this carefully");
+      assert.strictEqual(fullText, "Let me think about this carefully");
     });
 
-    it("sends text as single chunk when autoChunkText is false", async () => {
+    test("sends text as single chunk when autoChunkText is false", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -788,11 +784,11 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltaChunks).toHaveLength(1);
-      expect(textDeltaChunks[0]?.delta).toBe("Hello world test");
+      assert.strictEqual(textDeltaChunks.length, 1);
+      assert.strictEqual(textDeltaChunks[0]?.delta, "Hello world test");
     });
 
-    it("sends reasoning as single chunk when autoChunkReasoning is false", async () => {
+    test("sends reasoning as single chunk when autoChunkReasoning is false", async () => {
       const userMessage = createUserMessage("Think");
 
       const transport = new StaticChatTransport({
@@ -814,11 +810,11 @@ describe("StaticChatTransport", () => {
           chunk.type === "reasoning-delta",
       );
 
-      expect(reasoningDeltaChunks).toHaveLength(1);
-      expect(reasoningDeltaChunks[0]?.delta).toBe("Let me think about this");
+      assert.strictEqual(reasoningDeltaChunks.length, 1);
+      assert.strictEqual(reasoningDeltaChunks[0]?.delta, "Let me think about this");
     });
 
-    it("uses custom regex pattern for text chunking", async () => {
+    test("uses custom regex pattern for text chunking", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -840,12 +836,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      assert.ok(textDeltaChunks.length > 1);
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Hello,world.test");
+      assert.strictEqual(fullText, "Hello,world.test");
     });
 
-    it("uses custom regex pattern for reasoning chunking", async () => {
+    test("uses custom regex pattern for reasoning chunking", async () => {
       const userMessage = createUserMessage("Think");
 
       const transport = new StaticChatTransport({
@@ -867,12 +863,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "reasoning-delta",
       );
 
-      expect(reasoningDeltaChunks.length).toBeGreaterThan(1);
+      assert.ok(reasoningDeltaChunks.length > 1);
       const fullText = reasoningDeltaChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Step1.Step2.Step3");
+      assert.strictEqual(fullText, "Step1.Step2.Step3");
     });
 
-    it("handles empty text with auto-chunking enabled", async () => {
+    test("handles empty text with auto-chunking enabled", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -893,7 +889,7 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltaChunks).toHaveLength(0);
+      assert.strictEqual(textDeltaChunks.length, 0);
     });
   });
 
@@ -902,9 +898,9 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Stream Control", () => {
-    it("invokes the chunk delay resolver for every chunk", async () => {
+    test("invokes the chunk delay resolver for every chunk", async () => {
       const userMessage = createUserMessage("Hello");
-      const chunkDelay = vi.fn<(chunk: UIMessageChunk) => number>().mockReturnValue(0);
+      const chunkDelay = mock.fn((_chunk: UIMessageChunk): number => 0);
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
@@ -920,11 +916,11 @@ describe("StaticChatTransport", () => {
         }),
       );
 
-      expect(chunkDelay).toHaveBeenCalled();
-      expect(chunkDelay.mock.calls.length).toBeGreaterThan(0);
+      assert.ok(chunkDelay.mock.callCount() > 0);
+      assert.ok(chunkDelay.mock.calls.length > 0);
     });
 
-    it("supports tuple delay range for random delays", async () => {
+    test("supports tuple delay range for random delays", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
         async *mockResponse() {
@@ -942,10 +938,10 @@ describe("StaticChatTransport", () => {
       );
       const duration = Date.now() - start;
 
-      expect(duration).toBeGreaterThanOrEqual(5);
+      assert.ok(duration >= 5);
     });
 
-    it("supports function returning tuple for per-chunk random delays", async () => {
+    test("supports function returning tuple for per-chunk random delays", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
         async *mockResponse() {
@@ -968,10 +964,10 @@ describe("StaticChatTransport", () => {
       );
       const duration = Date.now() - start;
 
-      expect(duration).toBeGreaterThanOrEqual(5);
+      assert.ok(duration >= 5);
     });
 
-    it("aborts the stream when the abort signal fires", async () => {
+    test("aborts the stream when the abort signal fires", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
         async *mockResponse() {
@@ -990,10 +986,10 @@ describe("StaticChatTransport", () => {
 
       abortController.abort();
 
-      await expect(reader).rejects.toThrow(/aborted/i);
+      await assert.rejects(reader, /aborted/i);
     });
 
-    it("aborts text streaming halfway through when auto-chunking", async () => {
+    test("aborts text streaming halfway through when auto-chunking", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -1030,23 +1026,23 @@ describe("StaticChatTransport", () => {
           }
         }
       } catch (error) {
-        expect(error).toBeDefined();
+        assert.notStrictEqual(error, undefined);
       }
 
-      expect(chunks.length).toBeGreaterThan(0);
-      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 1);
+      assert.ok(chunks.length > 0);
+      assert.ok(chunks.length <= maxChunks + 1);
 
       const textDeltas = chunks.filter(
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
           chunk.type === "text-delta",
       );
-      expect(textDeltas.length).toBeGreaterThan(0);
+      assert.ok(textDeltas.length > 0);
     });
 
-    it("applies chunk delays to tool chunks", async () => {
+    test("applies chunk delays to tool chunks", async () => {
       const userMessage = createUserMessage("Delayed tool");
 
-      const delaySpy = vi.fn();
+      const delaySpy = mock.fn((_type: UIMessageChunk["type"]): void => {});
 
       const transport = new StaticChatTransport({
         chunkDelayMs: (chunk) => {
@@ -1083,13 +1079,13 @@ describe("StaticChatTransport", () => {
       );
       const endTime = Date.now();
 
-      expect(delaySpy).toHaveBeenCalledWith("tool-input-available");
-      expect(delaySpy).toHaveBeenCalledWith("tool-output-available");
+      assert.ok(delaySpy.mock.calls.some((call) => call.arguments[0] === "tool-input-available"));
+      assert.ok(delaySpy.mock.calls.some((call) => call.arguments[0] === "tool-output-available"));
 
       const toolChunks = chunks.filter(
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
-      expect(toolChunks).toHaveLength(2);
+      assert.strictEqual(toolChunks.length, 2);
     });
   });
 
@@ -1098,7 +1094,7 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Reconnection", () => {
-    it("can replay the last assistant response via reconnectToStream", async () => {
+    test("can replay the last assistant response via reconnectToStream", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -1115,20 +1111,15 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect).not.toBeNull();
+      assert.notStrictEqual(reconnect, null);
       const chunks = await readAllChunks(reconnect!);
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "start-step",
-        "text-start",
-        "text-delta",
-        "text-end",
-        "finish-step",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "start-step", "text-start", "text-delta", "text-end", "finish-step", "finish"],
+      );
     });
 
-    it("replays tool calls via reconnectToStream", async () => {
+    test("replays tool calls via reconnectToStream", async () => {
       const userMessage = createUserMessage("Search");
 
       const transport = new StaticChatTransport({
@@ -1151,18 +1142,16 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect).not.toBeNull();
+      assert.notStrictEqual(reconnect, null);
       const chunks = await readAllChunks(reconnect!);
 
-      expect(chunks.map((chunk) => chunk.type)).toEqual([
-        "start",
-        "tool-input-available",
-        "tool-output-available",
-        "finish",
-      ]);
+      assert.deepEqual(
+        chunks.map((chunk) => chunk.type),
+        ["start", "tool-input-available", "tool-output-available", "finish"],
+      );
     });
 
-    it("replays chunked messages via reconnectToStream", async () => {
+    test("replays chunked messages via reconnectToStream", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -1179,7 +1168,7 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect).not.toBeNull();
+      assert.notStrictEqual(reconnect, null);
 
       const chunks = await readAllChunks(reconnect!);
       const textDeltaChunks = chunks.filter(
@@ -1187,12 +1176,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltaChunks.length).toBeGreaterThan(1);
+      assert.ok(textDeltaChunks.length > 1);
       const fullText = textDeltaChunks.map((chunk) => chunk.delta).join("");
-      expect(fullText).toBe("Hello world");
+      assert.strictEqual(fullText, "Hello world");
     });
 
-    it("clears specific chat cache via clearCache", async () => {
+    test("clears specific chat cache via clearCache", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -1220,14 +1209,14 @@ describe("StaticChatTransport", () => {
 
       // chat-1 should be gone
       const reconnect1 = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect1).toBeNull();
+      assert.strictEqual(reconnect1, null);
 
       // chat-2 should still exist
       const reconnect2 = await transport.reconnectToStream({ chatId: "chat-2" });
-      expect(reconnect2).not.toBeNull();
+      assert.notStrictEqual(reconnect2, null);
     });
 
-    it("clears all caches via clearCache without argument", async () => {
+    test("clears all caches via clearCache without argument", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
@@ -1255,10 +1244,10 @@ describe("StaticChatTransport", () => {
 
       // Both should be gone
       const reconnect1 = await transport.reconnectToStream({ chatId: "chat-1" });
-      expect(reconnect1).toBeNull();
+      assert.strictEqual(reconnect1, null);
 
       const reconnect2 = await transport.reconnectToStream({ chatId: "chat-2" });
-      expect(reconnect2).toBeNull();
+      assert.strictEqual(reconnect2, null);
     });
   });
 
@@ -1267,7 +1256,7 @@ describe("StaticChatTransport", () => {
   // ============================================================================
 
   describe("Integration Scenarios (useChat-like)", () => {
-    it("handles text streaming as useChat would receive it", async () => {
+    test("handles text streaming as useChat would receive it", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield { type: "text", text: "Hello! This is a streaming response." };
@@ -1283,10 +1272,10 @@ describe("StaticChatTransport", () => {
 
       const chunks = await readAllChunks(stream);
       const fullText = extractTextFromChunks(chunks);
-      expect(fullText).toBe("Hello! This is a streaming response.");
+      assert.strictEqual(fullText, "Hello! This is a streaming response.");
     });
 
-    it("handles tool calls as useChat would process them", async () => {
+    test("handles tool calls as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1316,13 +1305,13 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-output-available",
       );
 
-      expect(toolInputChunk).toBeDefined();
-      expect(toolInputChunk?.toolCallId).toBe("call_123");
-      expect(toolOutputChunk).toBeDefined();
-      expect(toolOutputChunk?.toolCallId).toBe("call_123");
+      assert.notStrictEqual(toolInputChunk, undefined);
+      assert.strictEqual(toolInputChunk?.toolCallId, "call_123");
+      assert.notStrictEqual(toolOutputChunk, undefined);
+      assert.strictEqual(toolOutputChunk?.toolCallId, "call_123");
     });
 
-    it("handles data-* parts as useChat would process them", async () => {
+    test("handles data-* parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1346,11 +1335,11 @@ describe("StaticChatTransport", () => {
           chunk.type === "data-widget",
       );
 
-      expect(dataChunk).toBeDefined();
-      expect(dataChunk?.data).toEqual({ count: 42, status: "active" });
+      assert.notStrictEqual(dataChunk, undefined);
+      assert.deepEqual(dataChunk?.data, { count: 42, status: "active" });
     });
 
-    it("handles source-url parts as useChat would process them", async () => {
+    test("handles source-url parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1375,8 +1364,8 @@ describe("StaticChatTransport", () => {
           chunk.type === "source-url",
       );
 
-      expect(sourceChunk).toBeDefined();
-      expect(sourceChunk).toMatchObject({
+      assert.notStrictEqual(sourceChunk, undefined);
+      assert.partialDeepStrictEqual(sourceChunk, {
         type: "source-url",
         sourceId: "src-1",
         url: "https://example.com/article",
@@ -1384,7 +1373,7 @@ describe("StaticChatTransport", () => {
       });
     });
 
-    it("handles source-document parts as useChat would process them", async () => {
+    test("handles source-document parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1410,8 +1399,8 @@ describe("StaticChatTransport", () => {
           chunk.type === "source-document",
       );
 
-      expect(docChunk).toBeDefined();
-      expect(docChunk).toMatchObject({
+      assert.notStrictEqual(docChunk, undefined);
+      assert.partialDeepStrictEqual(docChunk, {
         type: "source-document",
         sourceId: "doc-1",
         mediaType: "application/pdf",
@@ -1420,7 +1409,7 @@ describe("StaticChatTransport", () => {
       });
     });
 
-    it("handles reasoning parts as useChat would process them", async () => {
+    test("handles reasoning parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1453,17 +1442,17 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(reasoningDeltas.length).toBeGreaterThan(0);
-      expect(textDeltas.length).toBeGreaterThan(0);
+      assert.ok(reasoningDeltas.length > 0);
+      assert.ok(textDeltas.length > 0);
 
       const reasoningText = reasoningDeltas.map((chunk) => chunk.delta).join("");
       const textContent = textDeltas.map((chunk) => chunk.delta).join("");
 
-      expect(reasoningText).toBe("Let me think about this step by step...");
-      expect(textContent).toBe("Based on my reasoning, here's the answer.");
+      assert.strictEqual(reasoningText, "Let me think about this step by step...");
+      assert.strictEqual(textContent, "Based on my reasoning, here's the answer.");
     });
 
-    it("handles multiple tool calls in sequence as useChat would process them", async () => {
+    test("handles multiple tool calls in sequence as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1500,19 +1489,19 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
-      expect(toolChunks.length).toBeGreaterThanOrEqual(4); // 2 inputs + 2 outputs
+      assert.ok(toolChunks.length >= 4); // 2 inputs + 2 outputs
 
       const textDeltas = chunks.filter(
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
           chunk.type === "text-delta",
       );
-      expect(textDeltas.length).toBeGreaterThan(0);
-      expect(extractTextFromChunks(chunks)).toContain(
-        "I found a coffee shop and calculated the route.",
+      assert.ok(textDeltas.length > 0);
+      assert.ok(
+        extractTextFromChunks(chunks).includes("I found a coffee shop and calculated the route."),
       );
     });
 
-    it("handles tool calls with errors as useChat would process them", async () => {
+    test("handles tool calls with errors as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1538,12 +1527,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-output-error",
       );
 
-      expect(errorChunk).toBeDefined();
-      expect(errorChunk?.toolCallId).toBe("call_error");
-      expect(errorChunk?.errorText).toBe("Processing failed: Invalid input");
+      assert.notStrictEqual(errorChunk, undefined);
+      assert.strictEqual(errorChunk?.toolCallId, "call_error");
+      assert.strictEqual(errorChunk?.errorText, "Processing failed: Invalid input");
     });
 
-    it("handles progressive tool loading as useChat would process it", async () => {
+    test("handles progressive tool loading as useChat would process it", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1575,18 +1564,18 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
-      expect(toolChunks.length).toBe(2);
-      expect(toolChunks[0].type).toBe("tool-input-available");
-      expect(toolChunks[1].type).toBe("tool-output-available");
+      assert.strictEqual(toolChunks.length, 2);
+      assert.strictEqual(toolChunks[0].type, "tool-input-available");
+      assert.strictEqual(toolChunks[1].type, "tool-output-available");
 
       const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
-      expect(outputChunk.output).toEqual({
+      assert.deepEqual(outputChunk.output, {
         temperature: 68,
         condition: "sunny",
       });
     });
 
-    it("handles mixed content (text, tools, data) as useChat would process it", async () => {
+    test("handles mixed content (text, tools, data) as useChat would process it", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield { type: "text", text: "Let me search for that." };
@@ -1624,12 +1613,12 @@ describe("StaticChatTransport", () => {
       );
       const dataChunk = chunks.find((chunk) => chunk.type === "data-status");
 
-      expect(textDeltas.length).toBeGreaterThanOrEqual(2);
-      expect(toolChunks.length).toBeGreaterThanOrEqual(2);
-      expect(dataChunk).toBeDefined();
+      assert.ok(textDeltas.length >= 2);
+      assert.ok(toolChunks.length >= 2);
+      assert.notStrictEqual(dataChunk, undefined);
     });
 
-    it("handles file parts as useChat would process them", async () => {
+    test("handles file parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1652,15 +1641,15 @@ describe("StaticChatTransport", () => {
         (chunk): chunk is Extract<UIMessageChunk, { type: "file" }> => chunk.type === "file",
       );
 
-      expect(fileChunk).toBeDefined();
-      expect(fileChunk).toMatchObject({
+      assert.notStrictEqual(fileChunk, undefined);
+      assert.partialDeepStrictEqual(fileChunk, {
         type: "file",
         mediaType: "image/png",
         url: "https://example.com/image.png",
       });
     });
 
-    it("handles streaming text with auto-chunking as useChat would receive it", async () => {
+    test("handles streaming text with auto-chunking as useChat would receive it", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1684,12 +1673,12 @@ describe("StaticChatTransport", () => {
           chunk.type === "text-delta",
       );
 
-      expect(textDeltas.length).toBeGreaterThan(1);
+      assert.ok(textDeltas.length > 1);
       const fullText = extractTextFromChunks(chunks);
-      expect(fullText).toBe("This is a streaming message that will be chunked word by word");
+      assert.strictEqual(fullText, "This is a streaming message that will be chunked word by word");
     });
 
-    it("handles aborting mid-stream as useChat.stop() would", async () => {
+    test("handles aborting mid-stream as useChat.stop() would", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
@@ -1725,17 +1714,17 @@ describe("StaticChatTransport", () => {
           }
         }
       } catch (error) {
-        expect(error).toBeDefined();
+        assert.notStrictEqual(error, undefined);
       }
 
-      expect(chunks.length).toBeGreaterThan(0);
-      expect(chunks.length).toBeLessThanOrEqual(maxChunks + 2);
+      assert.ok(chunks.length > 0);
+      assert.ok(chunks.length <= maxChunks + 2);
 
       const textDeltas = chunks.filter(
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
           chunk.type === "text-delta",
       );
-      expect(textDeltas.length).toBeGreaterThan(0);
+      assert.ok(textDeltas.length > 0);
     });
   });
 });

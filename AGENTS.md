@@ -51,7 +51,7 @@ Static gate (mirrors `.github/workflows/ci.yml` — run before every commit):
 pnpm verify     # typecheck · lint · format · test
 ```
 
-`pnpm test` currently runs **only** `packages/transport`'s vitest suite — it is the only package with tests. A green `verify` says nothing about `apps/web` or `packages/api` behaviour; exercise those at runtime.
+`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport` and `packages/api`'s auth-schema guard — nothing else has tests. A green `verify` says nothing about `apps/web` or the rest of `packages/api` behaviour; exercise those at runtime.
 
 Runtime — drive the real web UI with [agent-browser](https://github.com/vercel-labs/agent-browser):
 
@@ -104,7 +104,7 @@ If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next d
 | Surface                       | Command                            | Agent-verifiable at runtime?         |
 | ----------------------------- | ---------------------------------- | ------------------------------------ |
 | Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser |
-| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 84 vitest cases, no I/O    |
+| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 84 node:test cases, no I/O |
 | Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed |
 
 There is no mobile, desktop, or extension target. Everything this repo ships can be checked headlessly.

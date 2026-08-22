@@ -1,11 +1,14 @@
+import assert from "node:assert/strict";
+import { afterEach, describe, test } from "node:test";
 import type { UIMessage } from "ai";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import type { EveStreamEvent } from "./eve";
 import { createMemoryEveSessionStore, createStaticEveHandler } from "./eve";
 
 const HOST = "https://mock.test";
+
+const originalFetch = globalThis.fetch;
 
 function createRequest(path: string, init?: RequestInit): Request {
   return new Request(`${HOST}${path}`, init);
@@ -47,9 +50,9 @@ async function createSession(
   message: JsonValue = "hello",
 ): Promise<CreateResult> {
   const response = await handler(postJson("/eve/v1/session", { message }));
-  expect(response.status).toBe(202);
+  assert.strictEqual(response.status, 202);
   const body = createSessionResponse.parse(await response.json());
-  expect(body.ok).toBe(true);
+  assert.strictEqual(body.ok, true);
   return { sessionId: body.sessionId, continuationToken: body.continuationToken };
 }
 
@@ -62,7 +65,7 @@ async function streamEvents(
   const response = await handler(
     createRequest(`/eve/v1/session/${encodeURIComponent(sessionId)}/stream${query}`),
   );
-  expect(response.status).toBe(200);
+  assert.strictEqual(response.status, 200);
   return readEvents(response);
 }
 
@@ -75,23 +78,23 @@ const textHandler = () =>
 
 describe("createStaticEveHandler", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
+    globalThis.fetch = originalFetch;
   });
 
   describe("session creation", () => {
-    it("returns 202 with sessionId, continuationToken, and session header", async () => {
+    test("returns 202 with sessionId, continuationToken, and session header", async () => {
       const handler = textHandler();
       const response = await handler(postJson("/eve/v1/session", { message: "hi" }));
 
-      expect(response.status).toBe(202);
+      assert.strictEqual(response.status, 202);
       const body = createSessionResponse.parse(await response.json());
-      expect(body.ok).toBe(true);
-      expect(body.sessionId).toEqual(expect.any(String));
-      expect(body.continuationToken).toEqual(expect.any(String));
-      expect(response.headers.get("x-eve-session-id")).toBe(body.sessionId);
+      assert.strictEqual(body.ok, true);
+      assert.ok(z.string().safeParse(body.sessionId).success);
+      assert.ok(z.string().safeParse(body.continuationToken).success);
+      assert.strictEqual(response.headers.get("x-eve-session-id"), body.sessionId);
     });
 
-    it("accepts message part arrays and joins text parts", async () => {
+    test("accepts message part arrays and joins text parts", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler, [
         { type: "text", text: "first" },
@@ -100,67 +103,73 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const received = events.find((event) => event.type === "message.received");
-      expect(received).toBeDefined();
+      assert.notStrictEqual(received, undefined);
       if (received?.type === "message.received") {
-        expect(received.data.message).toBe("first\n\nsecond");
-        expect(received.data.parts).toEqual([
+        assert.strictEqual(received.data.message, "first\n\nsecond");
+        assert.deepEqual(received.data.parts, [
           { type: "text", text: "first" },
           { type: "text", text: "second" },
         ]);
       }
     });
 
-    it("rejects invalid bodies with 400", async () => {
+    test("rejects invalid bodies with 400", async () => {
       const handler = textHandler();
 
       const noMessage = await handler(postJson("/eve/v1/session", {}));
-      expect(noMessage.status).toBe(400);
+      assert.strictEqual(noMessage.status, 400);
 
       const emptyMessage = await handler(postJson("/eve/v1/session", { message: "" }));
-      expect(emptyMessage.status).toBe(400);
+      assert.strictEqual(emptyMessage.status, 400);
 
       const badJson = await handler(
         createRequest("/eve/v1/session", { method: "POST", body: "not json" }),
       );
-      expect(badJson.status).toBe(400);
+      assert.strictEqual(badJson.status, 400);
     });
 
-    it("rejects non-POST methods with 405", async () => {
+    test("rejects non-POST methods with 405", async () => {
       const handler = textHandler();
       const response = await handler(createRequest("/eve/v1/session"));
-      expect(response.status).toBe(405);
+      assert.strictEqual(response.status, 405);
     });
   });
 
   describe("event stream", () => {
-    it("emits the canonical text turn sequence with protocol headers", async () => {
+    test("emits the canonical text turn sequence with protocol headers", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler, "hi");
 
       const response = await handler(createRequest(`/eve/v1/session/${sessionId}/stream`));
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/x-ndjson; charset=utf-8");
-      expect(response.headers.get("x-eve-stream-format")).toBe("ndjson");
-      expect(response.headers.get("x-eve-stream-version")).toBe("18");
-      expect(response.headers.get("x-eve-session-id")).toBe(sessionId);
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(
+        response.headers.get("content-type"),
+        "application/x-ndjson; charset=utf-8",
+      );
+      assert.strictEqual(response.headers.get("x-eve-stream-format"), "ndjson");
+      assert.strictEqual(response.headers.get("x-eve-stream-version"), "18");
+      assert.strictEqual(response.headers.get("x-eve-session-id"), sessionId);
 
       const events = await readEvents(response);
-      expect(events.map((event) => event.type)).toEqual([
-        "session.started",
-        "turn.started",
-        "message.received",
-        "step.started",
-        "message.appended", // "Hello"
-        "message.appended", // " "
-        "message.appended", // "there"
-        "message.completed",
-        "step.completed",
-        "turn.completed",
-        "session.waiting",
-      ]);
+      assert.deepEqual(
+        events.map((event) => event.type),
+        [
+          "session.started",
+          "turn.started",
+          "message.received",
+          "step.started",
+          "message.appended", // "Hello"
+          "message.appended", // " "
+          "message.appended", // "there"
+          "message.completed",
+          "step.completed",
+          "turn.completed",
+          "session.waiting",
+        ],
+      );
     });
 
-    it("streams cumulative messageSoFar values", async () => {
+    test("streams cumulative messageSoFar values", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler);
 
@@ -169,16 +178,16 @@ describe("createStaticEveHandler", () => {
       const soFars = appended.map((event) =>
         event.type === "message.appended" ? event.data.messageSoFar : "",
       );
-      expect(soFars).toEqual(["Hello", "Hello ", "Hello there"]);
+      assert.deepEqual(soFars, ["Hello", "Hello ", "Hello there"]);
 
       const completed = events.find((event) => event.type === "message.completed");
       if (completed?.type === "message.completed") {
-        expect(completed.data.message).toBe("Hello there");
-        expect(completed.data.finishReason).toBe("stop");
+        assert.strictEqual(completed.data.message, "Hello there");
+        assert.strictEqual(completed.data.finishReason, "stop");
       }
     });
 
-    it("respects autoChunkText: false", async () => {
+    test("respects autoChunkText: false", async () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         async *mockResponse() {
@@ -189,37 +198,37 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const appended = events.filter((event) => event.type === "message.appended");
-      expect(appended).toHaveLength(1);
+      assert.strictEqual(appended.length, 1);
     });
 
-    it("slices the log by startIndex and stamps meta.at timestamps", async () => {
+    test("slices the log by startIndex and stamps meta.at timestamps", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler);
 
       const all = await streamEvents(handler, sessionId);
       const sliced = await streamEvents(handler, sessionId, 4);
-      expect(sliced).toEqual(all.slice(4));
+      assert.deepEqual(sliced, all.slice(4));
       for (const event of all) {
-        expect(event.meta?.at).toEqual(expect.any(String));
+        assert.ok(z.string().safeParse(event.meta?.at).success);
       }
     });
 
-    it("rejects invalid startIndex and unknown sessions", async () => {
+    test("rejects invalid startIndex and unknown sessions", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler);
 
       const invalid = await handler(
         createRequest(`/eve/v1/session/${sessionId}/stream?startIndex=-1`),
       );
-      expect(invalid.status).toBe(400);
+      assert.strictEqual(invalid.status, 400);
 
       const unknown = await handler(createRequest("/eve/v1/session/nope/stream"));
-      expect(unknown.status).toBe(404);
+      assert.strictEqual(unknown.status, 404);
     });
   });
 
   describe("part translation", () => {
-    it("translates reasoning parts before text in the same step", async () => {
+    test("translates reasoning parts before text in the same step", async () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         autoChunkReasoning: false,
@@ -232,7 +241,7 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const types = events.map((event) => event.type);
-      expect(types).toEqual([
+      assert.deepEqual(types, [
         "session.started",
         "turn.started",
         "message.received",
@@ -250,10 +259,10 @@ describe("createStaticEveHandler", () => {
           (event) => event.type === "reasoning.completed" || event.type === "message.completed",
         )
         .map((event) => ("stepIndex" in event.data ? event.data.stepIndex : -1));
-      expect(stepIndexes).toEqual([0, 0]);
+      assert.deepEqual(stepIndexes, [0, 0]);
     });
 
-    it("translates tool calls into actions.requested + action.result across steps", async () => {
+    test("translates tool calls into actions.requested + action.result across steps", async () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         async *mockResponse() {
@@ -271,17 +280,17 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const requested = events.find((event) => event.type === "actions.requested");
-      expect(requested).toBeDefined();
+      assert.notStrictEqual(requested, undefined);
       if (requested?.type === "actions.requested") {
-        expect(requested.data.actions).toEqual([
+        assert.deepEqual(requested.data.actions, [
           { callId: "call_1", input: { location: "SF" }, kind: "tool-call", toolName: "weather" },
         ]);
       }
 
       const result = events.find((event) => event.type === "action.result");
       if (result?.type === "action.result") {
-        expect(result.data.status).toBe("completed");
-        expect(result.data.result).toEqual({
+        assert.strictEqual(result.data.status, "completed");
+        assert.deepEqual(result.data.result, {
           callId: "call_1",
           kind: "tool-result",
           output: { tempF: 68 },
@@ -291,10 +300,10 @@ describe("createStaticEveHandler", () => {
 
       // Tool step and text step share stepIndex 0: no text preceded the tool.
       const stepStarts = events.filter((event) => event.type === "step.started");
-      expect(stepStarts).toHaveLength(1);
+      assert.strictEqual(stepStarts.length, 1);
     });
 
-    it("breaks to a new step when a tool follows streamed text", async () => {
+    test("breaks to a new step when a tool follows streamed text", async () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         async *mockResponse() {
@@ -313,15 +322,15 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const stepStarts = events.filter((event) => event.type === "step.started");
-      expect(stepStarts).toHaveLength(2);
+      assert.strictEqual(stepStarts.length, 2);
 
       const requested = events.find((event) => event.type === "actions.requested");
       if (requested?.type === "actions.requested") {
-        expect(requested.data.stepIndex).toBe(1);
+        assert.strictEqual(requested.data.stepIndex, 1);
       }
     });
 
-    it("translates tool errors into failed action results", async () => {
+    test("translates tool errors into failed action results", async () => {
       const handler = createStaticEveHandler({
         async *mockResponse() {
           yield {
@@ -339,16 +348,16 @@ describe("createStaticEveHandler", () => {
       const events = await streamEvents(handler, sessionId);
       const result = events.find((event) => event.type === "action.result");
       if (result?.type === "action.result") {
-        expect(result.data.status).toBe("failed");
-        expect(result.data.error).toEqual({
+        assert.strictEqual(result.data.status, "failed");
+        assert.deepEqual(result.data.error, {
           code: "TOOL_EXECUTION_FAILED",
           message: "Search unavailable.",
         });
-        expect(result.data.result.isError).toBe(true);
+        assert.strictEqual(result.data.result.isError, true);
       }
     });
 
-    it("rejects parts with no eve representation via turn failure", async () => {
+    test("rejects parts with no eve representation via turn failure", async () => {
       const handler = createStaticEveHandler({
         async *mockResponse() {
           yield { type: "data-chart", data: { rows: [] } };
@@ -358,16 +367,16 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const failed = events.find((event) => event.type === "turn.failed");
-      expect(failed).toBeDefined();
+      assert.notStrictEqual(failed, undefined);
       if (failed?.type === "turn.failed") {
-        expect(failed.data.message).toContain('"data-chart"');
+        assert.ok(failed.data.message.includes('"data-chart"'));
       }
-      expect(events.at(-1)?.type).toBe("session.failed");
+      assert.strictEqual(events.at(-1)?.type, "session.failed");
     });
   });
 
   describe("multi-turn conversations", () => {
-    it("continues a session and passes accumulated history to mockResponse", async () => {
+    test("continues a session and passes accumulated history to mockResponse", async () => {
       const seenHistories: string[][] = [];
       const handler = createStaticEveHandler({
         autoChunkText: false,
@@ -383,15 +392,15 @@ describe("createStaticEveHandler", () => {
       const continueResponse = await handler(
         postJson(`/eve/v1/session/${sessionId}`, { continuationToken, message: "two" }),
       );
-      expect(continueResponse.status).toBe(200);
+      assert.strictEqual(continueResponse.status, 200);
       const continueBody: unknown = await continueResponse.json();
-      expect(continueBody).toEqual({ ok: true, sessionId });
+      assert.deepEqual(continueBody, { ok: true, sessionId });
 
       const secondTurn = await streamEvents(handler, sessionId, firstTurn.length);
-      expect(secondTurn[0]?.type).toBe("turn.started"); // no session.started on turn 2
-      expect(secondTurn.at(-1)?.type).toBe("session.waiting");
+      assert.strictEqual(secondTurn[0]?.type, "turn.started"); // no session.started on turn 2
+      assert.strictEqual(secondTurn.at(-1)?.type, "session.waiting");
 
-      expect(seenHistories).toEqual([
+      assert.deepEqual(seenHistories, [
         ["user:turn-1:user"],
         ["user:turn-1:user", "assistant:turn-1:assistant", "user:turn-2:user"],
       ]);
@@ -399,10 +408,10 @@ describe("createStaticEveHandler", () => {
       const turnIds = secondTurn
         .filter((event) => event.type === "turn.started")
         .map((event) => (event.type === "turn.started" ? event.data.turnId : ""));
-      expect(turnIds).toEqual(["turn-2"]);
+      assert.deepEqual(turnIds, ["turn-2"]);
     });
 
-    it("keeps sequence numbers session-monotonic across turns", async () => {
+    test("keeps sequence numbers session-monotonic across turns", async () => {
       const handler = textHandler();
       const { sessionId, continuationToken } = await createSession(handler);
       await handler(
@@ -414,23 +423,23 @@ describe("createStaticEveHandler", () => {
         "sequence" in event.data ? [event.data.sequence] : [],
       );
       const sorted = [...sequences].sort((a, b) => a - b);
-      expect(sequences).toEqual(sorted);
-      expect(new Set(sequences).size).toBe(sequences.length);
+      assert.deepEqual(sequences, sorted);
+      assert.strictEqual(new Set(sequences).size, sequences.length);
     });
 
-    it("rejects continues for unknown sessions, missing tokens, and HITL-only turns", async () => {
+    test("rejects continues for unknown sessions, missing tokens, and HITL-only turns", async () => {
       const handler = textHandler();
       const { sessionId, continuationToken } = await createSession(handler);
 
       const unknown = await handler(
         postJson("/eve/v1/session/nope", { continuationToken, message: "hi" }),
       );
-      expect(unknown.status).toBe(404);
+      assert.strictEqual(unknown.status, 404);
 
       const missingToken = await handler(
         postJson(`/eve/v1/session/${sessionId}`, { message: "hi" }),
       );
-      expect(missingToken.status).toBe(400);
+      assert.strictEqual(missingToken.status, 400);
 
       const hitlOnly = await handler(
         postJson(`/eve/v1/session/${sessionId}`, {
@@ -438,14 +447,14 @@ describe("createStaticEveHandler", () => {
           inputResponses: [{ requestId: "r1", optionId: "yes" }],
         }),
       );
-      expect(hitlOnly.status).toBe(400);
+      assert.strictEqual(hitlOnly.status, 400);
       const body = z.object({ error: z.string() }).parse(await hitlOnly.json());
-      expect(body.error).toContain("inputResponses");
+      assert.ok(body.error.includes("inputResponses"));
     });
   });
 
   describe("failures", () => {
-    it("streams turn.failed + session.failed when mockResponse throws", async () => {
+    test("streams turn.failed + session.failed when mockResponse throws", async () => {
       const handler = createStaticEveHandler({
         // eslint-disable-next-line require-yield
         async *mockResponse() {
@@ -456,7 +465,7 @@ describe("createStaticEveHandler", () => {
 
       const events = await streamEvents(handler, sessionId);
       const types = events.map((event) => event.type);
-      expect(types).toEqual([
+      assert.deepEqual(types, [
         "session.started",
         "turn.started",
         "message.received",
@@ -465,13 +474,13 @@ describe("createStaticEveHandler", () => {
       ]);
       const failed = events.at(-1);
       if (failed?.type === "session.failed") {
-        expect(failed.data.message).toBe("Scripted failure.");
-        expect(failed.data.code).toBe("MOCK_RESPONSE_FAILED");
-        expect(failed.data.sessionId).toBe(sessionId);
+        assert.strictEqual(failed.data.message, "Scripted failure.");
+        assert.strictEqual(failed.data.code, "MOCK_RESPONSE_FAILED");
+        assert.strictEqual(failed.data.sessionId, sessionId);
       }
     });
 
-    it("treats an empty mockResponse as a failure", async () => {
+    test("treats an empty mockResponse as a failure", async () => {
       const handler = createStaticEveHandler({
         async *mockResponse() {
           // yields nothing
@@ -480,12 +489,12 @@ describe("createStaticEveHandler", () => {
       const { sessionId } = await createSession(handler);
 
       const events = await streamEvents(handler, sessionId);
-      expect(events.at(-1)?.type).toBe("session.failed");
+      assert.strictEqual(events.at(-1)?.type, "session.failed");
     });
   });
 
   describe("routing and CORS", () => {
-    it("routes under any mount prefix", async () => {
+    test("routes under any mount prefix", async () => {
       const handler = textHandler();
       const response = await handler(
         new Request(`${HOST}/api/mock/abc123/eve/v1/session`, {
@@ -493,37 +502,37 @@ describe("createStaticEveHandler", () => {
           body: JSON.stringify({ message: "hi" }),
         }),
       );
-      expect(response.status).toBe(202);
+      assert.strictEqual(response.status, 202);
     });
 
-    it("serves health and 404s unknown routes", async () => {
+    test("serves health and 404s unknown routes", async () => {
       const handler = textHandler();
 
       const health = await handler(createRequest("/eve/v1/health"));
-      expect(health.status).toBe(200);
+      assert.strictEqual(health.status, 200);
       const healthBody: unknown = await health.json();
-      expect(healthBody).toMatchObject({ ok: true, status: "ready" });
+      assert.partialDeepStrictEqual(healthBody, { ok: true, status: "ready" });
 
       const notEve = await handler(createRequest("/api/chat"));
-      expect(notEve.status).toBe(404);
+      assert.strictEqual(notEve.status, 404);
 
       const unknown = await handler(createRequest("/eve/v1/nope"));
-      expect(unknown.status).toBe(404);
+      assert.strictEqual(unknown.status, 404);
     });
 
-    it("answers preflight and exposes eve headers by default", async () => {
+    test("answers preflight and exposes eve headers by default", async () => {
       const handler = textHandler();
 
       const preflight = await handler(createRequest("/eve/v1/session", { method: "OPTIONS" }));
-      expect(preflight.status).toBe(204);
-      expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
+      assert.strictEqual(preflight.status, 204);
+      assert.strictEqual(preflight.headers.get("access-control-allow-origin"), "*");
 
       const { sessionId } = await createSession(handler);
       const stream = await handler(createRequest(`/eve/v1/session/${sessionId}/stream`));
-      expect(stream.headers.get("access-control-expose-headers")).toContain("x-eve-session-id");
+      assert.ok(stream.headers.get("access-control-expose-headers")?.includes("x-eve-session-id"));
     });
 
-    it("supports cors: false and single-origin cors", async () => {
+    test("supports cors: false and single-origin cors", async () => {
       const noCors = createStaticEveHandler({
         cors: false,
         async *mockResponse() {
@@ -531,7 +540,7 @@ describe("createStaticEveHandler", () => {
         },
       });
       const response = await noCors(postJson("/eve/v1/session", { message: "hi" }));
-      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+      assert.strictEqual(response.headers.get("access-control-allow-origin"), null);
 
       const singleOrigin = createStaticEveHandler({
         cors: { origin: "https://demo.test" },
@@ -540,12 +549,12 @@ describe("createStaticEveHandler", () => {
         },
       });
       const scoped = await singleOrigin(postJson("/eve/v1/session", { message: "hi" }));
-      expect(scoped.headers.get("access-control-allow-origin")).toBe("https://demo.test");
+      assert.strictEqual(scoped.headers.get("access-control-allow-origin"), "https://demo.test");
     });
   });
 
   describe("options", () => {
-    it("uses injected sessionStore, generateSessionId, and now", async () => {
+    test("uses injected sessionStore, generateSessionId, and now", async () => {
       const store = createMemoryEveSessionStore();
       const handler = createStaticEveHandler({
         sessionStore: store,
@@ -557,16 +566,17 @@ describe("createStaticEveHandler", () => {
       });
 
       const { sessionId } = await createSession(handler);
-      expect(sessionId).toBe("fixed-session");
+      assert.strictEqual(sessionId, "fixed-session");
 
       const record = await store.get("fixed-session");
-      expect(record).toBeDefined();
-      expect(record?.events.every((event) => event.meta?.at === "2026-07-09T00:00:00.000Z")).toBe(
+      assert.notStrictEqual(record, undefined);
+      assert.strictEqual(
+        record?.events.every((event) => event.meta?.at === "2026-07-09T00:00:00.000Z"),
         true,
       );
     });
 
-    it("passes clientContext through as requestMetadata", async () => {
+    test("passes clientContext through as requestMetadata", async () => {
       const seen: unknown[] = [];
       const handler = createStaticEveHandler({
         async *mockResponse({ requestMetadata }) {
@@ -578,10 +588,10 @@ describe("createStaticEveHandler", () => {
       await handler(
         postJson("/eve/v1/session", { message: "hi", clientContext: { page: "/pricing" } }),
       );
-      expect(seen).toEqual([{ page: "/pricing" }]);
+      assert.deepEqual(seen, [{ page: "/pricing" }]);
     });
 
-    it("applies chunk delays only to content events", async () => {
+    test("applies chunk delays only to content events", async () => {
       const delayed: string[] = [];
       const handler = createStaticEveHandler({
         chunkDelayMs: (event) => {
@@ -595,15 +605,15 @@ describe("createStaticEveHandler", () => {
       const { sessionId } = await createSession(handler);
       await streamEvents(handler, sessionId);
 
-      expect(new Set(delayed)).toEqual(new Set(["message.appended"]));
-      expect(delayed).toHaveLength(3); // "a", " ", "b"
+      assert.deepEqual(new Set(delayed), new Set(["message.appended"]));
+      assert.strictEqual(delayed.length, 3); // "a", " ", "b"
     });
   });
 });
 
 describe("integration with the real eve client", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
+    globalThis.fetch = originalFetch;
   });
 
   async function importEveClient() {
@@ -611,12 +621,11 @@ describe("integration with the real eve client", () => {
   }
 
   function stubFetchWith(handler: (request: Request) => Promise<Response>) {
-    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
-      handler(new Request(input, init)),
-    );
+    globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
+      handler(new Request(input, init));
   }
 
-  it("completes a two-turn conversation through eve's ClientSession", async () => {
+  test("completes a two-turn conversation through eve's ClientSession", async () => {
     const { Client } = await importEveClient();
     const handler = createStaticEveHandler({
       autoChunkText: false,
@@ -634,17 +643,17 @@ describe("integration with the real eve client", () => {
     for await (const event of first) {
       firstEvents.push(event);
     }
-    expect(firstEvents.at(-1)?.type).toBe("session.waiting");
-    expect(session.state.sessionId).toBeDefined();
-    expect(session.state.streamIndex).toBe(firstEvents.length);
+    assert.strictEqual(firstEvents.at(-1)?.type, "session.waiting");
+    assert.notStrictEqual(session.state.sessionId, undefined);
+    assert.strictEqual(session.state.streamIndex, firstEvents.length);
 
     const second = await session.send("again");
     const result = await second.result();
-    expect(result.status).toBe("waiting");
-    expect(result.message).toBe("Turn 2 reply");
+    assert.strictEqual(result.status, "waiting");
+    assert.strictEqual(result.message, "Turn 2 reply");
   });
 
-  it("surfaces scripted failures as a failed session", async () => {
+  test("surfaces scripted failures as a failed session", async () => {
     const { Client } = await importEveClient();
     const handler = createStaticEveHandler({
       // eslint-disable-next-line require-yield
@@ -662,10 +671,10 @@ describe("integration with the real eve client", () => {
     for await (const event of response) {
       events.push(event);
     }
-    expect(events.at(-1)?.type).toBe("session.failed");
+    assert.strictEqual(events.at(-1)?.type, "session.failed");
   });
 
-  it("renders tool turns through eve's default message reducer shape", async () => {
+  test("renders tool turns through eve's default message reducer shape", async () => {
     const { Client } = await importEveClient();
     const handler = createStaticEveHandler({
       autoChunkText: false,
@@ -687,17 +696,17 @@ describe("integration with the real eve client", () => {
     const response = await session.send("weather?");
     const result = await response.result();
 
-    expect(result.status).toBe("waiting");
-    expect(result.message).toBe("68F and sunny.");
+    assert.strictEqual(result.status, "waiting");
+    assert.strictEqual(result.message, "68F and sunny.");
     const actionEvents = result.events.filter(
       (event) => event.type === "actions.requested" || event.type === "action.result",
     );
-    expect(actionEvents).toHaveLength(2);
+    assert.strictEqual(actionEvents.length, 2);
   });
 });
 
 describe("type parity with StaticChatTransport", () => {
-  it("accepts the same mockResponse function for both transports", async () => {
+  test("accepts the same mockResponse function for both transports", async () => {
     const { StaticChatTransport } = await import("./index");
 
     async function* sharedMockResponse() {
@@ -708,8 +717,8 @@ describe("type parity with StaticChatTransport", () => {
     const transport = new StaticChatTransport<UIMessage>({ mockResponse: sharedMockResponse });
     const handler = createStaticEveHandler<UIMessage>({ mockResponse: sharedMockResponse });
 
-    expect(transport).toBeDefined();
+    assert.notStrictEqual(transport, undefined);
     const response = await handler(postJson("/eve/v1/session", { message: "hi" }));
-    expect(response.status).toBe(202);
+    assert.strictEqual(response.status, 202);
   });
 });

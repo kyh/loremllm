@@ -10,7 +10,7 @@
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "TURSO_DATABASE_URL=http://127.0.0.1:8080 node --import tsx --test 'src/**/*.test.ts'",
     "seed": "pnpm with-env tsx scripts/seed.ts",
     "seed:remote": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts",
     "with-env": "dotenv -e ../../.env --",
@@ -29,7 +29,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "drizzle-orm": "^0.45.2",
-    "typescript": "catalog:",
-    "vitest": "^4.1.11"
+    "tsx": "^4.23.12",
+    "typescript": "catalog:"
   }
 }

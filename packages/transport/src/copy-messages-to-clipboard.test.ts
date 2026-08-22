@@ -1,5 +1,7 @@
+import assert from "node:assert/strict";
+import { afterEach, beforeEach, describe, mock, test } from "node:test";
 import type { UIMessage } from "ai";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { copyMessagesToClipboard } from "./copy-messages-to-clipboard";
 import type { ToolPart } from "./index";
@@ -22,7 +24,7 @@ const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalScope, "naviga
 const originalAlert = globalScope.alert;
 const hadAlert = Object.prototype.hasOwnProperty.call(globalScope, "alert");
 
-let alertSpy: ReturnType<typeof vi.fn<(message?: string) => void>>;
+const alertSpy = mock.fn((_message?: string): void => {});
 let messageId = 0;
 
 const createMessage = (
@@ -45,7 +47,7 @@ const setNavigator = (value: NavigatorWithClipboard | undefined): void => {
 
 beforeEach(() => {
   messageId = 0;
-  alertSpy = vi.fn();
+  alertSpy.mock.resetCalls();
   globalScope.alert = alertSpy;
   setNavigator(undefined);
 });
@@ -63,12 +65,12 @@ afterEach(() => {
     globalScope.alert = undefined;
   }
 
-  vi.restoreAllMocks();
+  mock.restoreAll();
 });
 
 describe("copyMessagesToClipboard", () => {
-  it("copies assistant messages to the clipboard and alerts success", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
+  test("copies assistant messages to the clipboard and alerts success", async () => {
+    const writeText = mock.fn((_value: string): Promise<void> => Promise.resolve());
     setNavigator({
       clipboard: { writeText },
     });
@@ -82,22 +84,23 @@ describe("copyMessagesToClipboard", () => {
     copyMessagesToClipboard({ messages });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(writeText).toHaveBeenCalledTimes(1);
-    const [template] = writeText.mock.calls[0] ?? [];
-    expect(template).toEqual(expect.any(String));
-    expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
-    expect(template).toContain("chunkDelayMs: [50, 100],");
-    expect(template).toContain("async *mockResponse() {");
-    expect(template).toContain('"text": "Hi there"');
-    expect(template).toContain('"text": "What else can I help with?"');
-    expect(template.trim().endsWith("});")).toBe(true);
+    assert.strictEqual(writeText.mock.callCount(), 1);
+    const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
+    assert.ok(template.includes('import { StaticChatTransport } from "@loremllm/transport";'));
+    assert.ok(template.includes("chunkDelayMs: [50, 100],"));
+    assert.ok(template.includes("async *mockResponse() {"));
+    assert.ok(template.includes('"text": "Hi there"'));
+    assert.ok(template.includes('"text": "What else can I help with?"'));
+    assert.strictEqual(template.trim().endsWith("});"), true);
 
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith("Static transport template copied to your clipboard.");
+    assert.strictEqual(alertSpy.mock.callCount(), 1);
+    assert.deepEqual(alertSpy.mock.calls[0]?.arguments, [
+      "Static transport template copied to your clipboard.",
+    ]);
   });
 
-  it("alerts and exits when no assistant messages are present", () => {
-    const writeText = vi.fn();
+  test("alerts and exits when no assistant messages are present", () => {
+    const writeText = mock.fn((_value: string): void => {});
     setNavigator({
       clipboard: { writeText },
     });
@@ -106,27 +109,34 @@ describe("copyMessagesToClipboard", () => {
       messages: [createMessage("user", [{ type: "text", text: "Only user input" }])],
     });
 
-    expect(writeText).not.toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith("No assistant messages were found to copy.");
+    assert.strictEqual(writeText.mock.callCount(), 0);
+    assert.strictEqual(alertSpy.mock.callCount(), 1);
+    assert.deepEqual(alertSpy.mock.calls[0]?.arguments, [
+      "No assistant messages were found to copy.",
+    ]);
   });
 
-  it("throws when clipboard access is unavailable", () => {
+  test("throws when clipboard access is unavailable", () => {
     setNavigator({});
 
-    expect(() => {
-      copyMessagesToClipboard({
-        messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
-      });
-    }).toThrow("Clipboard access is not available in this environment.");
+    assert.throws(
+      () => {
+        copyMessagesToClipboard({
+          messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
+        });
+      },
+      { message: "Clipboard access is not available in this environment." },
+    );
 
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith("Clipboard access is not available in this environment.");
+    assert.strictEqual(alertSpy.mock.callCount(), 1);
+    assert.deepEqual(alertSpy.mock.calls[0]?.arguments, [
+      "Clipboard access is not available in this environment.",
+    ]);
   });
 
-  it("propagates clipboard errors and alerts the failure", async () => {
+  test("propagates clipboard errors and alerts the failure", async () => {
     const writeTextError = new Error("Permission denied");
-    const writeText = vi.fn().mockRejectedValue(writeTextError);
+    const writeText = mock.fn((_value: string): Promise<void> => Promise.reject(writeTextError));
     setNavigator({
       clipboard: { writeText },
     });
@@ -138,15 +148,15 @@ describe("copyMessagesToClipboard", () => {
     // Wait for the promise to reject and error handling to complete
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(writeText).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(
+    assert.strictEqual(writeText.mock.callCount(), 1);
+    assert.strictEqual(alertSpy.mock.callCount(), 1);
+    assert.deepEqual(alertSpy.mock.calls[0]?.arguments, [
       "Failed to copy the static transport template.\n\nPermission denied",
-    );
+    ]);
   });
 
-  it("includes tool parts in the copied template", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
+  test("includes tool parts in the copied template", async () => {
+    const writeText = mock.fn((_value: string): Promise<void> => Promise.resolve());
     setNavigator({
       clipboard: { writeText },
     });
@@ -171,21 +181,20 @@ describe("copyMessagesToClipboard", () => {
     copyMessagesToClipboard({ messages });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(writeText).toHaveBeenCalledTimes(1);
-    const [template] = writeText.mock.calls[0] ?? [];
-    expect(template).toEqual(expect.any(String));
-    expect(template).toContain('import { StaticChatTransport } from "@loremllm/transport";');
-    expect(template).toContain("chunkDelayMs: [50, 100],");
-    expect(template).toContain('"type": "tool-weather"');
-    expect(template).toContain(`"toolCallId": "${toolCallId}"`);
-    expect(template).toContain('"toolName": "weather"');
-    expect(template).toContain('"state": "input-available"');
-    expect(template).toContain('"input"');
-    expect(template).toContain('"text": "The weather is sunny."');
+    assert.strictEqual(writeText.mock.callCount(), 1);
+    const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
+    assert.ok(template.includes('import { StaticChatTransport } from "@loremllm/transport";'));
+    assert.ok(template.includes("chunkDelayMs: [50, 100],"));
+    assert.ok(template.includes('"type": "tool-weather"'));
+    assert.ok(template.includes(`"toolCallId": "${toolCallId}"`));
+    assert.ok(template.includes('"toolName": "weather"'));
+    assert.ok(template.includes('"state": "input-available"'));
+    assert.ok(template.includes('"input"'));
+    assert.ok(template.includes('"text": "The weather is sunny."'));
   });
 
-  it("reconstructs input-available parts from output-available parts", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
+  test("reconstructs input-available parts from output-available parts", async () => {
+    const writeText = mock.fn((_value: string): Promise<void> => Promise.resolve());
     setNavigator({
       clipboard: { writeText },
     });
@@ -207,20 +216,19 @@ describe("copyMessagesToClipboard", () => {
     copyMessagesToClipboard({ messages });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(writeText).toHaveBeenCalledTimes(1);
-    const [template] = writeText.mock.calls[0] ?? [];
-    expect(template).toEqual(expect.any(String));
+    assert.strictEqual(writeText.mock.callCount(), 1);
+    const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
 
     // Should contain both input-available and output-available parts
     const inputAvailableIndex = template.indexOf('"state": "input-available"');
     const outputAvailableIndex = template.indexOf('"state": "output-available"');
 
-    expect(inputAvailableIndex).toBeGreaterThan(-1);
-    expect(outputAvailableIndex).toBeGreaterThan(-1);
+    assert.ok(inputAvailableIndex > -1);
+    assert.ok(outputAvailableIndex > -1);
     // input-available should come before output-available
-    expect(inputAvailableIndex).toBeLessThan(outputAvailableIndex);
-    expect(template).toContain(`"toolCallId": "${toolCallId}"`);
-    expect(template).toContain('"input"');
-    expect(template).toContain('"output"');
+    assert.ok(inputAvailableIndex < outputAvailableIndex);
+    assert.ok(template.includes(`"toolCallId": "${toolCallId}"`));
+    assert.ok(template.includes('"input"'));
+    assert.ok(template.includes('"output"'));
   });
 });
