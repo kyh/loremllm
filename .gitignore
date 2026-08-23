@@ -60,4 +60,3 @@ local.*
 .claude/scheduled_tasks.lock
 .claude/worktrees
 .playwright-mcp/
-.vscode
