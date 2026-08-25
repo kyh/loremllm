@@ -121,8 +121,8 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 
 - `apps/web` · `packages/{api,db,transport,ui}`
 - `CLAUDE.md` — conventions + command list (Claude-specific)
-- `packages/api/src/auth/auth.ts` — auth config, org provisioning hook, rate limit
-- `packages/api/src/orpc.ts` — procedures, org resolution; CSRF lives in the `/api/orpc` route + link plugins
+- `packages/api/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is `/api/orpc`'s cross-site defense
+- `packages/api/src/orpc.ts` — procedures, org resolution
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors)
 - `packages/api/scripts/seed.ts` — the seed · `packages/api/scripts/interactions/` — its markdown fixtures
 - `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors

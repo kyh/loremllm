@@ -2,35 +2,22 @@ import type { NextRequest } from "next/server";
 import { appRouter, createORPCContext } from "@repo/api";
 import { onError, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
-import { SimpleCsrfProtectionHandlerPlugin } from "@orpc/server/plugins";
 
-// No CORS headers: nothing consumes this route cross-origin. The dashboard is
-// served same-origin, and the documented external surfaces are /api/chat and
-// /api/eve, which set their own CORS. A wildcard here would let any page fan
-// per-call embedding costs across its visitors' IPs.
-//
-// SimpleCsrfProtection requires an `x-csrf-token` header, which the paired link
-// plugin sends and an HTML form cannot set — and a cross-origin fetch that
-// tries to set it needs a preflight this route never answers.
-
-// Errors that are normal control flow, not server faults: unauthenticated,
-// forbidden, missing row, rejected input, and requests the transport plugins
-// turn away (header-less CSRF probes, GETs on POST-only procedures). Logging
-// them would just add noise.
-const EXPECTED_ERROR_CODES = new Set([
-  "UNAUTHORIZED",
-  "FORBIDDEN",
-  "NOT_FOUND",
-  "BAD_REQUEST",
-  "CSRF_TOKEN_MISMATCH",
-  "METHOD_NOT_SUPPORTED",
-]);
-
+// No CORS headers, and none belong here: nothing consumes this route
+// cross-origin. The dashboard is served same-origin, and the documented
+// external surfaces are /api/chat and /api/eve, which set their own CORS.
+// Cross-site protection is the session cookie's SameSite=Lax — a forged
+// cross-site POST arrives with no session and does nothing. Credentialed CORS
+// headers here would hand a cross-origin page authenticated access and undo
+// that, letting any page fan per-call embedding costs across its visitors'
+// IPs. GET, the one method a cookie-bearing navigation can reach, is refused
+// by the handler's default `allowMethods`.
 const handler = new RPCHandler(appRouter, {
-  plugins: [new SimpleCsrfProtectionHandlerPlugin()],
-  interceptors: [
+  clientInterceptors: [
     onError((error) => {
-      if (error instanceof ORPCError && EXPECTED_ERROR_CODES.has(error.code)) return;
+      // An ORPCError is a procedure answering deliberately — rejected input, a
+      // missing row, a caller without access. Everything else is a real fault.
+      if (error instanceof ORPCError) return;
       console.error(">>> oRPC Error", error);
     }),
   ],

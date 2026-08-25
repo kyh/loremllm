@@ -40,9 +40,9 @@ const o = os.$context<ORPCContext>();
 /**
  * Public (unauthed) procedure. Does not require a session, but
  * `context.session` is still populated when the caller happens to be logged
- * in. Cross-site request forgery on /api/orpc is handled at the transport:
- * SimpleCsrfProtectionHandlerPlugin on the route requires an `x-csrf-token`
- * header that only the paired link plugin sends.
+ * in. Cross-site request forgery on /api/orpc is handled by the session
+ * cookie's SameSite=Lax: a forged cross-site POST carries no session, so every
+ * procedure below it sees an anonymous caller.
  *
  * @see https://orpc.dev/docs/procedure
  */

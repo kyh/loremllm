@@ -1,10 +1,15 @@
-import { ORPCError } from "@orpc/server";
+import { COMMON_ERROR_STATUS_MAP, ORPCError } from "@orpc/server";
 
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
 import { handleMarkdownParsing } from "./markdown-handler";
 import { parseRequestPayload, PayloadError } from "./schema";
 import { extractUserQuery } from "./utils";
+
+// oRPC's own code-to-HTTP mapping, widened because `ORPCError["code"]` admits
+// any string: a caller's custom code lands on the 500 fallback instead of
+// indexing off the end of the map.
+const orpcErrorStatus: Record<string, number | undefined> = COMMON_ERROR_STATUS_MAP;
 
 function applyCors(response: Response, origin?: string) {
   const headers = new Headers(response.headers);
@@ -71,7 +76,11 @@ export async function POST(request: Request) {
     console.error("Error processing request:", error);
 
     const status =
-      error instanceof PayloadError ? 400 : error instanceof ORPCError ? error.status : 500;
+      error instanceof PayloadError
+        ? 400
+        : error instanceof ORPCError
+          ? (orpcErrorStatus[error.code] ?? 500)
+          : 500;
 
     return applyCors(
       new Response(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, {
