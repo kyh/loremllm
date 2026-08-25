@@ -37,10 +37,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
     minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
   });
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
-    void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
-  };
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
 
   const updateCollection = useMutation({
     ...orpc.collection.update.mutationOptions(),

@@ -112,7 +112,7 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 ## Rules that matter
 
 - **Mutations go through oRPC or the better-auth client — never Next Server Actions.** There are none in `apps/web/src`; keep it that way.
-- **Every `useMutation` declares its own `onSuccess` invalidation.** There is no global `MutationCache` net (`apps/web/src/orpc/query-client.ts`), so a mutation added without one leaves stale UI. Note that editing an interaction also touches its collection's `updatedAt`, and the sidebar is ordered by it — such a mutation must invalidate `collection.list` as well as `collection.byId`.
+- **Every `useMutation` declares its own `onSuccess` invalidation.** There is no global `MutationCache` net (`apps/web/src/orpc/query-client.ts`), so a mutation added without one leaves stale UI. Invalidate the router key you affected (`orpc.collection.key()` — a partial-match prefix covering every `collection.*` query) unless you can name the single procedure that moved; an interaction write also bumps its collection's `updatedAt`, and the sidebar is ordered by it.
 - **No `any`, no non-null `!`, no `as` casts.** Kebab-case filenames. Make illegal states unrepresentable.
 - **Org scoping lives in `organizationProcedure`**, not in input schemas — don't re-declare it as procedure input.
 - Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/api/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.

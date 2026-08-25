@@ -43,8 +43,7 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
   const createInteraction = useMutation({
     ...orpc.interaction.create.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
       setForm(emptyForm);
       toast.success("Mock interaction saved");
     },

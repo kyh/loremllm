@@ -49,13 +49,13 @@ const interactionQueryRow = z.object({
   similarity: z.number(),
 });
 
-const embedOrThrow = async (text: string) => {
+const embedOrThrow = async (text: string, subject: string) => {
   try {
     return await generateEmbedding(text);
   } catch (error) {
-    console.error("Failed to generate embedding:", error);
+    console.error(`Failed to generate ${subject} embedding:`, error);
     throw new ORPCError("INTERNAL_SERVER_ERROR", {
-      message: "Failed to generate embedding for interaction input",
+      message: `Failed to generate embedding for ${subject}`,
     });
   }
 };
@@ -84,11 +84,12 @@ export const interactionRouter = {
           description: input.description,
           input: input.input,
         }),
+        "interaction input",
       );
 
       const now = new Date();
 
-      const result = await context.db.transaction(async (tx) => {
+      return context.db.transaction(async (tx) => {
         const [interaction] = await tx
           .insert(mockInteraction)
           .values({
@@ -115,18 +116,6 @@ export const interactionRouter = {
 
         return interaction;
       });
-
-      return {
-        id: result.id,
-        collectionId: result.collectionId,
-        title: result.title,
-        description: result.description,
-        input: result.input,
-        output: result.output,
-        responseSchema: result.responseSchema,
-        createdAt: result.createdAt,
-        updatedAt: result.updatedAt,
-      };
     }),
 
   update: organizationProcedure
@@ -162,7 +151,10 @@ export const interactionRouter = {
         matchInput !== interaction.input;
 
       const embedding = matchingTextChanged
-        ? await embedOrThrow(buildEmbeddingText({ title, description, input: matchInput }))
+        ? await embedOrThrow(
+            buildEmbeddingText({ title, description, input: matchInput }),
+            "interaction input",
+          )
         : null;
 
       const now = new Date();
@@ -175,7 +167,7 @@ export const interactionRouter = {
         updatedAt: now,
       };
 
-      const result = await context.db.transaction(async (tx) => {
+      return context.db.transaction(async (tx) => {
         const [updatedInteraction] = await tx
           .update(mockInteraction)
           .set(
@@ -199,18 +191,6 @@ export const interactionRouter = {
 
         return updatedInteraction;
       });
-
-      return {
-        id: result.id,
-        collectionId: result.collectionId,
-        title: result.title,
-        description: result.description,
-        input: result.input,
-        output: result.output,
-        responseSchema: result.responseSchema,
-        createdAt: result.createdAt,
-        updatedAt: result.updatedAt,
-      };
     }),
 
   delete: organizationProcedure
@@ -263,16 +243,7 @@ export const interactionRouter = {
       }
     }
 
-    // Generate embedding for the query
-    let queryEmbedding: number[];
-    try {
-      queryEmbedding = await generateEmbedding(input.query);
-    } catch (error) {
-      console.error("Failed to generate query embedding:", error);
-      throw new ORPCError("INTERNAL_SERVER_ERROR", {
-        message: "Failed to generate embedding for query",
-      });
-    }
+    const queryEmbedding = await embedOrThrow(input.query, "query");
 
     // Use Turso's vector_distance_cos function to find similar interactions.
     // Cosine distance is lower-is-better, so order ascending and report

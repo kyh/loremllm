@@ -70,37 +70,42 @@ export const protectedProcedure = publicProcedure.use(({ context, next }) => {
 /**
  * Organization-scoped procedure
  *
- * Builds on `protectedProcedure` and additionally guarantees the session has an
- * active organization, exposing it as `context.organizationId`.
+ * Builds on `protectedProcedure` and additionally proves the caller is a member
+ * of the organization it exposes as `context.organizationId`.
  *
- * Sessions created during sign-up can miss the active organization (the
- * organization is created in a parallel hook), so fall back to the user's
- * first membership and persist it on the session.
+ * The membership row is the authority, not the session: a revoked or stale
+ * `activeOrganizationId` would otherwise keep granting every handler that scopes
+ * by it access to that tenant's rows. Sessions created during sign-up can miss
+ * the active organization (the organization is created in a parallel hook), so
+ * an absent one falls back to the user's first membership and persists it.
  */
 export const organizationProcedure = protectedProcedure.use(async ({ context, next }) => {
-  let organizationId = context.session.session.activeOrganizationId ?? null;
+  const activeOrganizationId = context.session.session.activeOrganizationId;
 
-  if (!organizationId) {
-    const membership = await context.db.query.member.findFirst({
-      where: (member, { eq }) => eq(member.userId, context.session.user.id),
-    });
-    organizationId = membership?.organizationId ?? null;
+  const membership = await context.db.query.member.findFirst({
+    where: (member, { and, eq }) =>
+      activeOrganizationId
+        ? and(
+            eq(member.userId, context.session.user.id),
+            eq(member.organizationId, activeOrganizationId),
+          )
+        : eq(member.userId, context.session.user.id),
+  });
 
-    if (organizationId) {
-      await context.db
-        .update(session)
-        .set({ activeOrganizationId: organizationId })
-        .where(eq(session.id, context.session.session.id));
-    }
-  }
-
-  if (!organizationId) {
+  if (!membership) {
     throw new ORPCError("FORBIDDEN", {
       message: "No active organization found for session",
     });
   }
 
+  if (membership.organizationId !== activeOrganizationId) {
+    await context.db
+      .update(session)
+      .set({ activeOrganizationId: membership.organizationId })
+      .where(eq(session.id, context.session.session.id));
+  }
+
   return next({
-    context: { organizationId },
+    context: { organizationId: membership.organizationId },
   });
 });

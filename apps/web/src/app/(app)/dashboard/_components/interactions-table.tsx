@@ -50,8 +50,7 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
   const deleteInteraction = useMutation({
     ...orpc.interaction.delete.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
       toast.success("Mock interaction deleted");
     },
     onError: (error) => {
@@ -159,10 +158,7 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
   const updateInteraction = useMutation({
     ...orpc.interaction.update.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
-      // The server touches the parent collection's updatedAt, and the sidebar
-      // list is ordered by it — so an edit reorders the list too.
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
       toast.success("Mock interaction updated");
       setOpen(false);
     },
