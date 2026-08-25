@@ -28,7 +28,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";
-import { useTRPC } from "@/trpc/react";
+import { orpc } from "@/orpc/react";
 import { CollectionSettings } from "./collection-settings";
 import { EndpointCard } from "./endpoint-card";
 import { InteractionForm } from "./interaction-form";
@@ -37,8 +37,7 @@ import { InteractionsTable } from "./interactions-table";
 const emptyCollectionList: RouterOutputs["collection"]["list"] = [];
 
 export const MockDashboard = () => {
-  const trpc = useTRPC();
-  const collectionListQuery = useQuery(trpc.collection.list.queryOptions(undefined));
+  const collectionListQuery = useQuery(orpc.collection.list.queryOptions());
   const collections = collectionListQuery.data ?? emptyCollectionList;
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
@@ -50,9 +49,9 @@ export const MockDashboard = () => {
     : (collections[0]?.id ?? null);
 
   const selectedCollectionQuery = useQuery(
-    trpc.collection.byId.queryOptions(
-      activeCollectionId ? { collectionId: activeCollectionId } : skipToken,
-    ),
+    orpc.collection.byId.queryOptions({
+      input: activeCollectionId ? { collectionId: activeCollectionId } : skipToken,
+    }),
   );
   const collection = selectedCollectionQuery.data;
 
@@ -157,14 +156,13 @@ type CreateCollectionFormProps = {
 };
 
 const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: "", description: "" });
 
   const createCollection = useMutation({
-    ...trpc.collection.create.mutationOptions(),
+    ...orpc.collection.create.mutationOptions(),
     onSuccess: (data) => {
-      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
       setForm({ name: "", description: "" });
       toast.success("Collection created");
       onCreated(data.id);

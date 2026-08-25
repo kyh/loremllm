@@ -8,7 +8,7 @@ import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
  */
 export const handleChatQuery = async (userQuery: string, collectionId: string) => {
   // Dynamically import caller only when needed
-  const { caller } = await import("@/trpc/server");
+  const { caller } = await import("@/orpc/server");
 
   // Query the specified collection for the best matching interaction
   const queryResult = await caller.interaction.query({

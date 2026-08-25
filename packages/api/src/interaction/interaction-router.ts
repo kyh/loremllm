@@ -1,9 +1,9 @@
 import { eq, sql } from "@repo/db";
 import { mockCollection, mockInteraction } from "@repo/db/drizzle-schema";
-import { TRPCError } from "@trpc/server";
+import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
-import { createTRPCRouter, organizationProcedure, publicProcedure } from "../trpc";
+import { organizationProcedure, publicProcedure } from "../orpc";
 import { generateEmbedding } from "./embedding-service";
 import {
   createInteractionInput,
@@ -54,183 +54,185 @@ const embedOrThrow = async (text: string) => {
     return await generateEmbedding(text);
   } catch (error) {
     console.error("Failed to generate embedding:", error);
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
+    throw new ORPCError("INTERNAL_SERVER_ERROR", {
       message: "Failed to generate embedding for interaction input",
     });
   }
 };
 
-export const interactionRouter = createTRPCRouter({
-  create: organizationProcedure.input(createInteractionInput).mutation(async ({ ctx, input }) => {
-    const collection = await ctx.db.query.mockCollection.findFirst({
-      where: (collection, { and, eq }) =>
-        and(
-          eq(collection.id, input.collectionId),
-          eq(collection.organizationId, ctx.organizationId),
-        ),
-    });
-
-    if (!collection) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Collection not found",
+export const interactionRouter = {
+  create: organizationProcedure
+    .input(createInteractionInput)
+    .handler(async ({ context, input }) => {
+      const collection = await context.db.query.mockCollection.findFirst({
+        where: (collection, { and, eq }) =>
+          and(
+            eq(collection.id, input.collectionId),
+            eq(collection.organizationId, context.organizationId),
+          ),
       });
-    }
 
-    const embedding = await embedOrThrow(
-      buildEmbeddingText({
-        title: input.title,
-        description: input.description,
-        input: input.input,
-      }),
-    );
+      if (!collection) {
+        throw new ORPCError("NOT_FOUND", {
+          message: "Collection not found",
+        });
+      }
 
-    const now = new Date();
-
-    const result = await ctx.db.transaction(async (tx) => {
-      const [interaction] = await tx
-        .insert(mockInteraction)
-        .values({
-          collectionId: collection.id,
-          title: input.title ?? "Untitled Interaction",
-          description: input.description ?? null,
+      const embedding = await embedOrThrow(
+        buildEmbeddingText({
+          title: input.title,
+          description: input.description,
           input: input.input,
-          vector: sql`vector32(${JSON.stringify(embedding)})`,
-          output: input.output,
-          responseSchema: "LanguageModelV2StreamPart",
-        })
-        .returning(interactionReturning);
+        }),
+      );
 
-      if (!interaction) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create interaction",
+      const now = new Date();
+
+      const result = await context.db.transaction(async (tx) => {
+        const [interaction] = await tx
+          .insert(mockInteraction)
+          .values({
+            collectionId: collection.id,
+            title: input.title ?? "Untitled Interaction",
+            description: input.description ?? null,
+            input: input.input,
+            vector: sql`vector32(${JSON.stringify(embedding)})`,
+            output: input.output,
+            responseSchema: "LanguageModelV2StreamPart",
+          })
+          .returning(interactionReturning);
+
+        if (!interaction) {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: "Failed to create interaction",
+          });
+        }
+
+        await tx
+          .update(mockCollection)
+          .set({ updatedAt: now })
+          .where(eq(mockCollection.id, collection.id));
+
+        return interaction;
+      });
+
+      return {
+        id: result.id,
+        collectionId: result.collectionId,
+        title: result.title,
+        description: result.description,
+        input: result.input,
+        output: result.output,
+        responseSchema: result.responseSchema,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+      };
+    }),
+
+  update: organizationProcedure
+    .input(updateInteractionInput)
+    .handler(async ({ context, input }) => {
+      const interaction = await context.db.query.mockInteraction.findFirst({
+        where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
+        with: {
+          collection: true,
+        },
+      });
+
+      const collection = interaction?.collection;
+
+      if (!interaction || !collection || collection.organizationId !== context.organizationId) {
+        throw new ORPCError("NOT_FOUND", {
+          message: "Interaction not found",
         });
       }
 
-      await tx
-        .update(mockCollection)
-        .set({ updatedAt: now })
-        .where(eq(mockCollection.id, collection.id));
+      const title = input.title ?? interaction.title;
+      // An explicit empty string clears the description; undefined leaves it unchanged
+      const description =
+        input.description === undefined
+          ? interaction.description
+          : input.description.trim() || null;
+      const matchInput = input.input ?? interaction.input;
+      const output = input.output ?? interaction.output;
 
-      return interaction;
-    });
+      const matchingTextChanged =
+        title !== interaction.title ||
+        description !== interaction.description ||
+        matchInput !== interaction.input;
 
-    return {
-      id: result.id,
-      collectionId: result.collectionId,
-      title: result.title,
-      description: result.description,
-      input: result.input,
-      output: result.output,
-      responseSchema: result.responseSchema,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt,
-    };
-  }),
+      const embedding = matchingTextChanged
+        ? await embedOrThrow(buildEmbeddingText({ title, description, input: matchInput }))
+        : null;
 
-  update: organizationProcedure.input(updateInteractionInput).mutation(async ({ ctx, input }) => {
-    const interaction = await ctx.db.query.mockInteraction.findFirst({
-      where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
-      with: {
-        collection: true,
-      },
-    });
+      const now = new Date();
 
-    const collection = interaction?.collection;
+      const fieldUpdates = {
+        title,
+        description,
+        input: matchInput,
+        output,
+        updatedAt: now,
+      };
 
-    if (!interaction || !collection || collection.organizationId !== ctx.organizationId) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Interaction not found",
+      const result = await context.db.transaction(async (tx) => {
+        const [updatedInteraction] = await tx
+          .update(mockInteraction)
+          .set(
+            embedding
+              ? { ...fieldUpdates, vector: sql`vector32(${JSON.stringify(embedding)})` }
+              : fieldUpdates,
+          )
+          .where(eq(mockInteraction.id, interaction.id))
+          .returning(interactionReturning);
+
+        if (!updatedInteraction) {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: "Failed to update interaction",
+          });
+        }
+
+        await tx
+          .update(mockCollection)
+          .set({ updatedAt: now })
+          .where(eq(mockCollection.id, collection.id));
+
+        return updatedInteraction;
       });
-    }
 
-    const title = input.title ?? interaction.title;
-    // An explicit empty string clears the description; undefined leaves it unchanged
-    const description =
-      input.description === undefined ? interaction.description : input.description.trim() || null;
-    const matchInput = input.input ?? interaction.input;
-    const output = input.output ?? interaction.output;
+      return {
+        id: result.id,
+        collectionId: result.collectionId,
+        title: result.title,
+        description: result.description,
+        input: result.input,
+        output: result.output,
+        responseSchema: result.responseSchema,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+      };
+    }),
 
-    const matchingTextChanged =
-      title !== interaction.title ||
-      description !== interaction.description ||
-      matchInput !== interaction.input;
+  delete: organizationProcedure
+    .input(deleteInteractionInput)
+    .handler(async ({ context, input }) => {
+      const interaction = await context.db.query.mockInteraction.findFirst({
+        where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
+        with: {
+          collection: true,
+        },
+      });
 
-    const embedding = matchingTextChanged
-      ? await embedOrThrow(buildEmbeddingText({ title, description, input: matchInput }))
-      : null;
-
-    const now = new Date();
-
-    const fieldUpdates = {
-      title,
-      description,
-      input: matchInput,
-      output,
-      updatedAt: now,
-    };
-
-    const result = await ctx.db.transaction(async (tx) => {
-      const [updatedInteraction] = await tx
-        .update(mockInteraction)
-        .set(
-          embedding
-            ? { ...fieldUpdates, vector: sql`vector32(${JSON.stringify(embedding)})` }
-            : fieldUpdates,
-        )
-        .where(eq(mockInteraction.id, interaction.id))
-        .returning(interactionReturning);
-
-      if (!updatedInteraction) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to update interaction",
+      if (!interaction || interaction.collection?.organizationId !== context.organizationId) {
+        throw new ORPCError("NOT_FOUND", {
+          message: "Interaction not found",
         });
       }
 
-      await tx
-        .update(mockCollection)
-        .set({ updatedAt: now })
-        .where(eq(mockCollection.id, collection.id));
+      await context.db.delete(mockInteraction).where(eq(mockInteraction.id, interaction.id));
 
-      return updatedInteraction;
-    });
-
-    return {
-      id: result.id,
-      collectionId: result.collectionId,
-      title: result.title,
-      description: result.description,
-      input: result.input,
-      output: result.output,
-      responseSchema: result.responseSchema,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt,
-    };
-  }),
-
-  delete: organizationProcedure.input(deleteInteractionInput).mutation(async ({ ctx, input }) => {
-    const interaction = await ctx.db.query.mockInteraction.findFirst({
-      where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
-      with: {
-        collection: true,
-      },
-    });
-
-    if (!interaction || interaction.collection?.organizationId !== ctx.organizationId) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Interaction not found",
-      });
-    }
-
-    await ctx.db.delete(mockInteraction).where(eq(mockInteraction.id, interaction.id));
-
-    return { success: true } as const;
-  }),
+      return { success: true } as const;
+    }),
 
   /**
    * Query endpoint for searching interactions in a collection.
@@ -239,25 +241,23 @@ export const interactionRouter = createTRPCRouter({
    * Public collections are queryable by anyone. Private collections are only
    * queryable by members of the owning organization (for dashboard previews).
    */
-  query: publicProcedure.input(queryInteractionInput).query(async ({ ctx, input }) => {
+  query: publicProcedure.input(queryInteractionInput).handler(async ({ context, input }) => {
     // Find the collection by publicId
-    const collection = await ctx.db.query.mockCollection.findFirst({
+    const collection = await context.db.query.mockCollection.findFirst({
       where: (collection, { eq }) => eq(collection.publicId, input.publicId),
     });
 
     if (!collection) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: "Collection not found",
       });
     }
 
     if (!collection.isPublic) {
-      const activeOrganizationId = ctx.session?.session.activeOrganizationId;
+      const activeOrganizationId = context.session?.session.activeOrganizationId;
 
       if (activeOrganizationId !== collection.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
+        throw new ORPCError("FORBIDDEN", {
           message: "This collection is not public",
         });
       }
@@ -269,8 +269,7 @@ export const interactionRouter = createTRPCRouter({
       queryEmbedding = await generateEmbedding(input.query);
     } catch (error) {
       console.error("Failed to generate query embedding:", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
         message: "Failed to generate embedding for query",
       });
     }
@@ -278,7 +277,7 @@ export const interactionRouter = createTRPCRouter({
     // Use Turso's vector_distance_cos function to find similar interactions.
     // Cosine distance is lower-is-better, so order ascending and report
     // similarity as 1 - distance.
-    const resultSet = await ctx.db.run(sql`
+    const resultSet = await context.db.run(sql`
         SELECT
           id,
           title,
@@ -297,8 +296,7 @@ export const interactionRouter = createTRPCRouter({
     const rows = z.array(interactionQueryRow).parse(resultSet.rows);
 
     if (rows.length === 0) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: "No interactions found in this collection",
       });
     }
@@ -309,8 +307,7 @@ export const interactionRouter = createTRPCRouter({
       const best = rows[0];
       const asPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: best
           ? `No interaction matched above the similarity threshold (${asPercent(collection.minSimilarity)}). Best match: "${best.title ?? "Untitled"}" at ${asPercent(best.similarity)}.`
           : `No interaction matched above the similarity threshold (${asPercent(collection.minSimilarity)}).`,
@@ -331,4 +328,4 @@ export const interactionRouter = createTRPCRouter({
       })),
     };
   }),
-});
+};

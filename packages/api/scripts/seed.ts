@@ -18,10 +18,11 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { db } from "@repo/db/drizzle-client";
 
+import { createRouterClient } from "@orpc/server";
+
 import { auth } from "../src/auth/auth";
 import { env } from "../src/env";
 import { appRouter } from "../src/root-router";
-import { createCallerFactory } from "../src/trpc";
 
 // ESM compatibility: derive the script directory from import.meta.url
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -178,7 +179,7 @@ async function main() {
     });
     console.log(`\n🏢 Organization: ${org?.name ?? organizationId}`);
 
-    // Step 3: Create a session context for tRPC calls
+    // Step 3: Create a session context for API calls
     const createCallerContext = async () => ({
       session: {
         user: {
@@ -204,14 +205,9 @@ async function main() {
         },
       },
       db,
-      // Not a browser request, so there is no provenance for the tRPC origin
-      // guard to check.
-      origin: null,
-      secFetchSite: null,
     });
 
-    const callerFactory = createCallerFactory(appRouter);
-    const caller = callerFactory(createCallerContext);
+    const caller = createRouterClient(appRouter, { context: createCallerContext });
 
     // Step 4: Create or find the Demo collection. publicId is globally unique,
     // so look it up directly rather than through the org-scoped list.

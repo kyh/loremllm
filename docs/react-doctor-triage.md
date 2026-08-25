@@ -28,7 +28,7 @@ Final full scan:
 | `rerender-state-only-in-handlers`   |     1 | Fix             | IME composition state belongs in a ref.                                                                                                       |
 | `prefer-module-scope-pure-function` |     3 | Fix             | Hoist pure helpers without behavior changes.                                                                                                  |
 | `unused-dependency`                 |     1 | Fix             | `zod` is unused by `@repo/db`.                                                                                                                |
-| `unused-export`                     |     4 | Fix 3; accept 1 | Two embedding helpers and `useTRPCClient` are unused. `TRPCProvider` is consumed in the same module.                                          |
+| `unused-export`                     |     4 | Fix 3; accept 1 | Two embedding helpers and an RPC client hook were unused. The RPC provider was consumed in the same module.                                   |
 | `only-export-components`            |     6 | Fix 4; accept 2 | Internal helpers/variants need no export. `alertDialog` and `toast` are intentional imperative APIs.                                          |
 | `use-lazy-motion`                   |     2 | Fix             | Real bundle cost. Lazy features preserve panel and shimmer behavior.                                                                          |
 | `dangerous-html-sink`               |     2 | Accept          | Shiki emits escaped, controlled highlight markup. Sanitizing again can corrupt output.                                                        |

@@ -16,8 +16,9 @@ export const baseUrl =
       ? `https://${process.env.VERCEL_URL}`
       : `http://localhost:${process.env.PORT ?? 3000}`;
 
-// Origins allowed to drive authenticated requests. Consumed by better-auth's own
-// Origin checks and by the tRPC mutation guard (see packages/api/src/trpc.ts).
+// Origins allowed to drive authenticated requests, consumed by better-auth's
+// own Origin checks — these cover /api/auth/* only. /api/orpc is defended by
+// SimpleCsrfProtectionHandlerPlugin (see apps/web/src/app/api/orpc).
 export const trustedOrigins = [baseUrl];
 
 // Set (to the local `emulate` server URL) in dev to exercise GitHub OAuth

@@ -36,7 +36,7 @@ import { toast } from "@repo/ui/components/sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";
-import { useTRPC } from "@/trpc/react";
+import { orpc } from "@/orpc/react";
 
 type Interaction = RouterOutputs["collection"]["byId"]["interactions"][number];
 
@@ -45,14 +45,13 @@ type InteractionsTableProps = {
 };
 
 export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
 
   const deleteInteraction = useMutation({
-    ...trpc.interaction.delete.mutationOptions(),
+    ...orpc.interaction.delete.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries(trpc.collection.byId.queryFilter());
-      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
       toast.success("Mock interaction deleted");
     },
     onError: (error) => {
@@ -153,18 +152,17 @@ const toFormState = (interaction: Interaction): EditFormState => ({
 });
 
 const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) => {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<EditFormState>(() => toFormState(interaction));
 
   const updateInteraction = useMutation({
-    ...trpc.interaction.update.mutationOptions(),
+    ...orpc.interaction.update.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries(trpc.collection.byId.queryFilter());
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
       // The server touches the parent collection's updatedAt, and the sidebar
       // list is ordered by it — so an edit reorders the list too.
-      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
       toast.success("Mock interaction updated");
       setOpen(false);
     },

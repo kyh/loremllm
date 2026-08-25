@@ -1,5 +1,4 @@
-import { TRPCError } from "@trpc/server";
-import { getHTTPStatusCodeFromError } from "@trpc/server/http";
+import { ORPCError } from "@orpc/server";
 
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
@@ -72,11 +71,7 @@ export async function POST(request: Request) {
     console.error("Error processing request:", error);
 
     const status =
-      error instanceof PayloadError
-        ? 400
-        : error instanceof TRPCError
-          ? getHTTPStatusCodeFromError(error)
-          : 500;
+      error instanceof PayloadError ? 400 : error instanceof ORPCError ? error.status : 500;
 
     return applyCors(
       new Response(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, {

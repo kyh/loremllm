@@ -1,0 +1,106 @@
+import { eq } from "@repo/db";
+import { db } from "@repo/db/drizzle-client";
+import { session } from "@repo/db/drizzle-schema-auth";
+import { ORPCError, os } from "@orpc/server";
+
+import type { Session } from "./auth/auth";
+import { auth } from "./auth/auth";
+
+/**
+ * Builds the per-request context. Callers supply headers rather than reading
+ * them here, so the same code serves the fetch handler and the in-process RSC
+ * router client, which have no shared request object.
+ *
+ * @see https://orpc.dev/docs/context
+ */
+export const createORPCContext = async (opts: {
+  headers: Headers;
+  /**
+   * Pass an already-resolved session to reuse it. RSC callers have usually
+   * resolved one via the cached `getSession()` before prefetching; without
+   * this they'd pay a second session lookup, because React's cache keys on the
+   * function, so a separate `auth.api.getSession` call never dedupes with it.
+   * `null` means "resolved, and nobody is logged in" — only `undefined` triggers
+   * a lookup here.
+   */
+  session?: Session | null;
+}) => {
+  const session =
+    opts.session === undefined
+      ? await auth.api.getSession({ headers: opts.headers })
+      : opts.session;
+
+  return { session, db };
+};
+
+export type ORPCContext = Awaited<ReturnType<typeof createORPCContext>>;
+
+const o = os.$context<ORPCContext>();
+
+/**
+ * Public (unauthed) procedure. Does not require a session, but
+ * `context.session` is still populated when the caller happens to be logged
+ * in. Cross-site request forgery on /api/orpc is handled at the transport:
+ * SimpleCsrfProtectionHandlerPlugin on the route requires an `x-csrf-token`
+ * header that only the paired link plugin sends.
+ *
+ * @see https://orpc.dev/docs/procedure
+ */
+export const publicProcedure = o;
+
+/**
+ * Protected (authenticated) procedure. Requires a valid session and narrows
+ * `context.session.user` to non-nullable for the handler.
+ */
+export const protectedProcedure = publicProcedure.use(({ context, next }) => {
+  const session = context.session;
+
+  if (!session?.user) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
+
+  return next({
+    context: {
+      // infers the `session` as non-nullable
+      session: { ...session, user: session.user },
+    },
+  });
+});
+
+/**
+ * Organization-scoped procedure
+ *
+ * Builds on `protectedProcedure` and additionally guarantees the session has an
+ * active organization, exposing it as `context.organizationId`.
+ *
+ * Sessions created during sign-up can miss the active organization (the
+ * organization is created in a parallel hook), so fall back to the user's
+ * first membership and persist it on the session.
+ */
+export const organizationProcedure = protectedProcedure.use(async ({ context, next }) => {
+  let organizationId = context.session.session.activeOrganizationId ?? null;
+
+  if (!organizationId) {
+    const membership = await context.db.query.member.findFirst({
+      where: (member, { eq }) => eq(member.userId, context.session.user.id),
+    });
+    organizationId = membership?.organizationId ?? null;
+
+    if (organizationId) {
+      await context.db
+        .update(session)
+        .set({ activeOrganizationId: organizationId })
+        .where(eq(session.id, context.session.session.id));
+    }
+  }
+
+  if (!organizationId) {
+    throw new ORPCError("FORBIDDEN", {
+      message: "No active organization found for session",
+    });
+  }
+
+  return next({
+    context: { organizationId },
+  });
+});

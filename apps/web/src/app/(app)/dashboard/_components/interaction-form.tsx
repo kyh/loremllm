@@ -16,7 +16,7 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { toast } from "@repo/ui/components/sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useTRPC } from "@/trpc/react";
+import { orpc } from "@/orpc/react";
 
 type InteractionFormState = {
   title: string;
@@ -37,15 +37,14 @@ type InteractionFormProps = {
 };
 
 export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<InteractionFormState>(emptyForm);
 
   const createInteraction = useMutation({
-    ...trpc.interaction.create.mutationOptions(),
+    ...orpc.interaction.create.mutationOptions(),
     onSuccess: () => {
-      void queryClient.invalidateQueries(trpc.collection.byId.queryFilter());
-      void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.byId.key() });
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
       setForm(emptyForm);
       toast.success("Mock interaction saved");
     },

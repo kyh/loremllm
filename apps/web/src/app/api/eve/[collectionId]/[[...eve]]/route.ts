@@ -27,7 +27,7 @@ async function handleEveRequest(request: Request, context: RouteContext): Promis
     sessionStore: createDbEveSessionStore(collectionId),
     async *mockResponse({ messages }) {
       // Dynamically import caller only when needed
-      const { caller } = await import("@/trpc/server");
+      const { caller } = await import("@/orpc/server");
 
       const lastUserMessage = messages.findLast((message) => message.role === "user");
       const query =
@@ -36,7 +36,7 @@ async function handleEveRequest(request: Request, context: RouteContext): Promis
           .map((part) => part.text)
           .join("\n") ?? "";
 
-      // Throws a descriptive TRPCError when nothing matches; the eve handler
+      // Throws a descriptive ORPCError when nothing matches; the eve handler
       // streams it to the client as a failed session.
       const queryResult = await caller.interaction.query({
         publicId: collectionId,

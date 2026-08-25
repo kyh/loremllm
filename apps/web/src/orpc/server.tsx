@@ -1,25 +1,21 @@
 import { cache } from "react";
 import { headers } from "next/headers";
-import { appRouter, createTRPCContext } from "@repo/api";
+import { appRouter, createORPCContext } from "@repo/api";
+import { createRouterClient } from "@orpc/server";
+import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
-import type { AppRouter } from "@repo/api";
 import type { FetchQueryOptions, QueryKey } from "@tanstack/react-query";
 import { getSession } from "@/lib/auth-server";
 import { createQueryClient } from "./query-client";
 
 /**
- * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
- * handling a tRPC call from a React Server Component.
+ * Wraps the `createORPCContext` helper and provides the required context when
+ * a React Server Component calls a procedure.
  */
 const createContext = cache(async () => {
-  const heads = new Headers(await headers());
-
-  heads.set("x-trpc-source", "rsc");
-
-  return createTRPCContext({
-    headers: heads,
+  return createORPCContext({
+    headers: new Headers(await headers()),
     // Dashboard pages call getSession() to gate the route before they prefetch.
     // Reuse that cached result — resolving it again here would be a second
     // session lookup per render.
@@ -29,11 +25,14 @@ const createContext = cache(async () => {
 
 const getQueryClient = cache(createQueryClient);
 
-export const trpc = createTRPCOptionsProxy<AppRouter>({
-  router: appRouter,
-  ctx: createContext,
-  queryClient: getQueryClient,
-});
+/**
+ * Calls procedures in-process, with no HTTP round trip — so the server never
+ * asks itself over the network. Used directly by route handlers (chat, eve)
+ * and available to server components.
+ */
+export const caller = createRouterClient(appRouter, { context: createContext });
+
+export const orpc = createTanstackQueryUtils(caller);
 
 export const HydrateClient = (props: { children: React.ReactNode }) => {
   const queryClient = getQueryClient();
@@ -45,5 +44,3 @@ export const prefetch = <TQueryFnData, TError, TData, TQueryKey extends QueryKey
 ) => {
   void getQueryClient().prefetchQuery(queryOptions);
 };
-
-export const caller = appRouter.createCaller(createContext);
