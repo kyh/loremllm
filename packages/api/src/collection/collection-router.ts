@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "@repo/db";
 import { mockCollection } from "@repo/db/drizzle-schema";
-import { TRPCError } from "@trpc/server";
+import { ORPCError } from "@orpc/server";
 
-import { createTRPCRouter, organizationProcedure } from "../trpc";
+import { organizationProcedure } from "../orpc";
 import {
   collectionByIdInput,
   createCollectionInput,
@@ -11,10 +11,10 @@ import {
   updateCollectionInput,
 } from "./collection-schema";
 
-export const collectionRouter = createTRPCRouter({
-  list: organizationProcedure.query(async ({ ctx }) => {
-    const collections = await ctx.db.query.mockCollection.findMany({
-      where: (collection, { eq }) => eq(collection.organizationId, ctx.organizationId),
+export const collectionRouter = {
+  list: organizationProcedure.handler(async ({ context }) => {
+    const collections = await context.db.query.mockCollection.findMany({
+      where: (collection, { eq }) => eq(collection.organizationId, context.organizationId),
       orderBy: (collection, { desc }) => [desc(collection.updatedAt)],
       with: {
         interactions: {
@@ -37,12 +37,12 @@ export const collectionRouter = createTRPCRouter({
     }));
   }),
 
-  byId: organizationProcedure.input(collectionByIdInput).query(async ({ ctx, input }) => {
-    const collection = await ctx.db.query.mockCollection.findFirst({
+  byId: organizationProcedure.input(collectionByIdInput).handler(async ({ context, input }) => {
+    const collection = await context.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
         and(
           eq(collection.id, input.collectionId),
-          eq(collection.organizationId, ctx.organizationId),
+          eq(collection.organizationId, context.organizationId),
         ),
       with: {
         interactions: {
@@ -54,8 +54,7 @@ export const collectionRouter = createTRPCRouter({
     });
 
     if (!collection) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: "Collection not found",
       });
     }
@@ -83,11 +82,11 @@ export const collectionRouter = createTRPCRouter({
     };
   }),
 
-  create: organizationProcedure.input(createCollectionInput).mutation(async ({ ctx, input }) => {
-    const [collection] = await ctx.db
+  create: organizationProcedure.input(createCollectionInput).handler(async ({ context, input }) => {
+    const [collection] = await context.db
       .insert(mockCollection)
       .values({
-        organizationId: ctx.organizationId,
+        organizationId: context.organizationId,
         publicId: input.publicId ?? randomUUID(),
         name: input.name,
         description: input.description ?? null,
@@ -98,8 +97,7 @@ export const collectionRouter = createTRPCRouter({
       .returning();
 
     if (!collection) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
         message: "Failed to create collection",
       });
     }
@@ -118,23 +116,22 @@ export const collectionRouter = createTRPCRouter({
     };
   }),
 
-  update: organizationProcedure.input(updateCollectionInput).mutation(async ({ ctx, input }) => {
-    const collection = await ctx.db.query.mockCollection.findFirst({
+  update: organizationProcedure.input(updateCollectionInput).handler(async ({ context, input }) => {
+    const collection = await context.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
         and(
           eq(collection.id, input.collectionId),
-          eq(collection.organizationId, ctx.organizationId),
+          eq(collection.organizationId, context.organizationId),
         ),
     });
 
     if (!collection) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: "Collection not found",
       });
     }
 
-    const [updatedCollection] = await ctx.db
+    const [updatedCollection] = await context.db
       .update(mockCollection)
       .set({
         name: input.name ?? collection.name,
@@ -152,8 +149,7 @@ export const collectionRouter = createTRPCRouter({
       .returning();
 
     if (!updatedCollection) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
         message: "Failed to update collection",
       });
     }
@@ -171,24 +167,23 @@ export const collectionRouter = createTRPCRouter({
     };
   }),
 
-  delete: organizationProcedure.input(deleteCollectionInput).mutation(async ({ ctx, input }) => {
-    const collection = await ctx.db.query.mockCollection.findFirst({
+  delete: organizationProcedure.input(deleteCollectionInput).handler(async ({ context, input }) => {
+    const collection = await context.db.query.mockCollection.findFirst({
       where: (collection, { and, eq }) =>
         and(
           eq(collection.id, input.collectionId),
-          eq(collection.organizationId, ctx.organizationId),
+          eq(collection.organizationId, context.organizationId),
         ),
     });
 
     if (!collection) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
+      throw new ORPCError("NOT_FOUND", {
         message: "Collection not found",
       });
     }
 
-    await ctx.db.delete(mockCollection).where(eq(mockCollection.id, collection.id));
+    await context.db.delete(mockCollection).where(eq(mockCollection.id, collection.id));
 
     return { success: true } as const;
   }),
-});
+};

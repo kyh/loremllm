@@ -7,7 +7,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { GeistMono } from "geist/font/mono";
 
 import { siteConfig } from "@/lib/site-config";
-import { TRPCReactProvider } from "@/trpc/react";
+import { ORPCReactProvider } from "@/orpc/react";
 
 import "./styles/globals.css";
 
@@ -96,7 +96,7 @@ const RootLayout = (props: LayoutProps) => {
       >
         <ThemeProvider>
           <TooltipProvider>
-            <TRPCReactProvider>{props.children}</TRPCReactProvider>
+            <ORPCReactProvider>{props.children}</ORPCReactProvider>
             <Toaster />
             <GlobalAlertDialog />
           </TooltipProvider>

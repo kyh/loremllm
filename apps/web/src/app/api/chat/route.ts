@@ -1,11 +1,15 @@
-import { TRPCError } from "@trpc/server";
-import { getHTTPStatusCodeFromError } from "@trpc/server/http";
+import { COMMON_ERROR_STATUS_MAP, ORPCError } from "@orpc/server";
 
 import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
 import { handleMarkdownParsing } from "./markdown-handler";
 import { parseRequestPayload, PayloadError } from "./schema";
 import { extractUserQuery } from "./utils";
+
+// oRPC's own code-to-HTTP mapping, widened because `ORPCError["code"]` admits
+// any string: a caller's custom code lands on the 500 fallback instead of
+// indexing off the end of the map.
+const orpcErrorStatus: Record<string, number | undefined> = COMMON_ERROR_STATUS_MAP;
 
 function applyCors(response: Response, origin?: string) {
   const headers = new Headers(response.headers);
@@ -74,8 +78,8 @@ export async function POST(request: Request) {
     const status =
       error instanceof PayloadError
         ? 400
-        : error instanceof TRPCError
-          ? getHTTPStatusCodeFromError(error)
+        : error instanceof ORPCError
+          ? (orpcErrorStatus[error.code] ?? 500)
           : 500;
 
     return applyCors(

@@ -19,7 +19,7 @@ import { toast } from "@repo/ui/components/sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";
-import { useTRPC } from "@/trpc/react";
+import { orpc } from "@/orpc/react";
 import { CollectionChatDrawer } from "./collection-chat-drawer";
 
 type Collection = RouterOutputs["collection"]["byId"];
@@ -30,7 +30,6 @@ type CollectionSettingsProps = {
 };
 
 export const CollectionSettings = ({ collection, onDeleted }: CollectionSettingsProps) => {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     name: collection.name ?? "",
@@ -38,13 +37,10 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
     minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
   });
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries(trpc.collection.list.queryFilter());
-    void queryClient.invalidateQueries(trpc.collection.byId.queryFilter());
-  };
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
 
   const updateCollection = useMutation({
-    ...trpc.collection.update.mutationOptions(),
+    ...orpc.collection.update.mutationOptions(),
     onSuccess: () => {
       invalidate();
       toast.success("Collection updated");
@@ -55,7 +51,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
   });
 
   const deleteCollection = useMutation({
-    ...trpc.collection.delete.mutationOptions(),
+    ...orpc.collection.delete.mutationOptions(),
     onSuccess: () => {
       invalidate();
       toast.success("Collection deleted");

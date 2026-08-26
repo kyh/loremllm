@@ -14,7 +14,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ### Structure
 
 - `apps/web` - Next.js app (main product)
-- `packages/api` - tRPC API with better-auth
+- `packages/api` - oRPC API with better-auth
 - `packages/db` - Drizzle ORM + Turso/libSQL
 - `packages/transport` - Published npm package (@loremllm/transport) for AI SDK chat transport
 - `packages/ui` - Shared React components (shadcn-based)
@@ -23,7 +23,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 
 - **Runtime**: Node >=24, pnpm 10.33.0
 - **Framework**: Next.js, React
-- **API**: tRPC, Zod
+- **API**: oRPC, Zod
 - **Auth**: better-auth
 - **DB**: Drizzle ORM, Turso/libSQL
 - **AI**: Vercel AI SDK (ai package)
@@ -58,6 +58,6 @@ pnpm -F db studio     # Drizzle Studio
 
 ## Mutation path
 
-Mutations go through tRPC or the better-auth client — never Next Server Actions. There is
+Mutations go through oRPC or the better-auth client — never Next Server Actions. There is
 no global `MutationCache`, so every `useMutation` must invalidate the query filters it
 actually affects in its own `onSuccess`. See AGENTS.md → Rules that matter.

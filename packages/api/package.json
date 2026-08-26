@@ -17,11 +17,10 @@
     "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
+    "@orpc/server": "catalog:",
     "@repo/db": "workspace:^",
-    "@trpc/server": "catalog:",
     "ai": "^7.0.71",
     "better-auth": "catalog:",
-    "superjson": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
