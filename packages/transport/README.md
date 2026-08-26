@@ -271,7 +271,7 @@ For complex real transports, consider implementing `ChatTransport` directly so y
 
 ## eve framework support
 
-The `@loremllm/transport/eve` entry point serves the same scripted responses over the [eve agent framework](https://eve.dev)'s wire protocol (stream version 18, eve 0.22.x). Instead of a client-side transport, eve support is a tiny mock server: a [fetch handler](https://developer.mozilla.org/en-US/docs/Web/API/Request) implementing the three routes `useEveAgent` talks to.
+The `@loremllm/transport/eve` entry point serves the same scripted responses over the [eve agent framework](https://eve.dev)'s wire protocol (stream version 23, eve 0.42.x). Instead of a client-side transport, eve support is a tiny mock server: a [fetch handler](https://developer.mozilla.org/en-US/docs/Web/API/Request) implementing the three routes `useEveAgent` talks to.
 
 ```ts
 // app/api/mock/[[...eve]]/route.ts (Next.js example — any Request => Response host works)
