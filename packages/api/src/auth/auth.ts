@@ -17,8 +17,8 @@ export const baseUrl =
       : `http://localhost:${process.env.PORT ?? 3000}`;
 
 // Origins allowed to drive authenticated requests, consumed by better-auth's
-// own Origin checks — these cover /api/auth/* only. /api/orpc relies on the
-// session cookie's SameSite instead (see `advanced.defaultCookieAttributes`).
+// own Origin checks — these cover /api/auth/* only. /api/orpc runs the
+// equivalent check itself, in its route handler.
 export const trustedOrigins = [baseUrl];
 
 // Set (to the local `emulate` server URL) in dev to exercise GitHub OAuth
@@ -73,12 +73,13 @@ export const auth = betterAuth({
   trustedOrigins,
   advanced: {
     defaultCookieAttributes: {
-      // Every surface authenticates first-party, and this is /api/orpc's whole
-      // cross-site defense: a forged cross-site POST arrives with no session
-      // and does nothing. Stated rather than inherited from better-auth's
-      // default, because loosening it to "none" would re-open CSRF for the
-      // entire app. `secure` is deliberately left to better-auth, which derives
-      // it from the baseURL protocol so local http dev still gets a cookie.
+      // Every surface authenticates first-party. This denies a cross-*site*
+      // POST the session; it says nothing about a same-site cross-origin one,
+      // which the /api/orpc route's Origin check handles. Stated rather than
+      // inherited from better-auth's default, because loosening it to "none"
+      // would hand the cookie to every site on the internet. `secure` is
+      // deliberately left to better-auth, which derives it from the baseURL
+      // protocol so local http dev still gets a cookie.
       sameSite: "lax",
     },
   },

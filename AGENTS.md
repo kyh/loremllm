@@ -121,7 +121,8 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 
 - `apps/web` · `packages/{api,db,transport,ui}`
 - `CLAUDE.md` — conventions + command list (Claude-specific)
-- `packages/api/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is `/api/orpc`'s cross-site defense
+- `packages/api/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is only `/api/orpc`'s cross-**site** defense
+- `apps/web/src/app/api/orpc/[[...rest]]/route.ts` — the other half: an `Origin` check, because `SameSite` keys on site, so a sibling subdomain's form POST rides the session cookie in
 - `packages/api/src/orpc.ts` — procedures, org resolution
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors)
 - `packages/api/scripts/seed.ts` — the seed · `packages/api/scripts/interactions/` — its markdown fixtures
