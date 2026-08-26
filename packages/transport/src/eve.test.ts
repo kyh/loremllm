@@ -147,8 +147,9 @@ describe("createStaticEveHandler", () => {
         "application/x-ndjson; charset=utf-8",
       );
       assert.strictEqual(response.headers.get("x-eve-stream-format"), "ndjson");
-      assert.strictEqual(response.headers.get("x-eve-stream-version"), "18");
+      assert.strictEqual(response.headers.get("x-eve-stream-version"), "23");
       assert.strictEqual(response.headers.get("x-eve-session-id"), sessionId);
+      assert.strictEqual(response.headers.get("x-eve-stream-tail-index"), null);
 
       const events = await readEvents(response);
       assert.deepEqual(
@@ -211,6 +212,20 @@ describe("createStaticEveHandler", () => {
       for (const event of all) {
         assert.ok(z.string().safeParse(event.meta?.at).success);
       }
+    });
+
+    test("reports the last event index when includeTailIndex is requested", async () => {
+      const handler = textHandler();
+      const { sessionId } = await createSession(handler);
+
+      const response = await handler(
+        createRequest(`/eve/v1/session/${sessionId}/stream?includeTailIndex=1`),
+      );
+      const events = await readEvents(response);
+      assert.strictEqual(
+        response.headers.get("x-eve-stream-tail-index"),
+        String(events.length - 1),
+      );
     });
 
     test("rejects invalid startIndex and unknown sessions", async () => {
@@ -386,11 +401,11 @@ describe("createStaticEveHandler", () => {
         },
       });
 
-      const { sessionId, continuationToken } = await createSession(handler, "one");
+      const { sessionId } = await createSession(handler, "one");
       const firstTurn = await streamEvents(handler, sessionId);
 
       const continueResponse = await handler(
-        postJson(`/eve/v1/session/${sessionId}`, { continuationToken, message: "two" }),
+        postJson(`/eve/v1/session/${sessionId}`, { message: "two" }),
       );
       assert.strictEqual(continueResponse.status, 200);
       const continueBody: unknown = await continueResponse.json();
@@ -413,10 +428,8 @@ describe("createStaticEveHandler", () => {
 
     test("keeps sequence numbers session-monotonic across turns", async () => {
       const handler = textHandler();
-      const { sessionId, continuationToken } = await createSession(handler);
-      await handler(
-        postJson(`/eve/v1/session/${sessionId}`, { continuationToken, message: "again" }),
-      );
+      const { sessionId } = await createSession(handler);
+      await handler(postJson(`/eve/v1/session/${sessionId}`, { message: "again" }));
 
       const events = await streamEvents(handler, sessionId);
       const sequences = events.flatMap((event) =>
@@ -427,23 +440,22 @@ describe("createStaticEveHandler", () => {
       assert.strictEqual(new Set(sequences).size, sequences.length);
     });
 
-    test("rejects continues for unknown sessions, missing tokens, and HITL-only turns", async () => {
+    test("rejects turns for unknown sessions, continuation tokens, and HITL-only bodies", async () => {
       const handler = textHandler();
       const { sessionId, continuationToken } = await createSession(handler);
 
-      const unknown = await handler(
-        postJson("/eve/v1/session/nope", { continuationToken, message: "hi" }),
-      );
+      const unknown = await handler(postJson("/eve/v1/session/nope", { message: "hi" }));
       assert.strictEqual(unknown.status, 404);
 
-      const missingToken = await handler(
-        postJson(`/eve/v1/session/${sessionId}`, { message: "hi" }),
+      const withToken = await handler(
+        postJson(`/eve/v1/session/${sessionId}`, { continuationToken, message: "hi" }),
       );
-      assert.strictEqual(missingToken.status, 400);
+      assert.strictEqual(withToken.status, 400);
+      const tokenBody = z.object({ error: z.string() }).parse(await withToken.json());
+      assert.ok(tokenBody.error.includes("continuationToken"));
 
       const hitlOnly = await handler(
         postJson(`/eve/v1/session/${sessionId}`, {
-          continuationToken,
           inputResponses: [{ requestId: "r1", optionId: "yes" }],
         }),
       );
@@ -636,15 +648,14 @@ describe("integration with the real eve client", () => {
     stubFetchWith(handler);
 
     const client = new Client({ host: HOST });
-    const session = client.session();
+    const { session, response: first } = await client.sessions.create({ message: "hello" });
 
-    const first = await session.send("hello");
     const firstEvents = [];
     for await (const event of first) {
       firstEvents.push(event);
     }
     assert.strictEqual(firstEvents.at(-1)?.type, "session.waiting");
-    assert.notStrictEqual(session.state.sessionId, undefined);
+    assert.strictEqual(session.state.sessionId, first.sessionId);
     assert.strictEqual(session.state.streamIndex, firstEvents.length);
 
     const second = await session.send("again");
@@ -664,9 +675,8 @@ describe("integration with the real eve client", () => {
     stubFetchWith(handler);
 
     const client = new Client({ host: HOST });
-    const session = client.session();
+    const { response } = await client.sessions.create({ message: "hello" });
 
-    const response = await session.send("hello");
     const events = [];
     for await (const event of response) {
       events.push(event);
@@ -692,8 +702,7 @@ describe("integration with the real eve client", () => {
     stubFetchWith(handler);
 
     const client = new Client({ host: HOST });
-    const session = client.session();
-    const response = await session.send("weather?");
+    const { response } = await client.sessions.create({ message: "weather?" });
     const result = await response.result();
 
     assert.strictEqual(result.status, "waiting");
@@ -702,6 +711,28 @@ describe("integration with the real eve client", () => {
       (event) => event.type === "actions.requested" || event.type === "action.result",
     );
     assert.strictEqual(actionEvents.length, 2);
+  });
+
+  test("serves bounded reads through eve's ClientSession.snapshot", async () => {
+    const { Client } = await importEveClient();
+    const handler = createStaticEveHandler({
+      autoChunkText: false,
+      async *mockResponse() {
+        yield { type: "text", text: "Only reply" };
+      },
+    });
+    stubFetchWith(handler);
+
+    const client = new Client({ host: HOST });
+    const { session, response } = await client.sessions.create({ message: "hello" });
+    const result = await response.result();
+
+    const snapshot = await session.snapshot();
+    assert.deepEqual(
+      snapshot.events.map((event) => event.type),
+      result.events.map((event) => event.type),
+    );
+    assert.strictEqual(snapshot.session.streamIndex, result.events.length);
   });
 });
 

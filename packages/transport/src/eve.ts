@@ -9,26 +9,27 @@ import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
  * Static mock server for the eve agent framework (https://eve.dev).
  *
  * Implements the three HTTP routes `useEveAgent` / `eve/client` talk to —
- * create session, continue session, and the NDJSON event stream — and answers
- * every turn from the same `mockResponse` generator API used by
+ * create session, send to a session id, and the NDJSON event stream — and
+ * answers every turn from the same `mockResponse` generator API used by
  * `StaticChatTransport`. Point `useEveAgent({ host })` at wherever the handler
  * is mounted and the UI renders scripted responses with zero backend and zero
  * model fees.
  *
- * Wire format targets eve stream protocol version 18 (eve 0.22.x).
+ * Wire format targets eve stream protocol version 23 (eve 0.42.x).
  */
 
 // ---------------------------------------------------------------------------
-// eve wire protocol (stream version 18)
+// eve wire protocol (stream version 23)
 // ---------------------------------------------------------------------------
 
 const EVE_ROUTE_PREFIX = "/eve/v1/";
 const EVE_SESSION_ID_HEADER = "x-eve-session-id";
 const EVE_STREAM_FORMAT_HEADER = "x-eve-stream-format";
+const EVE_STREAM_TAIL_INDEX_HEADER = "x-eve-stream-tail-index";
 const EVE_STREAM_VERSION_HEADER = "x-eve-stream-version";
 const EVE_MESSAGE_STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 const EVE_MESSAGE_STREAM_FORMAT = "ndjson";
-const EVE_MESSAGE_STREAM_VERSION = "18";
+const EVE_MESSAGE_STREAM_VERSION = "23";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 type JsonObject = { [key: string]: JsonValue };
@@ -64,7 +65,7 @@ type EveMessageReceivedPart =
 
 /**
  * The subset of eve `HandleMessageStreamEvent`s a static mock emits.
- * Shapes match the eve wire protocol (stream version 18) exactly.
+ * Shapes match the eve wire protocol (stream version 23) exactly.
  */
 export type EveStreamEvent = (
   | { type: "session.started"; data: JsonObject }
@@ -155,7 +156,7 @@ export type EveStreamEvent = (
  * stores can be backed by a database or KV in serverless deployments.
  */
 export type EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> = {
-  /** Continuation token minted at session creation, echoed by the client on continues. */
+  /** Continuation token minted at session creation and returned in the create response. */
   continuationToken: string;
   /** Full NDJSON event log; the stream route serves slices of it (`startIndex` replay). */
   events: EveStreamEvent[];
@@ -742,7 +743,12 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       ["access-control-allow-headers", "content-type, authorization"],
       [
         "access-control-expose-headers",
-        `${EVE_SESSION_ID_HEADER}, ${EVE_STREAM_FORMAT_HEADER}, ${EVE_STREAM_VERSION_HEADER}`,
+        [
+          EVE_SESSION_ID_HEADER,
+          EVE_STREAM_FORMAT_HEADER,
+          EVE_STREAM_TAIL_INDEX_HEADER,
+          EVE_STREAM_VERSION_HEADER,
+        ].join(", "),
       ],
     ];
   };
@@ -838,6 +844,7 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
     sessionId: string,
     events: EveStreamEvent[],
     signal: AbortSignal,
+    tailIndex: number | undefined,
   ): Response => {
     const encoder = new TextEncoder();
     let cancelled = false;
@@ -876,18 +883,20 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       },
     });
 
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        "cache-control": "no-store, no-transform",
-        "content-type": EVE_MESSAGE_STREAM_CONTENT_TYPE,
-        "x-accel-buffering": "no",
-        [EVE_SESSION_ID_HEADER]: sessionId,
-        [EVE_STREAM_FORMAT_HEADER]: EVE_MESSAGE_STREAM_FORMAT,
-        [EVE_STREAM_VERSION_HEADER]: EVE_MESSAGE_STREAM_VERSION,
-        ...corsHeaders(),
-      },
+    const headers = new Headers({
+      "cache-control": "no-store, no-transform",
+      "content-type": EVE_MESSAGE_STREAM_CONTENT_TYPE,
+      "x-accel-buffering": "no",
+      [EVE_SESSION_ID_HEADER]: sessionId,
+      [EVE_STREAM_FORMAT_HEADER]: EVE_MESSAGE_STREAM_FORMAT,
+      [EVE_STREAM_VERSION_HEADER]: EVE_MESSAGE_STREAM_VERSION,
+      ...corsHeaders(),
     });
+    if (tailIndex !== undefined) {
+      headers.set(EVE_STREAM_TAIL_INDEX_HEADER, String(tailIndex));
+    }
+
+    return new Response(stream, { status: 200, headers });
   };
 
   return async (request: Request): Promise<Response> => {
@@ -954,7 +963,7 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       return json(404, { error: "Session id missing.", ok: false });
     }
 
-    // POST /eve/v1/session/:id — continue turn
+    // POST /eve/v1/session/:id — send a turn to one exact session id
     if (segments.length === 2) {
       if (request.method !== "POST") {
         return json(405, { error: "Method not allowed.", ok: false });
@@ -974,9 +983,13 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
         return json(400, { error: "Request body must be an object.", ok: false });
       }
       const body = parsedBody.data;
-      const continuationToken = stringValue.safeParse(body.continuationToken);
-      if (!continuationToken.success || continuationToken.data.length === 0) {
-        return json(400, { error: "continuationToken is required.", ok: false });
+      // A session id addresses the conversation on its own; eve rejects the
+      // token here rather than letting a stale one silently pick a session.
+      if ("continuationToken" in body) {
+        return json(400, {
+          error: "Session-ID routes do not accept 'continuationToken'.",
+          ok: false,
+        });
       }
       const userMessage = parseUserMessage(body.message);
       if (!userMessage) {
@@ -1003,12 +1016,20 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       if (!record) {
         return json(404, { error: "Session not found.", ok: false });
       }
-      const rawStartIndex = new URL(request.url).searchParams.get("startIndex");
+      const searchParams = new URL(request.url).searchParams;
+      const rawStartIndex = searchParams.get("startIndex");
       const startIndex = rawStartIndex === null ? 0 : Number(rawStartIndex);
       if (!Number.isSafeInteger(startIndex) || startIndex < 0) {
         return json(400, { error: "startIndex must be a non-negative integer.", ok: false });
       }
-      return streamResponse(sessionId, record.events.slice(startIndex), request.signal);
+      const rawIncludeTailIndex = searchParams.get("includeTailIndex");
+      // Bounded reads (`stream({ follow: false })`, `snapshot()`) throw client-side
+      // without this header, so it must be the index of the last stored event.
+      const tailIndex =
+        rawIncludeTailIndex === "1" || rawIncludeTailIndex === "true"
+          ? record.events.length - 1
+          : undefined;
+      return streamResponse(sessionId, record.events.slice(startIndex), request.signal, tailIndex);
     }
 
     return json(404, { error: `Unknown eve route "${route}".`, ok: false });
