@@ -47,9 +47,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^4.0.74",
-    "ai": "^7.0.71",
-    "eve": "^0.42.0",
+    "@ai-sdk/react": "^4.0.87",
+    "ai": "^7.0.84",
+    "eve": "^0.47.3",
     "tsx": "^4.23.12",
     "typescript": "catalog:"
   },

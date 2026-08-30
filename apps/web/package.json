@@ -13,7 +13,7 @@
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.74",
+    "@ai-sdk/react": "^4.0.87",
     "@loremllm/transport": "workspace:^",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
@@ -23,12 +23,12 @@
     "@repo/ui": "workspace:^",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "ai": "^7.0.71",
+    "ai": "^7.0.84",
     "better-auth": "catalog:",
     "geist": "^1.7.2",
     "gsap": "^3.15.0",
     "lorem-ipsum": "^3.0.0",
-    "lucide-react": "^1.33.0",
+    "lucide-react": "^1.35.0",
     "motion": "^13.1.1",
     "next": "catalog:",
     "next-themes": "^0.4.6",
@@ -41,7 +41,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "^4.0.7",
+    "@ai-sdk/provider": "^4.0.8",
     "@kyh/tsconfig": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/mdx": "^2.0.14",

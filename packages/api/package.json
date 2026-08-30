@@ -19,7 +19,7 @@
   "dependencies": {
     "@orpc/server": "catalog:",
     "@repo/db": "workspace:^",
-    "ai": "^7.0.71",
+    "ai": "^7.0.84",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },

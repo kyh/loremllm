@@ -12,22 +12,23 @@ catalog:
   "@tailwindcss/postcss": ^4.3.3
   "@tailwindcss/vite": ^4.2.2
   "@tanstack/react-form": ^1.33.5
-  "@tanstack/react-query": ^5.101.4
-  "@types/node": ^26.2.0
+  "@tanstack/react-query": ^5.102.8
+  "@types/node": ^26.4.0
   "@types/react": ^19.2.18
-  "@types/react-dom": ^19.2.4
+  "@types/react-dom": ^19.2.5
   "@vitejs/plugin-react": ^5.2.0
-  better-auth: ^1.7.1
-  next: ^16.3.1
+  better-auth: ^1.7.2
+  next: ^16.3.3
   react: ^19.2.8
   react-dom: ^19.2.8
   tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vite: ^7.3.1
-  zod: ^4.4.3
+  zod: ^4.5.2
 
 linkWorkspacePackages: true
 
-onlyBuiltDependencies:
-  - "@tailwindcss/oxide"
-  - esbuild
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true
+  sharp: true
