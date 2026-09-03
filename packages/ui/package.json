@@ -20,7 +20,7 @@
     "ai": "^7.0.84",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
-    "cnfast": "^0.1.0",
+    "cn": "^0.2.3",
     "lucide-react": "^1.35.0",
     "motion": "^13.1.1",
     "nanoid": "^6.0.1",
