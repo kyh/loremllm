@@ -6,7 +6,7 @@ import { Button } from "@repo/ui/components/button";
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { toast } from "@repo/ui/components/sonner";
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 

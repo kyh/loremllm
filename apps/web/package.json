@@ -25,6 +25,7 @@
     "@tanstack/react-query": "catalog:",
     "ai": "^7.0.84",
     "better-auth": "catalog:",
+    "cn": "catalog:",
     "geist": "^1.7.2",
     "gsap": "^3.15.0",
     "lorem-ipsum": "^3.0.0",

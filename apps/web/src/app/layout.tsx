@@ -3,7 +3,7 @@ import { GlobalAlertDialog } from "@repo/ui/components/alert-dialog";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@repo/ui/components/sonner";
 import { TooltipProvider } from "@repo/ui/components/tooltip";
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 import { GeistMono } from "geist/font/mono";
 
 import { siteConfig } from "@/lib/site-config";

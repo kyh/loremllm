@@ -10,7 +10,7 @@ import {
   type Table as UseReactTable,
 } from "@tanstack/react-table";
 
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/components/tooltip";
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
