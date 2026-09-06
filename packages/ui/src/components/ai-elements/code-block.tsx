@@ -7,7 +7,7 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { codeToHtml } from "shiki";
 
 import { Button } from "@repo/ui/components/button";
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;

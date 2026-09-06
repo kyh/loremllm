@@ -24,7 +24,7 @@ import { Label } from "@repo/ui/components/label";
 import { Spinner } from "@repo/ui/components/spinner";
 import { Textarea } from "@repo/ui/components/textarea";
 import { toast } from "@repo/ui/components/sonner";
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { RouterOutputs } from "@repo/api";

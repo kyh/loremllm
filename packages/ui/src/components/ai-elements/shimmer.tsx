@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@repo/ui/lib/utils";
+import { cn } from "cn";
 import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { type CSSProperties, type ElementType, memo, useMemo } from "react";
 
