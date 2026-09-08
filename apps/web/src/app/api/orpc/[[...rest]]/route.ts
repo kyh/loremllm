@@ -12,10 +12,13 @@ import { RPCHandler } from "@orpc/server/fetch";
 // by the handler's default `allowMethods`.
 const handler = new RPCHandler(appRouter, {
   clientInterceptors: [
+    // oxlint-disable-next-line promise/prefer-await-to-callbacks -- an oRPC interceptor, not a Node-style callback
     onError((error) => {
       // An ORPCError is a procedure answering deliberately — rejected input, a
       // missing row, a caller without access. Everything else is a real fault.
-      if (error instanceof ORPCError) return;
+      if (error instanceof ORPCError) {
+        return;
+      }
       console.error(">>> oRPC Error", error);
     }),
   ],
@@ -50,8 +53,8 @@ const handleRequest = async (req: NextRequest) => {
   }
 
   const { response } = await handler.handle(req, {
-    prefix: "/api/orpc",
     context: await createORPCContext({ headers: req.headers }),
+    prefix: "/api/orpc",
   });
 
   return response ?? new Response("Not found", { status: 404 });

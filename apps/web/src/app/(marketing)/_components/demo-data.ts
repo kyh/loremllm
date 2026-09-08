@@ -3,7 +3,7 @@ import { StaticChatTransport } from "@loremllm/transport";
 
 import type { StaticTransportContext } from "@loremllm/transport";
 
-export type Demo = {
+export interface Demo {
   id: string;
   title: string;
   section: string;
@@ -12,14 +12,10 @@ export type Demo = {
   preset?: string;
   transport?: StaticChatTransport;
   code?: string;
-};
+}
 
 export const transportDemos: Demo[] = [
   {
-    id: "transport-text-response",
-    title: "Simple Text Response",
-    section: "AI SDK Transport",
-    description: "A simple response that echoes lorem ipsum text.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "@ai-sdk/react";
 
@@ -46,22 +42,21 @@ export function SimpleTextResponse() {
     </div>
   );
 }`,
+    description: "A simple response that echoes lorem ipsum text.",
+    id: "transport-text-response",
+    section: "AI SDK Transport",
+    title: "Simple Text Response",
     transport: new StaticChatTransport({
       chunkDelayMs: [50, 120],
       async *mockResponse() {
         yield {
-          type: "text",
           text: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          type: "text",
         };
       },
     }),
   },
   {
-    id: "transport-tool-calling",
-    title: "Tool Calling",
-    section: "AI SDK Transport",
-    description: "Simulates tool calls with progressive loading.",
-    placeholder: "Try asking about the weather in a city.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "@ai-sdk/react";
 import type { StaticTransportContext, UIMessage } from "@loremllm/transport";
@@ -85,7 +80,7 @@ export function ToolCallingDemo() {
 
         if (userText.toLowerCase().includes("weather")) {
           const locationMatch = /weather in (.+?)(?:[?]|$)/i.exec(userText);
-          const location = locationMatch?.[1]?.trim() ?? "San Francisco";
+          const location = locationMatch?.groups?.location?.trim() ?? "San Francisco";
 
           const toolCallId = \`call_\${Date.now()}\`;
 
@@ -129,6 +124,11 @@ export function ToolCallingDemo() {
     </div>
   );
 }`,
+    description: "Simulates tool calls with progressive loading.",
+    id: "transport-tool-calling",
+    placeholder: "Try asking about the weather in a city.",
+    section: "AI SDK Transport",
+    title: "Tool Calling",
     transport: new StaticChatTransport({
       chunkDelayMs: (chunk) => {
         if (chunk.type === "tool-output-available" || chunk.type === "tool-output-error") {
@@ -137,56 +137,52 @@ export function ToolCallingDemo() {
         return [20, 60];
       },
       async *mockResponse(context: StaticTransportContext<UIMessage>) {
-        const userMessage = context.messages[context.messages.length - 1];
+        const userMessage = context.messages.at(-1);
         const userText = userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
 
         if (userText.toLowerCase().includes("weather")) {
-          const locationMatch = /weather in (.+?)(?:\?|$)/i.exec(userText);
-          const location = locationMatch?.[1]?.trim() ?? "San Francisco";
+          const locationMatch = /weather in (?<location>.+?)(?:\?|$)/iu.exec(userText);
+          const location = locationMatch?.groups?.location?.trim() ?? "San Francisco";
 
           const toolCallId = `call_${Date.now()}`;
 
           yield {
-            type: "tool-weather",
+            input: { location },
+            state: "input-available",
             toolCallId,
             toolName: "weather",
-            state: "input-available",
-            input: { location },
+            type: "tool-weather",
           };
 
           const temperature = 72 + Math.floor(Math.random() * 21) - 10;
 
           yield {
-            type: "tool-weather",
-            toolCallId,
-            toolName: "weather",
-            state: "output-available",
             input: { location },
             output: {
+              condition: "sunny",
               location,
               temperature,
-              condition: "sunny",
             },
+            state: "output-available",
+            toolCallId,
+            toolName: "weather",
+            type: "tool-weather",
           };
 
           yield {
-            type: "text",
             text: `The weather in ${location} is sunny with a temperature of ${temperature}°F.`,
+            type: "text",
           };
         } else {
           yield {
-            type: "text",
             text: "Try asking about the weather in a city!",
+            type: "text",
           };
         }
       },
     }),
   },
   {
-    id: "transport-reasoning",
-    title: "Reasoning Stream",
-    section: "AI SDK Transport",
-    description: "Stream in reasoning parts.",
     code: `import { StaticChatTransport } from "@loremllm/transport";
 import { useChat } from "@ai-sdk/react";
 
@@ -222,20 +218,24 @@ export function ReasoningDemo() {
     </div>
   );
 }`,
+    description: "Stream in reasoning parts.",
+    id: "transport-reasoning",
+    section: "AI SDK Transport",
+    title: "Reasoning Stream",
     transport: new StaticChatTransport({
       chunkDelayMs: 30,
       async *mockResponse(context) {
-        const userMessage = context.messages[context.messages.length - 1];
+        const userMessage = context.messages.at(-1);
         const userText = userMessage?.parts.find((p) => p.type === "text")?.text ?? "";
 
         yield {
-          type: "reasoning",
           text: `Let me think about "${userText}"...\n\nI need to provide a helpful response.`,
+          type: "reasoning",
         };
 
         yield {
-          type: "text",
           text: `Based on your question about "${userText}", here's my response with some reasoning that you can toggle above.`,
+          type: "text",
         };
       },
     }),
@@ -244,10 +244,6 @@ export function ReasoningDemo() {
 
 export const platformDemos: Demo[] = [
   {
-    id: "lorem",
-    title: "Default Generator",
-    section: "Platform API",
-    description: "Generate dynamic lorem ipsum text with customizable parameters.",
     code: `import { useChat } from "@ai-sdk/react";
 
 export function DefaultGenerator() {
@@ -269,14 +265,12 @@ export function DefaultGenerator() {
     </div>
   );
 }`,
+    description: "Generate dynamic lorem ipsum text with customizable parameters.",
+    id: "lorem",
+    section: "Platform API",
+    title: "Default Generator",
   },
   {
-    id: "demo",
-    title: "Collections",
-    section: "Platform API",
-    description: "Define a collection of LLM interactions and query it with a specific input.",
-    placeholder:
-      'Try asking "What is Lorem Ipsum?" or "Faq", it will respond with the corresponding response from the collection.',
     code: `import { useChat } from "@ai-sdk/react";
 
 export function CollectionsDemo() {
@@ -304,18 +298,14 @@ export function CollectionsDemo() {
     </div>
   );
 }`,
+    description: "Define a collection of LLM interactions and query it with a specific input.",
+    id: "demo",
+    placeholder:
+      'Try asking "What is Lorem Ipsum?" or "Faq", it will respond with the corresponding response from the collection.',
+    section: "Platform API",
+    title: "Collections",
   },
   {
-    id: "markdown",
-    title: "Markdown Streaming",
-    section: "Platform API",
-    description: "Paste markdown to see it parsed and streamed back in real time.",
-    preset: `
-# Release Highlights
-
-- **Streaming markdown** with live updates
-- Rendered exactly as you provide it
-- Great for previewing documentation tweaks`.trim(),
     code: `import { useChat } from "@ai-sdk/react";
 
 export function MarkdownStreamingDemo() {
@@ -342,6 +332,16 @@ export function MarkdownStreamingDemo() {
     </div>
   );
 }`,
+    description: "Paste markdown to see it parsed and streamed back in real time.",
+    id: "markdown",
+    preset: `
+# Release Highlights
+
+- **Streaming markdown** with live updates
+- Rendered exactly as you provide it
+- Great for previewing documentation tweaks`.trim(),
+    section: "Platform API",
+    title: "Markdown Streaming",
   },
 ];
 

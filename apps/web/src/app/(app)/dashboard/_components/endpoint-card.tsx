@@ -11,10 +11,10 @@ import {
 
 import { siteConfig } from "@/lib/site-config";
 
-type EndpointCardProps = {
+interface EndpointCardProps {
   publicId: string;
   isPublic: boolean;
-};
+}
 
 const buildChatSnippet = (
   publicId: string,
@@ -38,31 +38,29 @@ const agent = useEveAgent({
 });
 // Streams eve agent events — works with eve/client too`;
 
-export const EndpointCard = ({ publicId, isPublic }: EndpointCardProps) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Endpoint</CardTitle>
-        <CardDescription>
-          {isPublic
-            ? "Point your AI SDK or eve app at this collection — messages are matched against your mocks and streamed back."
-            : "This collection is private. Make it public to call the endpoint from outside the dashboard."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-1.5">
-          <p className="text-muted-foreground text-xs font-medium">AI SDK</p>
-          <CodeBlock code={buildChatSnippet(publicId)} language="typescript">
-            <CodeBlockCopyButton />
-          </CodeBlock>
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-muted-foreground text-xs font-medium">eve</p>
-          <CodeBlock code={buildEveSnippet(publicId)} language="typescript">
-            <CodeBlockCopyButton />
-          </CodeBlock>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+export const EndpointCard = ({ publicId, isPublic }: EndpointCardProps) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-base">Endpoint</CardTitle>
+      <CardDescription>
+        {isPublic
+          ? "Point your AI SDK or eve app at this collection — messages are matched against your mocks and streamed back."
+          : "This collection is private. Make it public to call the endpoint from outside the dashboard."}
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      <div className="space-y-1.5">
+        <p className="text-muted-foreground text-xs font-medium">AI SDK</p>
+        <CodeBlock code={buildChatSnippet(publicId)} language="typescript">
+          <CodeBlockCopyButton />
+        </CodeBlock>
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-muted-foreground text-xs font-medium">eve</p>
+        <CodeBlock code={buildEveSnippet(publicId)} language="typescript">
+          <CodeBlockCopyButton />
+        </CodeBlock>
+      </div>
+    </CardContent>
+  </Card>
+);

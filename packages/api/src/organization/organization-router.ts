@@ -24,7 +24,7 @@ export const organizationRouter = {
       where: (member, { eq }) => eq(member.organizationId, organization.id),
       with: {
         // Allow-list only — full rows include admin-only fields (role, banned, banReason)
-        user: { columns: { id: true, name: true, email: true, image: true } },
+        user: { columns: { email: true, id: true, image: true, name: true } },
       },
     });
     const currentUserMember = members.find((member) => member.userId === context.session.user.id);
@@ -43,10 +43,10 @@ export const organizationRouter = {
 
     return {
       currentUserMember,
+      invitations,
+      members,
       organization,
       organizationMetadata: authMetadataSchema.parse(organization.metadata ?? "{}"),
-      members,
-      invitations,
     };
   }),
 };

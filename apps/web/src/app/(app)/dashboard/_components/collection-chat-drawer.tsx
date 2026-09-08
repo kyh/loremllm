@@ -20,20 +20,30 @@ import { getToolOrDynamicToolName, isToolUIPart } from "ai";
 import { z } from "zod";
 
 const roleLabel = {
+  assistant: "Assistant",
   system: "System",
   user: "You",
-  assistant: "Assistant",
 } satisfies Record<UIMessage["role"], string>;
 
 // Each field falls back to null when absent or mistyped; the match banner
 // renders whatever subset the server managed to attach.
 const matchMetadata = z.object({
+  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   interactionId: z.string().nullable().catch(null),
-  title: z.string().nullable().catch(null),
+  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   similarity: z.number().nullable().catch(null),
+  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
+  title: z.string().nullable().catch(null),
 });
 
 type MatchMetadata = z.infer<typeof matchMetadata>;
+
+const MessageText = ({ role, text }: { role: UIMessage["role"]; text: string }) => {
+  if (role === "assistant") {
+    return <MessageResponse className="text-sm">{text}</MessageResponse>;
+  }
+  return <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
+};
 
 const parseMatchMetadata = (metadata: UIMessage["metadata"]): MatchMetadata | null => {
   const parsed = matchMetadata.safeParse(metadata);
@@ -49,10 +59,10 @@ const parseMatchMetadata = (metadata: UIMessage["metadata"]): MatchMetadata | nu
   return parsed.data;
 };
 
-type CollectionChatDrawerProps = {
+interface CollectionChatDrawerProps {
   collectionId: string;
   collectionName: string;
-};
+}
 
 const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) => {
   const [input, setInput] = useState("");
@@ -76,7 +86,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
 
     clearError();
     setInput("");
-    void sendMessage({ text: trimmedInput }, { body: { type: "chat", collectionId } });
+    void sendMessage({ text: trimmedInput }, { body: { collectionId, type: "chat" } });
   };
 
   const handleReset = () => {
@@ -103,11 +113,11 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
             <span className="font-semibold">Matched interaction</span>
             {latestMatch.title ? <span>{latestMatch.title}</span> : null}
             <div className="text-primary/80 flex flex-wrap items-center gap-2">
-              {latestMatch.similarity !== null ? (
+              {latestMatch.similarity === null ? null : (
                 <span>
                   Similarity: <strong>{(latestMatch.similarity * 100).toFixed(1)}%</strong>
                 </span>
-              ) : null}
+              )}
               {latestMatch.interactionId ? (
                 <span className="truncate">
                   ID: <code>{latestMatch.interactionId}</code>
@@ -140,15 +150,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
                   <header className="flex items-center justify-between">
                     <Badge variant="outline">{roleLabel[message.role]}</Badge>
                   </header>
-                  {text ? (
-                    message.role === "assistant" ? (
-                      <MessageResponse className="text-sm">{text}</MessageResponse>
-                    ) : (
-                      <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
-                        {text}
-                      </p>
-                    )
-                  ) : null}
+                  {text ? <MessageText role={message.role} text={text} /> : null}
                   {toolParts.length ? (
                     <div className="space-y-2">
                       {toolParts.map((part) => (
@@ -169,16 +171,16 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
                               State: {part.state}
                             </p>
                           ) : null}
-                          {part.input !== undefined ? (
+                          {part.input === undefined ? null : (
                             <pre className="bg-background text-foreground/90 mt-2 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
                               {JSON.stringify(part.input, null, 2)}
                             </pre>
-                          ) : null}
-                          {part.output !== undefined ? (
+                          )}
+                          {part.output === undefined ? null : (
                             <pre className="bg-background text-foreground/90 mt-2 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
                               {JSON.stringify(part.output, null, 2)}
                             </pre>
-                          ) : null}
+                          )}
                           {part.errorText ? (
                             <p className="text-destructive mt-1 text-xs">{part.errorText}</p>
                           ) : null}
@@ -208,7 +210,13 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
           Send
         </Button>
         {isStreaming ? (
-          <Button type="button" variant="outline" onClick={() => void stop()}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void stop();
+            }}
+          >
             Stop
           </Button>
         ) : null}

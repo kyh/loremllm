@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
+import { setTimeout as sleep } from "node:timers/promises";
 import type { UIMessage, UIMessageChunk } from "ai";
 
 import { StaticChatTransport } from "./index";
@@ -10,22 +11,22 @@ import { StaticChatTransport } from "./index";
 
 const createUserMessage = (text: string, id = "user-1"): UIMessage => ({
   id,
+  parts: [{ text, type: "text" }],
   role: "user",
-  parts: [{ type: "text", text }],
 });
 
 /** Narrows a chunk to one union member, failing the test when the discriminant differs. */
-function chunkOfType<TYPE extends UIMessageChunk["type"]>(
+const chunkOfType = <TYPE extends UIMessageChunk["type"]>(
   chunk: UIMessageChunk | undefined,
   type: TYPE,
-): Extract<UIMessageChunk, { type: TYPE }> {
+): Extract<UIMessageChunk, { type: TYPE }> => {
   if (chunk?.type !== type) {
     throw new Error(`Expected chunk of type "${type}", got "${chunk?.type}".`);
   }
   // SAFETY: the discriminant was checked just above; TypeScript cannot relate
   // the generic TYPE parameter back to the matching union member on its own.
   return chunk as Extract<UIMessageChunk, { type: TYPE }>;
-}
+};
 
 const readAllChunks = async (stream: ReadableStream<UIMessageChunk>): Promise<UIMessageChunk[]> => {
   const reader = stream.getReader();
@@ -51,13 +52,13 @@ const createSendContext = ({
   messageId?: string;
   messages: UIMessage[];
 }) => ({
-  trigger,
+  body: undefined,
   chatId,
+  headers: undefined,
   messageId,
   messages,
-  headers: undefined,
-  body: undefined,
   metadata: undefined,
+  trigger,
 });
 
 // Helper to process chunks like useChat would - extract text from text-delta chunks
@@ -79,10 +80,10 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Hi there!" };
-        },
         autoChunkText: false,
+        async *mockResponse() {
+          yield { text: "Hi there!", type: "text" };
+        },
       });
 
       const stream = await transport.sendMessages({
@@ -95,9 +96,12 @@ describe("StaticChatTransport", () => {
         chunks.map((chunk) => chunk.type),
         ["start", "start-step", "text-start", "text-delta", "text-end", "finish-step", "finish"],
       );
-      assert.partialDeepStrictEqual(chunks.filter((chunk) => chunk.type === "text-delta")[0], {
-        delta: "Hi there!",
-      });
+      assert.partialDeepStrictEqual(
+        chunks.find((chunk) => chunk.type === "text-delta"),
+        {
+          delta: "Hi there!",
+        },
+      );
     });
 
     test("requires mockResponse to yield at least one part", async () => {
@@ -114,7 +118,7 @@ describe("StaticChatTransport", () => {
           ...createSendContext({ messages: [userMessage] }),
           abortSignal: undefined,
         }),
-        /at least one part/i,
+        /at least one part/iu,
       );
     });
 
@@ -122,11 +126,11 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Response one" };
-          yield { type: "text", text: "Response two" };
-        },
         autoChunkText: false,
+        async *mockResponse() {
+          yield { text: "Response one", type: "text" };
+          yield { text: "Response two", type: "text" };
+        },
       });
 
       const stream = await transport.sendMessages({
@@ -148,23 +152,23 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Hello");
       const previousAssistant: UIMessage = {
         id: "assistant-1",
+        parts: [{ text: "Old response", type: "text" }],
         role: "assistant",
-        parts: [{ type: "text", text: "Old response" }],
       };
 
       const transport = new StaticChatTransport({
-        async *mockResponse({ messageId }) {
-          yield { type: "text", text: "Fresh response" };
-        },
         autoChunkText: false,
+        async *mockResponse() {
+          yield { text: "Fresh response", type: "text" };
+        },
       });
 
       const chunks = await readAllChunks(
         await transport.sendMessages({
           ...createSendContext({
-            trigger: "regenerate-message",
             messageId: "assistant-1",
             messages: [userMessage, previousAssistant],
+            trigger: "regenerate-message",
           }),
           abortSignal: undefined,
         }),
@@ -189,7 +193,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "data-widget", data: { foo: "bar" } };
+          yield { data: { foo: "bar" }, type: "data-widget" };
         },
       });
 
@@ -205,8 +209,8 @@ describe("StaticChatTransport", () => {
         ["start", "data-widget", "finish"],
       );
       assert.partialDeepStrictEqual(chunks[1], {
-        type: "data-widget",
         data: { foo: "bar" },
+        type: "data-widget",
       });
     });
 
@@ -214,15 +218,15 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Question");
 
       const transport = new StaticChatTransport({
+        autoChunkReasoning: false,
+        autoChunkText: false,
         async *mockResponse() {
           yield {
-            type: "reasoning",
             text: "First I think about this problem carefully step by step",
+            type: "reasoning",
           };
-          yield { type: "text", text: "Here is my final answer to you" };
+          yield { text: "Here is my final answer to you", type: "text" };
         },
-        autoChunkText: false,
-        autoChunkReasoning: false,
       });
 
       const chunks = await readAllChunks(
@@ -263,11 +267,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_123",
-            state: "output-available",
             input: { query: "cats" },
             output: { results: [{ title: "All About Cats" }] },
+            state: "output-available",
+            toolCallId: "call_123",
+            type: "tool-search",
           };
         },
       });
@@ -289,10 +293,10 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-input-available",
       );
       assert.partialDeepStrictEqual(inputChunk, {
-        type: "tool-input-available",
+        input: { query: "cats" },
         toolCallId: "call_123",
         toolName: "tool",
-        input: { query: "cats" },
+        type: "tool-input-available",
       });
 
       const outputChunk = chunks.find(
@@ -300,9 +304,9 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-output-available",
       );
       assert.partialDeepStrictEqual(outputChunk, {
-        type: "tool-output-available",
-        toolCallId: "call_123",
         output: { results: [{ title: "All About Cats" }] },
+        toolCallId: "call_123",
+        type: "tool-output-available",
       });
     });
 
@@ -312,11 +316,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-booking",
-            toolCallId: "call_failure",
-            state: "output-error",
-            input: { reservationId: 123 },
             errorText: "Reservation not found",
+            input: { reservationId: 123 },
+            state: "output-error",
+            toolCallId: "call_failure",
+            type: "tool-booking",
           };
         },
       });
@@ -338,9 +342,9 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-output-error",
       );
       assert.partialDeepStrictEqual(errorChunk, {
-        type: "tool-output-error",
-        toolCallId: "call_failure",
         errorText: "Reservation not found",
+        toolCallId: "call_failure",
+        type: "tool-output-error",
       });
     });
 
@@ -350,11 +354,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "dynamic-tool",
-            toolCallId: "call_dynamic",
-            state: "output-available",
             input: { action: "perform" },
             output: { result: "success" },
+            state: "output-available",
+            toolCallId: "call_dynamic",
+            type: "dynamic-tool",
           };
         },
       });
@@ -387,10 +391,10 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-custom",
-            toolCallId: "call_no_name",
-            state: "input-streaming",
             input: { data: "test" },
+            state: "input-streaming",
+            toolCallId: "call_no_name",
+            type: "tool-custom",
           };
         },
       });
@@ -407,9 +411,9 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-input-available",
       );
       assert.partialDeepStrictEqual(inputChunk, {
+        input: { data: "test" },
         toolCallId: "call_no_name",
         toolName: "tool",
-        input: { data: "test" },
       });
     });
 
@@ -419,12 +423,12 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_named",
-            toolName: "search-tool",
-            state: "output-available",
             input: { query: "test" },
             output: { results: [] },
+            state: "output-available",
+            toolCallId: "call_named",
+            toolName: "search-tool",
+            type: "tool-search",
           };
         },
       });
@@ -441,9 +445,9 @@ describe("StaticChatTransport", () => {
           chunk.type === "tool-input-available",
       );
       assert.partialDeepStrictEqual(inputChunk, {
+        input: { query: "test" },
         toolCallId: "call_named",
         toolName: "search-tool",
-        input: { query: "test" },
       });
     });
 
@@ -453,10 +457,10 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-task",
-            toolCallId: "call_input_only",
-            state: "input-streaming",
             input: { task: "do something" },
+            state: "input-streaming",
+            toolCallId: "call_input_only",
+            type: "tool-task",
           };
         },
       });
@@ -480,18 +484,18 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_a",
-            state: "output-available",
             input: { query: "coffee" },
             output: { results: [] },
+            state: "output-available",
+            toolCallId: "call_a",
+            type: "tool-search",
           };
           yield {
-            type: "tool-map",
-            toolCallId: "call_b",
-            state: "output-available",
-            input: { origin: "A", destination: "B" },
+            input: { destination: "B", origin: "A" },
             output: { etaMinutes: 5 },
+            state: "output-available",
+            toolCallId: "call_b",
+            type: "tool-map",
           };
         },
       });
@@ -506,7 +510,8 @@ describe("StaticChatTransport", () => {
       const toolChunks = chunks.filter(
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
-      assert.strictEqual(toolChunks.length, 4); // 2 input + 2 output
+      // 2 input + 2 output
+      assert.strictEqual(toolChunks.length, 4);
 
       const firstInput = chunkOfType(toolChunks[0], "tool-input-available");
       assert.strictEqual(firstInput.toolCallId, "call_a");
@@ -519,18 +524,18 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Search and explain");
 
       const transport = new StaticChatTransport({
+        autoChunkText: false,
         async *mockResponse() {
-          yield { type: "text", text: "Let me search for that." };
+          yield { text: "Let me search for that.", type: "text" };
           yield {
-            type: "tool-search",
-            toolCallId: "call_mixed",
-            state: "output-available",
             input: { query: "something" },
             output: { results: [] },
+            state: "output-available",
+            toolCallId: "call_mixed",
+            type: "tool-search",
           };
-          yield { type: "text", text: "Here are the results!" };
+          yield { text: "Here are the results!", type: "text" };
         },
-        autoChunkText: false,
       });
 
       const chunks = await readAllChunks(
@@ -565,22 +570,22 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-weather",
+            input: { location: "San Francisco" },
+            state: "input-available",
             toolCallId: "call_weather_1",
             toolName: "weather",
-            state: "input-available",
-            input: { location: "San Francisco" },
+            type: "tool-weather",
           };
 
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          await sleep(50);
 
           yield {
-            type: "tool-weather",
+            input: { location: "San Francisco" },
+            output: { condition: "sunny", temperature: 72 },
+            state: "output-available",
             toolCallId: "call_weather_1",
             toolName: "weather",
-            state: "output-available",
-            input: { location: "San Francisco" },
-            output: { temperature: 72, condition: "sunny" },
+            type: "tool-weather",
           };
         },
       });
@@ -607,8 +612,8 @@ describe("StaticChatTransport", () => {
       assert.strictEqual(outputChunk.type, "tool-output-available");
       assert.strictEqual(outputChunk.toolCallId, "call_weather_1");
       assert.deepEqual(outputChunk.output, {
-        temperature: 72,
         condition: "sunny",
+        temperature: 72,
       });
     });
 
@@ -618,25 +623,25 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-process",
-            toolCallId: "call_process_1",
-            state: "input-available",
             input: { data: "test" },
+            state: "input-available",
+            toolCallId: "call_process_1",
+            type: "tool-process",
           };
 
           yield {
-            type: "tool-process",
-            toolCallId: "call_process_1",
-            state: "input-available",
             input: { data: "test" },
+            state: "input-available",
+            toolCallId: "call_process_1",
+            type: "tool-process",
           };
 
           yield {
-            type: "tool-process",
-            toolCallId: "call_process_1",
-            state: "output-available",
             input: { data: "test" },
             output: { result: "processed" },
+            state: "output-available",
+            toolCallId: "call_process_1",
+            type: "tool-process",
           };
         },
       });
@@ -663,20 +668,20 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-process",
-            toolCallId: "call_error_1",
-            state: "input-available",
             input: { data: "test" },
+            state: "input-available",
+            toolCallId: "call_error_1",
+            type: "tool-process",
           };
 
-          await new Promise((resolve) => setTimeout(resolve, 10));
+          await sleep(10);
 
           yield {
-            type: "tool-process",
-            toolCallId: "call_error_1",
-            state: "output-error",
-            input: { data: "test" },
             errorText: "Processing failed",
+            input: { data: "test" },
+            state: "output-error",
+            toolCallId: "call_error_1",
+            type: "tool-process",
           };
         },
       });
@@ -712,7 +717,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "Hello world test" };
+          yield { text: "Hello world test", type: "text" };
         },
       });
 
@@ -739,8 +744,8 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "reasoning",
             text: "Let me think about this carefully",
+            type: "reasoning",
           };
         },
       });
@@ -766,10 +771,10 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Hello world test" };
-        },
         autoChunkText: false,
+        async *mockResponse() {
+          yield { text: "Hello world test", type: "text" };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -792,10 +797,10 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Think");
 
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "reasoning", text: "Let me think about this" };
-        },
         autoChunkReasoning: false,
+        async *mockResponse() {
+          yield { text: "Let me think about this", type: "reasoning" };
+        },
       });
 
       const chunks = await readAllChunks(
@@ -818,10 +823,10 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
+        autoChunkText: /[,.]/gu,
         async *mockResponse() {
-          yield { type: "text", text: "Hello,world.test" };
+          yield { text: "Hello,world.test", type: "text" };
         },
-        autoChunkText: /[,.]/g,
       });
 
       const chunks = await readAllChunks(
@@ -845,10 +850,10 @@ describe("StaticChatTransport", () => {
       const userMessage = createUserMessage("Think");
 
       const transport = new StaticChatTransport({
+        autoChunkReasoning: /\./gu,
         async *mockResponse() {
-          yield { type: "reasoning", text: "Step1.Step2.Step3" };
+          yield { text: "Step1.Step2.Step3", type: "reasoning" };
         },
-        autoChunkReasoning: /\./g,
       });
 
       const chunks = await readAllChunks(
@@ -873,7 +878,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "" };
+          yield { text: "", type: "text" };
         },
       });
 
@@ -903,10 +908,10 @@ describe("StaticChatTransport", () => {
       const chunkDelay = mock.fn((_chunk: UIMessageChunk): number => 0);
 
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Hello again!" };
-        },
         chunkDelayMs: chunkDelay,
+        async *mockResponse() {
+          yield { text: "Hello again!", type: "text" };
+        },
       });
 
       await readAllChunks(
@@ -923,10 +928,10 @@ describe("StaticChatTransport", () => {
     test("supports tuple delay range for random delays", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Test" };
-        },
         chunkDelayMs: [10, 20],
+        async *mockResponse() {
+          yield { text: "Test", type: "text" };
+        },
       });
 
       const start = Date.now();
@@ -944,14 +949,14 @@ describe("StaticChatTransport", () => {
     test("supports function returning tuple for per-chunk random delays", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Test" };
-        },
         chunkDelayMs: (chunk) => {
           if (chunk.type === "text-delta") {
             return [15, 25];
           }
           return 0;
+        },
+        async *mockResponse() {
+          yield { text: "Test", type: "text" };
         },
       });
 
@@ -970,10 +975,10 @@ describe("StaticChatTransport", () => {
     test("aborts the stream when the abort signal fires", async () => {
       const userMessage = createUserMessage("Hello");
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Streaming..." };
-        },
         chunkDelayMs: () => 50,
+        async *mockResponse() {
+          yield { text: "Streaming...", type: "text" };
+        },
       });
 
       const abortController = new AbortController();
@@ -986,20 +991,20 @@ describe("StaticChatTransport", () => {
 
       abortController.abort();
 
-      await assert.rejects(reader, /aborted/i);
+      await assert.rejects(reader, /aborted/iu);
     });
 
     test("aborts text streaming halfway through when auto-chunking", async () => {
       const userMessage = createUserMessage("Hello");
 
       const transport = new StaticChatTransport({
+        chunkDelayMs: 50,
         async *mockResponse() {
           yield {
-            type: "text",
             text: "This is a long message that will be chunked word by word",
+            type: "text",
           };
         },
-        chunkDelayMs: 50,
       });
 
       const abortController = new AbortController();
@@ -1016,10 +1021,12 @@ describe("StaticChatTransport", () => {
       try {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            break;
+          }
 
           chunks.push(value);
-          chunkCount++;
+          chunkCount += 1;
 
           if (chunkCount >= maxChunks) {
             abortController.abort();
@@ -1054,30 +1061,28 @@ describe("StaticChatTransport", () => {
         },
         async *mockResponse() {
           yield {
-            type: "tool-test",
-            toolCallId: "call_delayed",
-            state: "input-available",
             input: { test: true },
+            state: "input-available",
+            toolCallId: "call_delayed",
+            type: "tool-test",
           };
 
           yield {
-            type: "tool-test",
-            toolCallId: "call_delayed",
-            state: "output-available",
             input: { test: true },
             output: { result: "done" },
+            state: "output-available",
+            toolCallId: "call_delayed",
+            type: "tool-test",
           };
         },
       });
 
-      const startTime = Date.now();
       const chunks = await readAllChunks(
         await transport.sendMessages({
           ...createSendContext({ messages: [userMessage] }),
           abortSignal: undefined,
         }),
       );
-      const endTime = Date.now();
 
       assert.ok(delaySpy.mock.calls.some((call) => call.arguments[0] === "tool-input-available"));
       assert.ok(delaySpy.mock.calls.some((call) => call.arguments[0] === "tool-output-available"));
@@ -1099,7 +1104,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "Response" };
+          yield { text: "Response", type: "text" };
         },
       });
 
@@ -1111,8 +1116,8 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      assert.notStrictEqual(reconnect, null);
-      const chunks = await readAllChunks(reconnect!);
+      assert.ok(reconnect);
+      const chunks = await readAllChunks(reconnect);
       assert.deepEqual(
         chunks.map((chunk) => chunk.type),
         ["start", "start-step", "text-start", "text-delta", "text-end", "finish-step", "finish"],
@@ -1125,11 +1130,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_reconnect",
-            state: "output-available",
             input: { query: "test" },
             output: { results: [] },
+            state: "output-available",
+            toolCallId: "call_reconnect",
+            type: "tool-search",
           };
         },
       });
@@ -1142,8 +1147,8 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      assert.notStrictEqual(reconnect, null);
-      const chunks = await readAllChunks(reconnect!);
+      assert.ok(reconnect);
+      const chunks = await readAllChunks(reconnect);
 
       assert.deepEqual(
         chunks.map((chunk) => chunk.type),
@@ -1156,7 +1161,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "Hello world" };
+          yield { text: "Hello world", type: "text" };
         },
       });
 
@@ -1168,9 +1173,9 @@ describe("StaticChatTransport", () => {
       );
 
       const reconnect = await transport.reconnectToStream({ chatId: "chat-1" });
-      assert.notStrictEqual(reconnect, null);
+      assert.ok(reconnect);
 
-      const chunks = await readAllChunks(reconnect!);
+      const chunks = await readAllChunks(reconnect);
       const textDeltaChunks = chunks.filter(
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
           chunk.type === "text-delta",
@@ -1186,7 +1191,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "Response" };
+          yield { text: "Response", type: "text" };
         },
       });
 
@@ -1221,7 +1226,7 @@ describe("StaticChatTransport", () => {
 
       const transport = new StaticChatTransport({
         async *mockResponse() {
-          yield { type: "text", text: "Response" };
+          yield { text: "Response", type: "text" };
         },
       });
 
@@ -1258,10 +1263,10 @@ describe("StaticChatTransport", () => {
   describe("Integration Scenarios (useChat-like)", () => {
     test("handles text streaming as useChat would receive it", async () => {
       const transport = new StaticChatTransport({
-        async *mockResponse() {
-          yield { type: "text", text: "Hello! This is a streaming response." };
-        },
         chunkDelayMs: 5,
+        async *mockResponse() {
+          yield { text: "Hello! This is a streaming response.", type: "text" };
+        },
       });
 
       const userMessage = createUserMessage("Hi there");
@@ -1279,11 +1284,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_123",
-            state: "output-available",
             input: { query: "test query" },
             output: { results: [{ title: "Result 1" }] },
+            state: "output-available",
+            toolCallId: "call_123",
+            type: "tool-search",
           };
         },
       });
@@ -1315,9 +1320,9 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "data-widget",
-            id: "widget-1",
             data: { count: 42, status: "active" },
+            id: "widget-1",
+            type: "data-widget",
           };
         },
       });
@@ -1343,10 +1348,10 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "source-url",
             sourceId: "src-1",
-            url: "https://example.com/article",
             title: "Example Article",
+            type: "source-url",
+            url: "https://example.com/article",
           };
         },
       });
@@ -1366,10 +1371,10 @@ describe("StaticChatTransport", () => {
 
       assert.notStrictEqual(sourceChunk, undefined);
       assert.partialDeepStrictEqual(sourceChunk, {
-        type: "source-url",
         sourceId: "src-1",
-        url: "https://example.com/article",
         title: "Example Article",
+        type: "source-url",
+        url: "https://example.com/article",
       });
     });
 
@@ -1377,11 +1382,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "source-document",
-            sourceId: "doc-1",
-            mediaType: "application/pdf",
-            title: "Important Document",
             filename: "document.pdf",
+            mediaType: "application/pdf",
+            sourceId: "doc-1",
+            title: "Important Document",
+            type: "source-document",
           };
         },
       });
@@ -1401,28 +1406,28 @@ describe("StaticChatTransport", () => {
 
       assert.notStrictEqual(docChunk, undefined);
       assert.partialDeepStrictEqual(docChunk, {
-        type: "source-document",
-        sourceId: "doc-1",
-        mediaType: "application/pdf",
-        title: "Important Document",
         filename: "document.pdf",
+        mediaType: "application/pdf",
+        sourceId: "doc-1",
+        title: "Important Document",
+        type: "source-document",
       });
     });
 
     test("handles reasoning parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
+        autoChunkReasoning: false,
+        autoChunkText: false,
         async *mockResponse() {
           yield {
-            type: "reasoning",
             text: "Let me think about this step by step...",
+            type: "reasoning",
           };
           yield {
-            type: "text",
             text: "Based on my reasoning, here's the answer.",
+            type: "text",
           };
         },
-        autoChunkText: false,
-        autoChunkReasoning: false,
       });
 
       const userMessage = createUserMessage("Think and respond");
@@ -1454,27 +1459,27 @@ describe("StaticChatTransport", () => {
 
     test("handles multiple tool calls in sequence as useChat would process them", async () => {
       const transport = new StaticChatTransport({
+        autoChunkText: false,
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_search",
-            state: "output-available",
             input: { query: "coffee" },
             output: { results: [{ title: "Coffee Shop" }] },
-          };
-          yield {
-            type: "tool-map",
-            toolCallId: "call_map",
             state: "output-available",
-            input: { origin: "A", destination: "B" },
-            output: { etaMinutes: 15 },
+            toolCallId: "call_search",
+            type: "tool-search",
           };
           yield {
-            type: "text",
+            input: { destination: "B", origin: "A" },
+            output: { etaMinutes: 15 },
+            state: "output-available",
+            toolCallId: "call_map",
+            type: "tool-map",
+          };
+          yield {
             text: "I found a coffee shop and calculated the route.",
+            type: "text",
           };
         },
-        autoChunkText: false,
       });
 
       const userMessage = createUserMessage("Search and route");
@@ -1489,7 +1494,8 @@ describe("StaticChatTransport", () => {
         (chunk) => chunk.type === "tool-input-available" || chunk.type === "tool-output-available",
       );
 
-      assert.ok(toolChunks.length >= 4); // 2 inputs + 2 outputs
+      // 2 inputs + 2 outputs
+      assert.ok(toolChunks.length >= 4);
 
       const textDeltas = chunks.filter(
         (chunk): chunk is Extract<UIMessageChunk, { type: "text-delta" }> =>
@@ -1505,11 +1511,11 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-process",
-            toolCallId: "call_error",
-            state: "output-error",
-            input: { data: "test" },
             errorText: "Processing failed: Invalid input",
+            input: { data: "test" },
+            state: "output-error",
+            toolCallId: "call_error",
+            type: "tool-process",
           };
         },
       });
@@ -1536,18 +1542,18 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "tool-weather",
-            toolCallId: "call_weather",
+            input: { location: "NYC" },
             state: "input-available",
-            input: { location: "NYC" },
-          };
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          yield {
-            type: "tool-weather",
             toolCallId: "call_weather",
-            state: "output-available",
+            type: "tool-weather",
+          };
+          await sleep(10);
+          yield {
             input: { location: "NYC" },
-            output: { temperature: 68, condition: "sunny" },
+            output: { condition: "sunny", temperature: 68 },
+            state: "output-available",
+            toolCallId: "call_weather",
+            type: "tool-weather",
           };
         },
       });
@@ -1570,30 +1576,30 @@ describe("StaticChatTransport", () => {
 
       const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
       assert.deepEqual(outputChunk.output, {
-        temperature: 68,
         condition: "sunny",
+        temperature: 68,
       });
     });
 
     test("handles mixed content (text, tools, data) as useChat would process it", async () => {
       const transport = new StaticChatTransport({
+        autoChunkText: false,
         async *mockResponse() {
-          yield { type: "text", text: "Let me search for that." };
+          yield { text: "Let me search for that.", type: "text" };
           yield {
-            type: "tool-search",
-            toolCallId: "call_mixed",
-            state: "output-available",
             input: { query: "something" },
             output: { results: [] },
+            state: "output-available",
+            toolCallId: "call_mixed",
+            type: "tool-search",
           };
           yield {
-            type: "data-status",
-            id: "status-1",
             data: { status: "completed" },
+            id: "status-1",
+            type: "data-status",
           };
-          yield { type: "text", text: "Here are the results!" };
+          yield { text: "Here are the results!", type: "text" };
         },
-        autoChunkText: false,
       });
 
       const userMessage = createUserMessage("Search and show status");
@@ -1622,8 +1628,8 @@ describe("StaticChatTransport", () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
           yield {
-            type: "file",
             mediaType: "image/png",
+            type: "file",
             url: "https://example.com/image.png",
           };
         },
@@ -1643,21 +1649,21 @@ describe("StaticChatTransport", () => {
 
       assert.notStrictEqual(fileChunk, undefined);
       assert.partialDeepStrictEqual(fileChunk, {
-        type: "file",
         mediaType: "image/png",
+        type: "file",
         url: "https://example.com/image.png",
       });
     });
 
     test("handles streaming text with auto-chunking as useChat would receive it", async () => {
       const transport = new StaticChatTransport({
+        chunkDelayMs: 5,
         async *mockResponse() {
           yield {
-            type: "text",
             text: "This is a streaming message that will be chunked word by word",
+            type: "text",
           };
         },
-        chunkDelayMs: 5,
       });
 
       const userMessage = createUserMessage("Stream this");
@@ -1680,13 +1686,13 @@ describe("StaticChatTransport", () => {
 
     test("handles aborting mid-stream as useChat.stop() would", async () => {
       const transport = new StaticChatTransport({
+        chunkDelayMs: 20,
         async *mockResponse() {
           yield {
-            type: "text",
             text: "This is a very long message that will be chunked and potentially aborted",
+            type: "text",
           };
         },
-        chunkDelayMs: 20,
       });
 
       const userMessage = createUserMessage("Stream this");
@@ -1704,10 +1710,12 @@ describe("StaticChatTransport", () => {
       try {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            break;
+          }
 
           chunks.push(value);
-          chunkCount++;
+          chunkCount += 1;
 
           if (chunkCount >= maxChunks) {
             abortController.abort();

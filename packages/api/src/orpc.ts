@@ -1,6 +1,6 @@
-import { eq } from "@repo/db";
+import { and, eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import { session } from "@repo/db/drizzle-schema-auth";
+import { member as memberSchema, session as sessionSchema } from "@repo/db/drizzle-schema-auth";
 import { ORPCError, os } from "@orpc/server";
 
 import type { Session } from "./auth/auth";
@@ -30,7 +30,7 @@ export const createORPCContext = async (opts: {
       ? await auth.api.getSession({ headers: opts.headers })
       : opts.session;
 
-  return { session, db };
+  return { db, session };
 };
 
 export type ORPCContext = Awaited<ReturnType<typeof createORPCContext>>;
@@ -54,7 +54,7 @@ export const publicProcedure = o;
  * `context.session.user` to non-nullable for the handler.
  */
 export const protectedProcedure = publicProcedure.use(({ context, next }) => {
-  const session = context.session;
+  const { session } = context;
 
   if (!session?.user) {
     throw new ORPCError("UNAUTHORIZED");
@@ -81,16 +81,15 @@ export const protectedProcedure = publicProcedure.use(({ context, next }) => {
  * an absent one falls back to the user's first membership and persists it.
  */
 export const organizationProcedure = protectedProcedure.use(async ({ context, next }) => {
-  const activeOrganizationId = context.session.session.activeOrganizationId;
+  const { activeOrganizationId } = context.session.session;
 
   const membership = await context.db.query.member.findFirst({
-    where: (member, { and, eq }) =>
-      activeOrganizationId
-        ? and(
-            eq(member.userId, context.session.user.id),
-            eq(member.organizationId, activeOrganizationId),
-          )
-        : eq(member.userId, context.session.user.id),
+    where: activeOrganizationId
+      ? and(
+          eq(memberSchema.userId, context.session.user.id),
+          eq(memberSchema.organizationId, activeOrganizationId),
+        )
+      : eq(memberSchema.userId, context.session.user.id),
   });
 
   if (!membership) {
@@ -101,9 +100,9 @@ export const organizationProcedure = protectedProcedure.use(async ({ context, ne
 
   if (membership.organizationId !== activeOrganizationId) {
     await context.db
-      .update(session)
+      .update(sessionSchema)
       .set({ activeOrganizationId: membership.organizationId })
-      .where(eq(session.id, context.session.session.id));
+      .where(eq(sessionSchema.id, context.session.session.id));
   }
 
   return next({

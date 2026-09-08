@@ -6,18 +6,13 @@ import { z } from "zod";
  * @param str - The input string to convert to a slug
  * @returns string - A URL-friendly slug
  */
-export const slugify = (str: string) => {
-  str = str.replace(/^\s+|\s+$/g, ""); // Trim leading/trailing whitespace
-  str = str.toLowerCase(); // Convert to lowercase
-
-  // Remove invalid characters, replace spaces and multiple hyphens with a single hyphen
-  str = str
-    .replace(/[^a-z0-9 -]/g, "") // Remove invalid chars
-    .replace(/\s+/g, "-") // Replace spaces with a single hyphen
-    .replace(/-+/g, "-"); // Collapse multiple hyphens
-
-  return str;
-};
+export const slugify = (str: string) =>
+  str
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9 -]/gu, "")
+    .replaceAll(/\s+/gu, "-")
+    .replaceAll(/-+/gu, "-");
 
 /** Base slug for organizations whose name slugifies to "" — see `slugify`. */
 export const FALLBACK_ORGANIZATION_SLUG = "workspace";

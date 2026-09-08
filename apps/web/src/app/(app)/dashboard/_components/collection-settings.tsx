@@ -24,41 +24,43 @@ import { CollectionChatDrawer } from "./collection-chat-drawer";
 
 type Collection = RouterOutputs["collection"]["byId"];
 
-type CollectionSettingsProps = {
+interface CollectionSettingsProps {
   collection: Collection;
   onDeleted: () => void;
-};
+}
 
 export const CollectionSettings = ({ collection, onDeleted }: CollectionSettingsProps) => {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
-    name: collection.name ?? "",
     description: collection.description ?? "",
     minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
+    name: collection.name ?? "",
   });
 
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
+  };
 
   const updateCollection = useMutation({
     ...orpc.collection.update.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to update collection");
+    },
     onSuccess: () => {
       invalidate();
       toast.success("Collection updated");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update collection");
     },
   });
 
   const deleteCollection = useMutation({
     ...orpc.collection.delete.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete collection");
+    },
     onSuccess: () => {
       invalidate();
       toast.success("Collection deleted");
       onDeleted();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete collection");
     },
   });
 
@@ -85,9 +87,9 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
 
     updateCollection.mutate({
       collectionId: collection.id,
-      name,
       description: form.description.trim(),
       minSimilarity: minSimilarityPercent / 100,
+      name,
     });
   };
 
@@ -100,14 +102,14 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
 
   const confirmDelete = () => {
     alertDialog.open(`Delete "${collection.name ?? "this collection"}"?`, {
-      description:
-        "All mock interactions in this collection will be deleted and its endpoint will stop responding.",
       action: {
         label: "Delete",
         onClick: async () => {
           await deleteCollection.mutateAsync({ collectionId: collection.id });
         },
       },
+      description:
+        "All mock interactions in this collection will be deleted and its endpoint will stop responding.",
     });
   };
 

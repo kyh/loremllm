@@ -16,7 +16,7 @@ export const getOrganization = cache(
     membersLimit?: string | number | undefined;
   }) =>
     auth.api.getFullOrganization({
-      query,
       headers: await headers(),
+      query,
     }),
 );

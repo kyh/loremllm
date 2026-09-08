@@ -7,7 +7,9 @@ import { customType, sqliteTable } from "drizzle-orm/sqlite-core";
 import { organization, user } from "./drizzle-schema-auth";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-type JsonObject = { [key: string]: JsonValue };
+interface JsonObject {
+  [key: string]: JsonValue;
+}
 
 const float32Array = customType<{
   data: number[];
@@ -19,7 +21,7 @@ const float32Array = customType<{
     return `F32_BLOB(${config.dimensions})`;
   },
   fromDriver(value: Buffer) {
-    return Array.from(new Float32Array(value.buffer));
+    return [...new Float32Array(value.buffer)];
   },
   toDriver(value: number[]) {
     return sql`vector32(${JSON.stringify(value)})`;
@@ -37,25 +39,25 @@ const float32Array = customType<{
  * name: "API Documentation Chatbot"
  */
 export const mockCollection = sqliteTable("mock_collection", (t) => ({
-  id: t
-    .text()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  publicId: t.text().notNull().unique(),
-  organizationId: t
-    .text()
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  name: t.text(),
-  description: t.text(),
-  isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
-  // Minimum cosine similarity (0-1) a query must reach to match; 0 disables the threshold
-  minSimilarity: t.real().notNull().default(0),
-  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  description: t.text(),
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
+  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}),
+  // Minimum cosine similarity (0-1) a query must reach to match; 0 disables the threshold
+  minSimilarity: t.real().notNull().default(0),
+  name: t.text(),
+  organizationId: t
+    .text()
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  publicId: t.text().notNull().unique(),
   updatedAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -73,26 +75,29 @@ export const mockCollection = sqliteTable("mock_collection", (t) => ({
  * responseSchema: "LanguageModelV2StreamPart"
  */
 export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
-  id: t
-    .text()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  collectionId: t.text().references(() => mockCollection.id, { onDelete: "cascade" }), // Nullable for demo interactions
-  title: t.text().notNull(),
-  description: t.text(),
-  input: t.text().notNull(), // will be matched against the user input
-  vector: float32Array("vector", { dimensions: 1536 }),
-  output: t.text().notNull(), // Markdown response string
-  responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"), // Schema type
-  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}).notNull(),
+  // Nullable for demo interactions
+  collectionId: t.text().references(() => mockCollection.id, { onDelete: "cascade" }),
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  description: t.text(),
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  // Matched against the user input
+  input: t.text().notNull(),
+  metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}).notNull(),
+  // Markdown response string
+  output: t.text().notNull(),
+  responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"),
+  title: t.text().notNull(),
   updatedAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  vector: float32Array("vector", { dimensions: 1536 }),
 }));
 
 export const mockCollectionRelations = relations(mockCollection, ({ many }) => ({
@@ -115,16 +120,18 @@ export const mockInteractionRelations = relations(mockInteraction, ({ one }) => 
  * can land on different serverless instances.
  */
 export const mockEveSession = sqliteTable("mock_eve_session", (t) => ({
-  id: t.text().primaryKey(), // sessionId minted by the eve handler
   collectionPublicId: t
     .text()
     .notNull()
     .references(() => mockCollection.publicId, { onDelete: "cascade" }),
-  record: t.text({ mode: "json" }).notNull(), // EveSessionRecord, validated on read
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  // sessionId minted by the eve handler
+  id: t.text().primaryKey(),
+  // EveSessionRecord, validated on read
+  record: t.text({ mode: "json" }).notNull(),
   updatedAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -132,14 +139,14 @@ export const mockEveSession = sqliteTable("mock_eve_session", (t) => ({
 }));
 
 export const waitlist = sqliteTable("waitlist", (t) => ({
+  email: t.text(),
   id: t
     .text()
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  userId: t.text().references(() => user.id),
   source: t.text(),
-  email: t.text(),
+  userId: t.text().references(() => user.id),
 }));
 
 export const waitlistRelations = relations(waitlist, ({ one }) => ({

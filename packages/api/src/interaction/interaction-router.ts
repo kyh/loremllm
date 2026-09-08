@@ -1,4 +1,4 @@
-import { eq, sql } from "@repo/db";
+import { and, eq, sql } from "@repo/db";
 import { mockCollection, mockInteraction } from "@repo/db/drizzle-schema";
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";
@@ -27,26 +27,26 @@ const buildEmbeddingText = (interaction: {
  * libsql cannot serialize BLOB values in RETURNING clauses.
  */
 const interactionReturning = {
-  id: mockInteraction.id,
   collectionId: mockInteraction.collectionId,
-  title: mockInteraction.title,
+  createdAt: mockInteraction.createdAt,
   description: mockInteraction.description,
+  id: mockInteraction.id,
   input: mockInteraction.input,
   output: mockInteraction.output,
   responseSchema: mockInteraction.responseSchema,
-  createdAt: mockInteraction.createdAt,
+  title: mockInteraction.title,
   updatedAt: mockInteraction.updatedAt,
 };
 
 /** Shape of rows returned by the raw vector-similarity SQL query */
 const interactionQueryRow = z.object({
-  id: z.string(),
-  title: z.string().nullable(),
   description: z.string().nullable(),
+  id: z.string(),
   input: z.string(),
   output: z.string(),
   response_schema: z.string(),
   similarity: z.number(),
+  title: z.string().nullable(),
 });
 
 const embedOrThrow = async (text: string, subject: string) => {
@@ -60,16 +60,17 @@ const embedOrThrow = async (text: string, subject: string) => {
   }
 };
 
+const asPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+
 export const interactionRouter = {
   create: organizationProcedure
     .input(createInteractionInput)
     .handler(async ({ context, input }) => {
       const collection = await context.db.query.mockCollection.findFirst({
-        where: (collection, { and, eq }) =>
-          and(
-            eq(collection.id, input.collectionId),
-            eq(collection.organizationId, context.organizationId),
-          ),
+        where: and(
+          eq(mockCollection.id, input.collectionId),
+          eq(mockCollection.organizationId, context.organizationId),
+        ),
       });
 
       if (!collection) {
@@ -80,9 +81,9 @@ export const interactionRouter = {
 
       const embedding = await embedOrThrow(
         buildEmbeddingText({
-          title: input.title,
           description: input.description,
           input: input.input,
+          title: input.title,
         }),
         "interaction input",
       );
@@ -94,12 +95,12 @@ export const interactionRouter = {
           .insert(mockInteraction)
           .values({
             collectionId: collection.id,
-            title: input.title ?? "Untitled Interaction",
             description: input.description ?? null,
             input: input.input,
-            vector: sql`vector32(${JSON.stringify(embedding)})`,
             output: input.output,
             responseSchema: "LanguageModelV2StreamPart",
+            title: input.title ?? "Untitled Interaction",
+            vector: sql`vector32(${JSON.stringify(embedding)})`,
           })
           .returning(interactionReturning);
 
@@ -118,86 +119,11 @@ export const interactionRouter = {
       });
     }),
 
-  update: organizationProcedure
-    .input(updateInteractionInput)
-    .handler(async ({ context, input }) => {
-      const interaction = await context.db.query.mockInteraction.findFirst({
-        where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
-        with: {
-          collection: true,
-        },
-      });
-
-      const collection = interaction?.collection;
-
-      if (!interaction || !collection || collection.organizationId !== context.organizationId) {
-        throw new ORPCError("NOT_FOUND", {
-          message: "Interaction not found",
-        });
-      }
-
-      const title = input.title ?? interaction.title;
-      // An explicit empty string clears the description; undefined leaves it unchanged
-      const description =
-        input.description === undefined
-          ? interaction.description
-          : input.description.trim() || null;
-      const matchInput = input.input ?? interaction.input;
-      const output = input.output ?? interaction.output;
-
-      const matchingTextChanged =
-        title !== interaction.title ||
-        description !== interaction.description ||
-        matchInput !== interaction.input;
-
-      const embedding = matchingTextChanged
-        ? await embedOrThrow(
-            buildEmbeddingText({ title, description, input: matchInput }),
-            "interaction input",
-          )
-        : null;
-
-      const now = new Date();
-
-      const fieldUpdates = {
-        title,
-        description,
-        input: matchInput,
-        output,
-        updatedAt: now,
-      };
-
-      return context.db.transaction(async (tx) => {
-        const [updatedInteraction] = await tx
-          .update(mockInteraction)
-          .set(
-            embedding
-              ? { ...fieldUpdates, vector: sql`vector32(${JSON.stringify(embedding)})` }
-              : fieldUpdates,
-          )
-          .where(eq(mockInteraction.id, interaction.id))
-          .returning(interactionReturning);
-
-        if (!updatedInteraction) {
-          throw new ORPCError("INTERNAL_SERVER_ERROR", {
-            message: "Failed to update interaction",
-          });
-        }
-
-        await tx
-          .update(mockCollection)
-          .set({ updatedAt: now })
-          .where(eq(mockCollection.id, collection.id));
-
-        return updatedInteraction;
-      });
-    }),
-
   delete: organizationProcedure
     .input(deleteInteractionInput)
     .handler(async ({ context, input }) => {
       const interaction = await context.db.query.mockInteraction.findFirst({
-        where: (interaction, { eq }) => eq(interaction.id, input.interactionId),
+        where: eq(mockInteraction.id, input.interactionId),
         with: {
           collection: true,
         },
@@ -224,7 +150,7 @@ export const interactionRouter = {
   query: publicProcedure.input(queryInteractionInput).handler(async ({ context, input }) => {
     // Find the collection by publicId
     const collection = await context.db.query.mockCollection.findFirst({
-      where: (collection, { eq }) => eq(collection.publicId, input.publicId),
+      where: eq(mockCollection.publicId, input.publicId),
     });
 
     if (!collection) {
@@ -275,8 +201,7 @@ export const interactionRouter = {
     const results = rows.filter((row) => row.similarity >= collection.minSimilarity);
 
     if (results.length === 0) {
-      const best = rows[0];
-      const asPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+      const [best] = rows;
 
       throw new ORPCError("NOT_FOUND", {
         message: best
@@ -289,14 +214,89 @@ export const interactionRouter = {
       collectionId: collection.id,
       collectionName: collection.name,
       matches: results.map((result) => ({
-        id: result.id,
-        title: result.title,
         description: result.description,
+        id: result.id,
         input: result.input,
         output: result.output,
         responseSchema: result.response_schema,
         similarity: result.similarity,
+        title: result.title,
       })),
     };
   }),
+
+  update: organizationProcedure
+    .input(updateInteractionInput)
+    .handler(async ({ context, input }) => {
+      const interaction = await context.db.query.mockInteraction.findFirst({
+        where: eq(mockInteraction.id, input.interactionId),
+        with: {
+          collection: true,
+        },
+      });
+
+      const collection = interaction?.collection;
+
+      if (!interaction || !collection || collection.organizationId !== context.organizationId) {
+        throw new ORPCError("NOT_FOUND", {
+          message: "Interaction not found",
+        });
+      }
+
+      const title = input.title ?? interaction.title;
+      // An explicit empty string clears the description; undefined leaves it unchanged
+      const description =
+        input.description === undefined
+          ? interaction.description
+          : input.description.trim() || null;
+      const matchInput = input.input ?? interaction.input;
+      const output = input.output ?? interaction.output;
+
+      const matchingTextChanged =
+        title !== interaction.title ||
+        description !== interaction.description ||
+        matchInput !== interaction.input;
+
+      const embedding = matchingTextChanged
+        ? await embedOrThrow(
+            buildEmbeddingText({ description, input: matchInput, title }),
+            "interaction input",
+          )
+        : null;
+
+      const now = new Date();
+
+      const fieldUpdates = {
+        description,
+        input: matchInput,
+        output,
+        title,
+        updatedAt: now,
+      };
+
+      return context.db.transaction(async (tx) => {
+        const [updatedInteraction] = await tx
+          .update(mockInteraction)
+          .set(
+            embedding
+              ? { ...fieldUpdates, vector: sql`vector32(${JSON.stringify(embedding)})` }
+              : fieldUpdates,
+          )
+          .where(eq(mockInteraction.id, interaction.id))
+          .returning(interactionReturning);
+
+        if (!updatedInteraction) {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: "Failed to update interaction",
+          });
+        }
+
+        await tx
+          .update(mockCollection)
+          .set({ updatedAt: now })
+          .where(eq(mockCollection.id, collection.id));
+
+        return updatedInteraction;
+      });
+    }),
 };

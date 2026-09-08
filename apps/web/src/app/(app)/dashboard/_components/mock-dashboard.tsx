@@ -36,6 +36,97 @@ import { InteractionsTable } from "./interactions-table";
 
 const emptyCollectionList: RouterOutputs["collection"]["list"] = [];
 
+interface CreateCollectionFormProps {
+  onCreated: (collectionId: string) => void;
+}
+
+const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ description: "", name: "" });
+
+  const createCollection = useMutation({
+    ...orpc.collection.create.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to create collection");
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
+      setForm({ description: "", name: "" });
+      toast.success("Collection created");
+      onCreated(data.id);
+    },
+  });
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = form.name.trim();
+
+    if (!name.length) {
+      toast.error("Collection name is required");
+      return;
+    }
+
+    createCollection.mutate({
+      description: form.description.trim() || undefined,
+      name,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="grid gap-3">
+      <div className="grid gap-1.5">
+        <Label htmlFor="new-collection-name">Collection name</Label>
+        <Input
+          id="new-collection-name"
+          placeholder="My new collection"
+          value={form.name}
+          onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))}
+          required
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="new-collection-description">Description (optional)</Label>
+        <Textarea
+          id="new-collection-description"
+          placeholder="A brief description of what this collection does."
+          value={form.description}
+          onChange={(event) => setForm((state) => ({ ...state, description: event.target.value }))}
+          rows={3}
+        />
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" loading={createCollection.isPending}>
+          Create collection
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+const CreateCollectionDialog = ({ onCreated }: CreateCollectionFormProps) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>New</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New collection</DialogTitle>
+          <DialogDescription>
+            A collection groups the mock interactions behind a single endpoint.
+          </DialogDescription>
+        </DialogHeader>
+        <CreateCollectionForm
+          onCreated={(collectionId) => {
+            setOpen(false);
+            onCreated(collectionId);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const MockDashboard = () => {
   const collectionListQuery = useQuery(orpc.collection.list.queryOptions());
   const collections = collectionListQuery.data ?? emptyCollectionList;
@@ -71,7 +162,13 @@ export const MockDashboard = () => {
           <CardDescription>{collectionListQuery.error.message}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => void collectionListQuery.refetch()}>Retry</Button>
+          <Button
+            onClick={() => {
+              void collectionListQuery.refetch();
+            }}
+          >
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -148,96 +245,5 @@ export const MockDashboard = () => {
         )}
       </div>
     </div>
-  );
-};
-
-type CreateCollectionFormProps = {
-  onCreated: (collectionId: string) => void;
-};
-
-const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState({ name: "", description: "" });
-
-  const createCollection = useMutation({
-    ...orpc.collection.create.mutationOptions(),
-    onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.list.key() });
-      setForm({ name: "", description: "" });
-      toast.success("Collection created");
-      onCreated(data.id);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to create collection");
-    },
-  });
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const name = form.name.trim();
-
-    if (!name.length) {
-      toast.error("Collection name is required");
-      return;
-    }
-
-    createCollection.mutate({
-      name,
-      description: form.description.trim() || undefined,
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="grid gap-3">
-      <div className="grid gap-1.5">
-        <Label htmlFor="new-collection-name">Collection name</Label>
-        <Input
-          id="new-collection-name"
-          placeholder="My new collection"
-          value={form.name}
-          onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))}
-          required
-        />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="new-collection-description">Description (optional)</Label>
-        <Textarea
-          id="new-collection-description"
-          placeholder="A brief description of what this collection does."
-          value={form.description}
-          onChange={(event) => setForm((state) => ({ ...state, description: event.target.value }))}
-          rows={3}
-        />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" loading={createCollection.isPending}>
-          Create collection
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-const CreateCollectionDialog = ({ onCreated }: CreateCollectionFormProps) => {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>New</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New collection</DialogTitle>
-          <DialogDescription>
-            A collection groups the mock interactions behind a single endpoint.
-          </DialogDescription>
-        </DialogHeader>
-        <CreateCollectionForm
-          onCreated={(collectionId) => {
-            setOpen(false);
-            onCreated(collectionId);
-          }}
-        />
-      </DialogContent>
-    </Dialog>
   );
 };

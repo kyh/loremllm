@@ -17,14 +17,14 @@ import { z } from "zod";
  * runs in strict env mode and strips anything unlisted from task environments.
  */
 const envSchema = z.object({
-  GITHUB_CLIENT_ID: z.string().default(""),
-  GITHUB_CLIENT_SECRET: z.string().default(""),
   /**
    * Read implicitly by the `ai` package's gateway provider — no source file
    * references it directly. Declared here so callers that need embeddings can
    * check for it and report something legible instead of a gateway 401.
    */
   AI_GATEWAY_API_KEY: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().default(""),
+  GITHUB_CLIENT_SECRET: z.string().default(""),
   /**
    * Dev-only. Points GitHub sign-in at a local `emulate` OAuth server so the
    * flow can be exercised offline (see `emulate.config.yaml`). Unset in

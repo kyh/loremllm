@@ -42,51 +42,50 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
       email: "",
       password: "",
     },
-    validators: {
-      onSubmit: z.object({
-        email: z.email("Invalid email address"),
-        password: z.string().min(1, "Password is required"),
-      }),
-    },
     onSubmit: async ({ value }) => {
       if (type === "register") {
-        const emailPrefix = value.email.split("@")[0];
+        const [emailPrefix] = value.email.split("@");
         await authClient.signUp.email({
           email: value.email,
-          password: value.password,
-          name: emailPrefix ?? "User",
           fetchOptions: {
-            onSuccess: () => {
-              router.replace(nextPath);
-            },
             onError: (ctx) => {
               toast.error(ctx.error.message);
             },
+            onSuccess: () => {
+              router.replace(nextPath);
+            },
           },
+          name: emailPrefix ?? "User",
+          password: value.password,
         });
       }
 
       if (type === "login") {
         await authClient.signIn.email({
           email: value.email,
-          password: value.password,
           fetchOptions: {
-            onSuccess: () => {
-              router.replace(nextPath);
-            },
             onError: (ctx) => {
               toast.error(ctx.error.message);
             },
+            onSuccess: () => {
+              router.replace(nextPath);
+            },
           },
+          password: value.password,
         });
       }
+    },
+    validators: {
+      onSubmit: z.object({
+        email: z.email("Invalid email address"),
+        password: z.string().min(1, "Password is required"),
+      }),
     },
   });
 
   const handleAuthWithGithub = async () => {
     setSubmittingGithub(true);
     await authClient.signIn.social({
-      provider: "github",
       // OAuth is a full-page redirect; the server sends the user here after the
       // callback, so a client-side onSuccess would never fire.
       callbackURL: nextPath,
@@ -98,6 +97,7 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
           setSubmittingGithub(false);
         },
       },
+      provider: "github",
     });
   };
 
@@ -213,23 +213,23 @@ export const RequestPasswordResetForm = () => {
     defaultValues: {
       email: "",
     },
-    validators: {
-      onSubmit: z.object({
-        email: z.email("Invalid email address"),
-      }),
-    },
     onSubmit: async ({ value }) => {
       await authClient.requestPasswordReset({
         email: value.email,
         fetchOptions: {
-          onSuccess: () => {
-            toast.success("Password reset email sent successfully!");
-          },
           onError: (ctx) => {
             toast.error(ctx.error.message);
           },
+          onSuccess: () => {
+            toast.success("Password reset email sent successfully!");
+          },
         },
       });
+    },
+    validators: {
+      onSubmit: z.object({
+        email: z.email("Invalid email address"),
+      }),
     },
   });
 
@@ -303,33 +303,33 @@ export const UpdatePasswordForm = () => {
 
   const form = useForm({
     defaultValues: {
-      password: "",
       confirmPassword: "",
+      password: "",
+    },
+    onSubmit: async ({ value }) => {
+      await authClient.resetPassword({
+        fetchOptions: {
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+          },
+          onSuccess: () => {
+            toast.success("Password updated successfully!");
+            router.push("/dashboard");
+          },
+        },
+        newPassword: value.password,
+      });
     },
     validators: {
       onSubmit: z
         .object({
-          password: z.string().min(8, "Password must be at least 8 characters"),
           confirmPassword: z.string(),
+          password: z.string().min(8, "Password must be at least 8 characters"),
         })
         .refine((data) => data.password === data.confirmPassword, {
           message: "Passwords don't match",
           path: ["confirmPassword"],
         }),
-    },
-    onSubmit: async ({ value }) => {
-      await authClient.resetPassword({
-        newPassword: value.password,
-        fetchOptions: {
-          onSuccess: () => {
-            toast.success("Password updated successfully!");
-            router.push("/dashboard");
-          },
-          onError: (ctx) => {
-            toast.error(ctx.error.message);
-          },
-        },
-      });
     },
   });
 

@@ -50,6 +50,124 @@ type DemoChatBody =
   | { type: "chat"; collectionId: string }
   | { type: "markdown"; markdown: string };
 
+interface MessagePartsProps {
+  parts: UIMessage["parts"];
+  messageId: string;
+}
+
+const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
+  // Group sources together
+  const { otherParts, sourceParts } = useMemo(() => {
+    const sources: (
+      | { type: "source-url"; url: string; title?: string; sourceId?: string }
+      | {
+          type: "source-document";
+          url?: string;
+          title?: string;
+          filename?: string;
+          sourceId?: string;
+        }
+    )[] = [];
+    const others: UIMessage["parts"] = [];
+
+    for (const part of parts) {
+      if (part.type === "source-url" || part.type === "source-document") {
+        sources.push(part);
+      } else {
+        others.push(part);
+      }
+    }
+
+    return { otherParts: others, sourceParts: sources };
+  }, [parts]);
+
+  return (
+    <>
+      {otherParts.map((part, i) => {
+        const key = `${messageId}-${i}`;
+
+        switch (part.type) {
+          case "text": {
+            return <MessageResponse key={key}>{part.text}</MessageResponse>;
+          }
+
+          case "reasoning": {
+            return (
+              <Reasoning key={key}>
+                <ReasoningTrigger />
+                <ReasoningContent>{part.text}</ReasoningContent>
+              </Reasoning>
+            );
+          }
+
+          case "file": {
+            return <MessageAttachment key={key} data={part} className="mt-2" />;
+          }
+
+          default: {
+            // Handle tool parts (tool-* and dynamic-tool)
+            if (isToolUIPart(part)) {
+              const toolName = getToolOrDynamicToolName(part);
+              // ToolHeader expects tool-* format, so convert dynamic-tool
+              const toolType: `tool-${string}` =
+                part.type === "dynamic-tool" ? "tool-dynamic" : part.type;
+              return (
+                <Tool key={key}>
+                  <ToolHeader title={toolName} type={toolType} state={part.state} />
+                  <ToolContent>
+                    {part.input !== undefined && <ToolInput input={part.input} />}
+                    <ToolOutput output={part.output} errorText={part.errorText} />
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Handle data-* parts (custom data parts)
+            if (part.type.startsWith("data-")) {
+              return (
+                <div
+                  key={key}
+                  className="border-border/70 bg-muted/40 text-muted-foreground rounded-md border p-2 text-xs"
+                >
+                  <div className="text-foreground mb-1 font-medium">{part.type}</div>
+                  <pre className="bg-background text-foreground/90 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
+                    {JSON.stringify("data" in part ? part.data : part, null, 2)}
+                  </pre>
+                </div>
+              );
+            }
+
+            return null;
+          }
+        }
+      })}
+
+      {/* Render sources together if any exist */}
+      {sourceParts.length > 0 && (
+        <Sources>
+          <SourcesTrigger count={sourceParts.length} />
+          <SourcesContent>
+            {sourceParts.map((source, i) => {
+              const key = `${messageId}-source-${i}`;
+              if (source.type === "source-url") {
+                return <Source key={key} href={source.url} title={source.title ?? source.url} />;
+              }
+              // source-document
+              return (
+                <Source
+                  key={key}
+                  href={source.url}
+                  title={source.title ?? source.filename ?? "Document"}
+                />
+              );
+            })}
+          </SourcesContent>
+        </Sources>
+      )}
+    </>
+  );
+};
+
 export const DemoChat = ({ demo }: { demo: Demo }) => {
   const [input, setInput] = useState(() => demo.preset ?? "");
   const { messages, sendMessage, status } = useChat({
@@ -58,7 +176,9 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
 
     let body: DemoChatBody | undefined;
 
@@ -67,11 +187,11 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
     }
 
     if (demo.id === "demo") {
-      body = { type: "chat", collectionId: "demo" };
+      body = { collectionId: "demo", type: "chat" };
     }
 
     if (demo.id === "markdown") {
-      body = { type: "markdown", markdown: text };
+      body = { markdown: text, type: "markdown" };
     }
 
     void sendMessage({ text }, { body });
@@ -106,120 +226,5 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
         </PromptInputFooter>
       </PromptInput>
     </div>
-  );
-};
-
-type MessagePartsProps = {
-  parts: UIMessage["parts"];
-  messageId: string;
-};
-
-const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
-  // Group sources together
-  const { otherParts, sourceParts } = useMemo(() => {
-    const sources: (
-      | { type: "source-url"; url: string; title?: string; sourceId?: string }
-      | {
-          type: "source-document";
-          url?: string;
-          title?: string;
-          filename?: string;
-          sourceId?: string;
-        }
-    )[] = [];
-    const others: UIMessage["parts"] = [];
-
-    for (const part of parts) {
-      if (part.type === "source-url" || part.type === "source-document") {
-        sources.push(part);
-      } else {
-        others.push(part);
-      }
-    }
-
-    return { otherParts: others, sourceParts: sources };
-  }, [parts]);
-
-  return (
-    <>
-      {otherParts.map((part, i) => {
-        const key = `${messageId}-${i}`;
-
-        switch (part.type) {
-          case "text":
-            return <MessageResponse key={key}>{part.text}</MessageResponse>;
-
-          case "reasoning":
-            return (
-              <Reasoning key={key}>
-                <ReasoningTrigger />
-                <ReasoningContent>{part.text}</ReasoningContent>
-              </Reasoning>
-            );
-
-          case "file":
-            return <MessageAttachment key={key} data={part} className="mt-2" />;
-
-          default:
-            // Handle tool parts (tool-* and dynamic-tool)
-            if (isToolUIPart(part)) {
-              const toolName = getToolOrDynamicToolName(part);
-              // ToolHeader expects tool-* format, so convert dynamic-tool
-              const toolType: `tool-${string}` =
-                part.type === "dynamic-tool" ? "tool-dynamic" : part.type;
-              return (
-                <Tool key={key}>
-                  <ToolHeader title={toolName} type={toolType} state={part.state} />
-                  <ToolContent>
-                    {part.input !== undefined && <ToolInput input={part.input} />}
-                    <ToolOutput output={part.output} errorText={part.errorText} />
-                  </ToolContent>
-                </Tool>
-              );
-            }
-
-            // Handle data-* parts (custom data parts)
-            if (part.type.startsWith("data-")) {
-              return (
-                <div
-                  key={key}
-                  className="border-border/70 bg-muted/40 text-muted-foreground rounded-md border p-2 text-xs"
-                >
-                  <div className="text-foreground mb-1 font-medium">{part.type}</div>
-                  <pre className="bg-background text-foreground/90 max-h-40 overflow-auto rounded px-2 py-1 text-xs">
-                    {JSON.stringify("data" in part ? part.data : part, null, 2)}
-                  </pre>
-                </div>
-              );
-            }
-
-            return null;
-        }
-      })}
-
-      {/* Render sources together if any exist */}
-      {sourceParts.length > 0 && (
-        <Sources>
-          <SourcesTrigger count={sourceParts.length} />
-          <SourcesContent>
-            {sourceParts.map((source, i) => {
-              const key = `${messageId}-source-${i}`;
-              if (source.type === "source-url") {
-                return <Source key={key} href={source.url} title={source.title ?? source.url} />;
-              } else {
-                // source-document
-                return (
-                  <Source
-                    key={key}
-                    href={source.url}
-                    title={source.title ?? source.filename ?? "Document"}
-                  />
-                );
-              }
-            })}
-          </SourcesContent>
-        </Sources>
-      )}
-    </>
   );
 };

@@ -53,6 +53,8 @@ pnpm verify     # typecheck · lint · format · test
 
 `pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport` and `packages/api`'s auth-schema guard — nothing else has tests. A green `verify` says nothing about `apps/web` or the rest of `packages/api` behaviour; exercise those at runtime.
 
+**Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. `no-await-in-loop` is the one deliberate override. Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
+
 Runtime — drive the real web UI with [agent-browser](https://github.com/vercel-labs/agent-browser):
 
 ```sh

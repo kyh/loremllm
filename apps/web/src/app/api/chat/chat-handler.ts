@@ -12,45 +12,44 @@ export const handleChatQuery = async (userQuery: string, collectionId: string) =
 
   // Query the specified collection for the best matching interaction
   const queryResult = await caller.interaction.query({
+    limit: 1,
     publicId: collectionId,
     query: userQuery,
-    limit: 1,
   });
 
-  const bestMatch = queryResult.matches[0];
+  const [bestMatch] = queryResult.matches;
   if (!bestMatch) {
     throw new Error("No matching response found");
   }
 
   // Parse the markdown output into word-level chunks for streaming
-  const output = bestMatch.output;
+  const { output } = bestMatch;
   const chunks = parseMarkdownIntoChunks(output);
   const streamChunks = createStreamChunks(chunks, userQuery, output);
 
   const result = streamText({
-    prompt: userQuery,
     model: new MockLanguageModelV3({
-      doStream: async () => {
-        return {
+      doStream: () =>
+        Promise.resolve({
           stream: simulateReadableStream({
-            chunks: streamChunks,
             chunkDelayInMs: 20,
+            chunks: streamChunks,
           }),
-        };
-      },
+        }),
     }),
+    prompt: userQuery,
   });
 
   return result.toUIMessageStreamResponse({
     messageMetadata: ({ part }) => {
       if (part.type !== "finish") {
-        return undefined;
+        return;
       }
 
       return {
         interactionId: bestMatch.id,
-        title: bestMatch.title,
         similarity: bestMatch.similarity,
+        title: bestMatch.title,
       };
     },
   });

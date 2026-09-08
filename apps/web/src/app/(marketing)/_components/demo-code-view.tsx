@@ -4,9 +4,9 @@ import { CodeBlock } from "@repo/ui/components/ai-elements/code-block";
 
 import type { Demo } from "./demo-data";
 
-type DemoCodeViewProps = {
+interface DemoCodeViewProps {
   demo: Demo;
-};
+}
 
 export const DemoCodeView = ({ demo }: DemoCodeViewProps) => {
   if (!demo.code) {

@@ -15,15 +15,15 @@ import { createQueryClient } from "./query-client";
  * Wraps the `createORPCContext` helper and provides the required context when
  * a React Server Component calls a procedure.
  */
-const createContext = cache(async () => {
-  return createORPCContext({
+const createContext = cache(async () =>
+  createORPCContext({
     headers: new Headers(await headers()),
     // Dashboard pages call getSession() to gate the route before they prefetch.
     // Reuse that cached result — resolving it again here would be a second
     // session lookup per render.
     session: await getSession(),
-  });
-});
+  }),
+);
 
 const getQueryClient = cache(createQueryClient);
 

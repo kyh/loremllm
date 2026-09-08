@@ -12,11 +12,22 @@ type RuntimeGlobal = Omit<typeof globalThis, "navigator" | "alert"> & {
   alert?: (message?: string) => void;
 };
 
-type CopyMessagesOptions<UI_MESSAGE extends UIMessage = UIMessage> = {
+interface CopyMessagesOptions<UI_MESSAGE extends UIMessage = UIMessage> {
   messages: UI_MESSAGE[];
+}
+
+const isCallable = (value: unknown): value is (...args: never[]) => void =>
+  typeof value === "function";
+
+const notify = (runtime: RuntimeGlobal, message: string): void => {
+  if (isCallable(runtime.alert)) {
+    runtime.alert(message);
+  } else if (isCallable(globalThis.console?.info)) {
+    console.info(message);
+  }
 };
 
-function getErrorMessage(cause: unknown): string {
+const getErrorMessage = (cause: unknown): string => {
   if (cause instanceof Error) {
     // Handle DOMException (clipboard API errors)
     if (cause.name === "NotAllowedError" || cause.name === "SecurityError") {
@@ -28,83 +39,48 @@ function getErrorMessage(cause: unknown): string {
     return cause.message;
   }
   return "Unknown clipboard error.";
-}
+};
 
-function handleCopyError(runtime: RuntimeGlobal, cause: unknown): void {
+const handleCopyError = (runtime: RuntimeGlobal, cause: unknown): void => {
   const reason = getErrorMessage(cause);
   notify(runtime, `Failed to copy the static transport template.\n\n${reason}`);
-}
+};
 
-export function copyMessagesToClipboard<UI_MESSAGE extends UIMessage = UIMessage>(
-  options: CopyMessagesOptions<UI_MESSAGE>,
-): void {
-  // SAFETY: RuntimeGlobal only loosens globalThis — navigator and alert become
-  // optional so SSR and test runtimes without them are handled explicitly.
-  const runtime = globalThis as RuntimeGlobal;
-
+const reportWrite = async (runtime: RuntimeGlobal, write: Promise<void>): Promise<void> => {
   try {
-    // Get all assistant messages and deduplicate by message ID
-    const seenIds = new Set<string>();
-    const assistantMessages = options.messages.filter((message): message is UI_MESSAGE => {
-      if (message.role !== "assistant") {
-        return false;
-      }
-      if (seenIds.has(message.id)) {
-        return false;
-      }
-      seenIds.add(message.id);
-      return true;
-    });
-
-    if (assistantMessages.length === 0) {
-      notify(runtime, "No assistant messages were found to copy.");
-      return;
-    }
-
-    const template = buildStaticTransportTemplate(assistantMessages);
-    const clipboard = runtime.navigator?.clipboard;
-
-    if (!clipboard || !(clipboard.writeText instanceof Function)) {
-      const errorMessage = "Clipboard access is not available in this environment.";
-      notify(runtime, errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    // Call writeText directly on clipboard object to preserve 'this' context
-    // and avoid "illegal invocation" error
-    const result = clipboard.writeText(template);
-    if (result instanceof Promise) {
-      void result
-        .then(() => {
-          notify(runtime, SUCCESS_MESSAGE);
-        })
-        .catch((cause: unknown) => {
-          handleCopyError(runtime, cause);
-        });
-    } else {
-      notify(runtime, SUCCESS_MESSAGE);
-    }
+    await write;
+    notify(runtime, SUCCESS_MESSAGE);
   } catch (error) {
-    // Only handle and throw for truly unrecoverable errors (like clipboard not available)
-    // For other errors, handle them but don't throw to avoid breaking callbacks
-    if (error instanceof Error && error.message.includes("Clipboard access is not available")) {
-      throw error;
-    }
     handleCopyError(runtime, error);
   }
-}
+};
 
-function notify(runtime: RuntimeGlobal, message: string): void {
-  if (runtime.alert instanceof Function) {
-    runtime.alert(message);
-  } else if (globalThis.console?.info instanceof Function) {
-    console.info(message);
+const formatYield = (part: UIMessage["parts"][number], indent: string): string[] => {
+  const json = JSON.stringify(part, null, 2);
+
+  if (!json) {
+    return [`${indent}yield {};`];
   }
-}
 
-function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
+  const lines = json.split("\n");
+  const formatted: string[] = [];
+
+  for (const [lineIndex, line] of lines.entries()) {
+    if (lineIndex === 0) {
+      formatted.push(`${indent}yield ${line}`);
+    } else if (lineIndex === lines.length - 1) {
+      formatted.push(`${indent}${line};`);
+    } else {
+      formatted.push(`${indent}${line}`);
+    }
+  }
+
+  return formatted;
+};
+
+const buildStaticTransportTemplate = <UI_MESSAGE extends UIMessage = UIMessage>(
   messages: UI_MESSAGE[],
-): string {
+): string => {
   const allParts: UI_MESSAGE["parts"][number][] = [];
   for (const message of messages) {
     const parts = Array.isArray(message.parts) ? message.parts : [];
@@ -142,17 +118,17 @@ function buildStaticTransportTemplate<UI_MESSAGE extends UIMessage = UIMessage>(
           const inputPart = (
             toolPart.type === "dynamic-tool" && toolPart.toolName
               ? {
-                  type: toolPart.type,
+                  input: toolPart.input,
+                  state: "input-available",
                   toolCallId: toolPart.toolCallId,
                   toolName: toolPart.toolName,
-                  state: "input-available",
-                  input: toolPart.input,
+                  type: toolPart.type,
                 }
               : {
-                  type: toolPart.type,
-                  toolCallId: toolPart.toolCallId,
-                  state: "input-available",
                   input: toolPart.input,
+                  state: "input-available",
+                  toolCallId: toolPart.toolCallId,
+                  type: toolPart.type,
                 }
           ) as UI_MESSAGE["parts"][number];
           reconstructedParts.push(inputPart);
@@ -183,27 +159,57 @@ ${partsSection}
   },
 });
 `;
-}
+};
 
-function formatYield(part: UIMessage["parts"][number], indent: string): string[] {
-  const json = JSON.stringify(part, null, 2);
+export const copyMessagesToClipboard = <UI_MESSAGE extends UIMessage = UIMessage>(
+  options: CopyMessagesOptions<UI_MESSAGE>,
+): void => {
+  // SAFETY: RuntimeGlobal only loosens globalThis — navigator and alert become
+  // optional so SSR and test runtimes without them are handled explicitly.
+  const runtime = globalThis as RuntimeGlobal;
 
-  if (!json) {
-    return [`${indent}yield {};`];
-  }
+  try {
+    // Get all assistant messages and deduplicate by message ID
+    const seenIds = new Set<string>();
+    const assistantMessages = options.messages.filter((message): message is UI_MESSAGE => {
+      if (message.role !== "assistant") {
+        return false;
+      }
+      if (seenIds.has(message.id)) {
+        return false;
+      }
+      seenIds.add(message.id);
+      return true;
+    });
 
-  const lines = json.split("\n");
-  const formatted: string[] = [];
-
-  lines.forEach((line, lineIndex) => {
-    if (lineIndex === 0) {
-      formatted.push(`${indent}yield ${line}`);
-    } else if (lineIndex === lines.length - 1) {
-      formatted.push(`${indent}${line};`);
-    } else {
-      formatted.push(`${indent}${line}`);
+    if (assistantMessages.length === 0) {
+      notify(runtime, "No assistant messages were found to copy.");
+      return;
     }
-  });
 
-  return formatted;
-}
+    const template = buildStaticTransportTemplate(assistantMessages);
+    const clipboard = runtime.navigator?.clipboard;
+
+    if (!clipboard || !isCallable(clipboard.writeText)) {
+      const errorMessage = "Clipboard access is not available in this environment.";
+      notify(runtime, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Call writeText directly on clipboard object to preserve 'this' context
+    // and avoid "illegal invocation" error
+    const result = clipboard.writeText(template);
+    if (result instanceof Promise) {
+      void reportWrite(runtime, result);
+    } else {
+      notify(runtime, SUCCESS_MESSAGE);
+    }
+  } catch (error) {
+    // Only handle and throw for truly unrecoverable errors (like clipboard not available)
+    // For other errors, handle them but don't throw to avoid breaking callbacks
+    if (error instanceof Error && error.message.includes("Clipboard access is not available")) {
+      throw error;
+    }
+    handleCopyError(runtime, error);
+  }
+};

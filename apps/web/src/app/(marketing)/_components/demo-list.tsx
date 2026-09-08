@@ -12,68 +12,14 @@ import { useDemoNavigation } from "./demo-navigation-context";
 import { DraggablePanel } from "./draggable-panel";
 import { HoverText } from "./hover-text";
 
-type DemoListProps = {
+interface DemoListProps {
   demos: Demo[];
   className?: string;
-};
+}
 
 const formatCounter = (index: number) => (index + 1).toString().padStart(2, "0");
 
-export const DemoList = ({ demos, className }: DemoListProps) => {
-  const hoverTextRefs = React.useRef<Map<number, HoverTextHandle[]>>(new Map());
-
-  const setHoverTextRef = React.useCallback((itemIndex: number, colIndex: number) => {
-    return (handle: HoverTextHandle | null) => {
-      if (handle) {
-        if (!hoverTextRefs.current.has(itemIndex)) {
-          hoverTextRefs.current.set(itemIndex, []);
-        }
-        const refs = hoverTextRefs.current.get(itemIndex);
-        if (refs) {
-          refs[colIndex] = handle;
-        }
-      }
-    };
-  }, []);
-
-  const createMouseHandlers = React.useCallback((index: number) => {
-    return {
-      onMouseEnter: () => {
-        const handles = hoverTextRefs.current.get(index);
-        if (handles) {
-          handles.forEach((handle) => {
-            handle.animate();
-          });
-        }
-      },
-      onMouseLeave: () => {
-        const handles = hoverTextRefs.current.get(index);
-        if (handles) {
-          handles.forEach((handle) => {
-            handle.animateBack();
-          });
-        }
-      },
-    };
-  }, []);
-
-  return (
-    <ul className={className}>
-      {demos.map((demo, index) => (
-        <DemoItem
-          key={demo.id}
-          demo={demo}
-          index={index}
-          setHoverTextRef={setHoverTextRef}
-          createMouseHandlers={createMouseHandlers}
-          formatCounter={formatCounter}
-        />
-      ))}
-    </ul>
-  );
-};
-
-type DemoItemProps = {
+interface DemoItemProps {
   demo: Demo;
   index: number;
   setHoverTextRef: (
@@ -84,21 +30,14 @@ type DemoItemProps = {
     onMouseEnter: () => void;
     onMouseLeave: () => void;
   };
-  formatCounter: (index: number) => string;
-};
+}
 
-const DemoItem = ({
-  demo,
-  index,
-  setHoverTextRef,
-  createMouseHandlers,
-  formatCounter,
-}: DemoItemProps) => {
+const DemoItem = ({ demo, index, setHoverTextRef, createMouseHandlers }: DemoItemProps) => {
   const { allDemos, openIndex, openDemo, closeDemo, goToPrevious, goToNext, hasPrevious, hasNext } =
     useDemoNavigation();
 
   const mouseHandlers = createMouseHandlers(index);
-  const currentDemo = openIndex !== null ? allDemos[openIndex] : null;
+  const currentDemo = openIndex === null ? null : allDemos[openIndex];
   const isOpen = currentDemo?.id === demo.id;
 
   return (
@@ -130,7 +69,7 @@ const DemoItem = ({
           onNext={goToNext}
           hasPrevious={hasPrevious}
           hasNext={hasNext}
-          size={{ width: 500, height: 600 }}
+          size={{ height: 600, width: 500 }}
         >
           <Tabs defaultValue="preview" className="h-full min-h-0">
             <TabsList className="divide-border border-b divide-x">
@@ -147,5 +86,60 @@ const DemoItem = ({
         </DraggablePanel>
       )}
     </Dialog>
+  );
+};
+
+export const DemoList = ({ demos, className }: DemoListProps) => {
+  const hoverTextRefs = React.useRef<Map<number, HoverTextHandle[]>>(new Map());
+
+  const setHoverTextRef = React.useCallback(
+    (itemIndex: number, colIndex: number) => (handle: HoverTextHandle | null) => {
+      if (handle) {
+        if (!hoverTextRefs.current.has(itemIndex)) {
+          hoverTextRefs.current.set(itemIndex, []);
+        }
+        const refs = hoverTextRefs.current.get(itemIndex);
+        if (refs) {
+          refs[colIndex] = handle;
+        }
+      }
+    },
+    [],
+  );
+
+  const createMouseHandlers = React.useCallback(
+    (index: number) => ({
+      onMouseEnter: () => {
+        const handles = hoverTextRefs.current.get(index);
+        if (handles) {
+          for (const handle of handles) {
+            handle.animate();
+          }
+        }
+      },
+      onMouseLeave: () => {
+        const handles = hoverTextRefs.current.get(index);
+        if (handles) {
+          for (const handle of handles) {
+            handle.animateBack();
+          }
+        }
+      },
+    }),
+    [],
+  );
+
+  return (
+    <ul className={className}>
+      {demos.map((demo, index) => (
+        <DemoItem
+          key={demo.id}
+          demo={demo}
+          index={index}
+          setHoverTextRef={setHoverTextRef}
+          createMouseHandlers={createMouseHandlers}
+        />
+      ))}
+    </ul>
   );
 };

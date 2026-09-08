@@ -32,7 +32,9 @@ const EVE_MESSAGE_STREAM_FORMAT = "ndjson";
 const EVE_MESSAGE_STREAM_VERSION = "23";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-type JsonObject = { [key: string]: JsonValue };
+interface JsonObject {
+  [key: string]: JsonValue;
+}
 
 type AssistantStepFinishReason =
   | "content-filter"
@@ -42,22 +44,24 @@ type AssistantStepFinishReason =
   | "stop"
   | "tool-calls";
 
-type EveEventMeta = { at: string };
+interface EveEventMeta {
+  at: string;
+}
 
-type EveToolCallAction = {
+interface EveToolCallAction {
   callId: string;
   input: JsonObject;
   kind: "tool-call";
   toolName: string;
-};
+}
 
-type EveToolResult = {
+interface EveToolResult {
   callId: string;
   isError?: boolean;
   kind: "tool-result";
   output: unknown;
   toolName: string;
-};
+}
 
 type EveMessageReceivedPart =
   | { type: "text"; text: string }
@@ -155,7 +159,7 @@ export type EveStreamEvent = (
  * Everything the handler persists for one eve session. JSON-serializable so
  * stores can be backed by a database or KV in serverless deployments.
  */
-export type EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> = {
+export interface EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> {
   /** Continuation token minted at session creation and returned in the create response. */
   continuationToken: string;
   /** Full NDJSON event log; the stream route serves slices of it (`startIndex` replay). */
@@ -166,7 +170,7 @@ export type EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> = {
   nextSequence: number;
   /** Number of completed turns; used to mint stable per-turn ids. */
   turnCount: number;
-};
+}
 
 /**
  * Persistence seam for sessions. The default is an in-memory Map
@@ -174,15 +178,15 @@ export type EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> = {
  * tests, and dev. Serverless deployments should back this with shared storage —
  * the create-POST and the stream-GET for one turn can hit different instances.
  */
-export type EveSessionStore<UI_MESSAGE extends UIMessage = UIMessage> = {
-  get(sessionId: string): Promise<EveSessionRecord<UI_MESSAGE> | undefined>;
-  set(sessionId: string, record: EveSessionRecord<UI_MESSAGE>): Promise<void>;
-};
+export interface EveSessionStore<UI_MESSAGE extends UIMessage = UIMessage> {
+  get: (sessionId: string) => Promise<EveSessionRecord<UI_MESSAGE> | undefined>;
+  set: (sessionId: string, record: EveSessionRecord<UI_MESSAGE>) => Promise<void>;
+}
 
 /** Creates the default in-memory {@link EveSessionStore}. */
-export function createMemoryEveSessionStore<
+export const createMemoryEveSessionStore = <
   UI_MESSAGE extends UIMessage = UIMessage,
->(): EveSessionStore<UI_MESSAGE> {
+>(): EveSessionStore<UI_MESSAGE> => {
   const sessions = new Map<string, EveSessionRecord<UI_MESSAGE>>();
   return {
     get(sessionId) {
@@ -193,7 +197,7 @@ export function createMemoryEveSessionStore<
       return Promise.resolve();
     },
   };
-}
+};
 
 /**
  * Parses a value read back from external storage (a JSON column, KV, etc.)
@@ -207,8 +211,8 @@ export function createMemoryEveSessionStore<
 const storedEveStreamEvent = z.looseObject({ type: z.string() });
 const storedUiMessage = z.looseObject({
   id: z.string(),
-  role: z.string(),
   parts: z.array(z.unknown()),
+  role: z.string(),
 });
 const storedEveSessionRecord = z.looseObject({
   continuationToken: z.string(),
@@ -218,9 +222,9 @@ const storedEveSessionRecord = z.looseObject({
   turnCount: z.number(),
 });
 
-export function parseEveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage>(
+export const parseEveSessionRecord = <UI_MESSAGE extends UIMessage = UIMessage>(
   value: JsonValue,
-): EveSessionRecord<UI_MESSAGE> | undefined {
+): EveSessionRecord<UI_MESSAGE> | undefined => {
   const result = storedEveSessionRecord.safeParse(value);
   if (!result.success) {
     return undefined;
@@ -236,7 +240,7 @@ export function parseEveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage>(
     nextSequence: record.nextSequence,
     turnCount: record.turnCount,
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // Handler options
@@ -251,7 +255,7 @@ export function parseEveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage>(
  */
 export type EveChunkDelayResolver = DelayResolver<EveStreamEvent>;
 
-export type StaticEveHandlerInit<UI_MESSAGE extends UIMessage = UIMessage> = {
+export interface StaticEveHandlerInit<UI_MESSAGE extends UIMessage = UIMessage> {
   /**
    * Async generator that yields message parts for each turn — the exact same
    * option (and function) as `StaticChatTransport`'s `mockResponse`. Supported
@@ -282,7 +286,7 @@ export type StaticEveHandlerInit<UI_MESSAGE extends UIMessage = UIMessage> = {
   generateSessionId?: () => string;
   /** Override event timestamps (useful for deterministic tests). */
   now?: () => Date;
-};
+}
 
 /**
  * A WinterCG fetch handler: mount it wherever a `Request => Response` function
@@ -295,21 +299,22 @@ export type StaticEveHandler = (request: Request) => Promise<Response>;
 // Request body parsing
 // ---------------------------------------------------------------------------
 
-type ParsedUserMessage = {
+interface ParsedUserMessage {
   text: string;
   receivedParts: EveMessageReceivedPart[];
-};
+}
 
 const jsonObject: z.ZodType<JsonObject> = z.record(z.string(), z.json());
 
 const stringValue = z.string();
 
-const userTextPart = z.object({ type: z.literal("text"), text: z.string().min(1) });
+const userTextPart = z.object({ text: z.string().min(1), type: z.literal("text") });
 // A mistyped filename degrades to undefined rather than rejecting the part.
 const userFilePart = z.object({
-  type: z.literal("file"),
-  mediaType: z.string(),
+  // oxlint-disable-next-line promise/prefer-await-to-then, unicorn/no-useless-undefined -- zod's .catch(), not a promise's
   filename: z.string().optional().catch(undefined),
+  mediaType: z.string(),
+  type: z.literal("file"),
 });
 const userMessageParts = z.array(z.union([userTextPart, userFilePart])).min(1);
 
@@ -317,13 +322,13 @@ const userMessageParts = z.array(z.union([userTextPart, userFilePart])).min(1);
  * Validates and flattens the `message` field of a create/continue body
  * (`string | Array<TextPart | FilePart>`). Returns `undefined` when invalid.
  */
-function parseUserMessage(message: JsonValue | undefined): ParsedUserMessage | undefined {
+const parseUserMessage = (message: JsonValue | undefined): ParsedUserMessage | undefined => {
   const text = stringValue.safeParse(message);
   if (text.success) {
     if (text.data.length === 0) {
       return undefined;
     }
-    return { text: text.data, receivedParts: [{ type: "text", text: text.data }] };
+    return { receivedParts: [{ text: text.data, type: "text" }], text: text.data };
   }
 
   const parts = userMessageParts.safeParse(message);
@@ -336,9 +341,9 @@ function parseUserMessage(message: JsonValue | undefined): ParsedUserMessage | u
   for (const part of parts.data) {
     if (part.type === "text") {
       texts.push(part.text);
-      receivedParts.push({ type: "text", text: part.text });
+      receivedParts.push({ text: part.text, type: "text" });
     } else {
-      receivedParts.push({ type: "file", mediaType: part.mediaType, filename: part.filename });
+      receivedParts.push({ filename: part.filename, mediaType: part.mediaType, type: "file" });
     }
   }
 
@@ -346,14 +351,14 @@ function parseUserMessage(message: JsonValue | undefined): ParsedUserMessage | u
     return undefined;
   }
 
-  return { text: texts.join("\n\n"), receivedParts };
-}
+  return { receivedParts, text: texts.join("\n\n") };
+};
 
 // ---------------------------------------------------------------------------
 // Part → event translation
 // ---------------------------------------------------------------------------
 
-type ToolLikePart = {
+interface ToolLikePart {
   type: string;
   toolCallId: string;
   toolName?: string;
@@ -361,9 +366,9 @@ type ToolLikePart = {
   input?: unknown;
   output?: unknown;
   errorText?: string;
-};
+}
 
-function toolNameForPart(part: ToolLikePart): string {
+const toolNameForPart = (part: ToolLikePart): string => {
   if (part.toolName !== undefined && part.toolName.length > 0) {
     return part.toolName;
   }
@@ -371,9 +376,9 @@ function toolNameForPart(part: ToolLikePart): string {
     return part.type.slice("tool-".length);
   }
   return "tool";
-}
+};
 
-type TurnBuilder = {
+interface TurnBuilder {
   events: EveStreamEvent[];
   nextSequence: number;
   stepIndex: number;
@@ -381,34 +386,40 @@ type TurnBuilder = {
   stepHasText: boolean;
   stepHasTools: boolean;
   turnId: string;
-};
-
-function stamp(builder: TurnBuilder, event: EveStreamEvent, at: string): void {
-  builder.events.push({ ...event, meta: { at } });
 }
 
-function openStep(builder: TurnBuilder, at: string): void {
+const stamp = (builder: TurnBuilder, event: EveStreamEvent, at: string): void => {
+  builder.events.push({ ...event, meta: { at } });
+};
+
+const takeSequence = (counter: { nextSequence: number }): number => {
+  const { nextSequence } = counter;
+  counter.nextSequence += 1;
+  return nextSequence;
+};
+
+const openStep = (builder: TurnBuilder, at: string): void => {
   if (builder.stepOpen) {
     return;
   }
   stamp(
     builder,
     {
-      type: "step.started",
       data: {
-        sequence: builder.nextSequence++,
+        sequence: takeSequence(builder),
         stepIndex: builder.stepIndex,
         turnId: builder.turnId,
       },
+      type: "step.started",
     },
     at,
   );
   builder.stepOpen = true;
   builder.stepHasText = false;
   builder.stepHasTools = false;
-}
+};
 
-function closeStep(builder: TurnBuilder, at: string): void {
+const closeStep = (builder: TurnBuilder, at: string): void => {
   if (!builder.stepOpen) {
     return;
   }
@@ -417,36 +428,39 @@ function closeStep(builder: TurnBuilder, at: string): void {
   stamp(
     builder,
     {
-      type: "step.completed",
       data: {
         finishReason,
-        sequence: builder.nextSequence++,
+        sequence: takeSequence(builder),
         stepIndex: builder.stepIndex,
         turnId: builder.turnId,
       },
+      type: "step.completed",
     },
     at,
   );
   builder.stepOpen = false;
   builder.stepIndex += 1;
-}
+};
 
 /** Closes the current step and opens the next when `condition` holds. */
-function breakStepIf(builder: TurnBuilder, condition: boolean, at: string): void {
+const breakStepIf = (builder: TurnBuilder, condition: boolean, at: string): void => {
   if (condition && builder.stepOpen) {
     closeStep(builder, at);
   }
-}
+};
 
 /**
  * Translates one turn's collected parts into the eve event sequence the
  * default `useEveAgent` reducer renders. Steps mirror the real runtime: one
  * text message per step, tool calls break to a fresh step after streamed text.
  */
-type TurnEvents = { events: EveStreamEvent[]; nextSequence: number };
+interface TurnEvents {
+  events: EveStreamEvent[];
+  nextSequence: number;
+}
 
-function createTurnEvents(input: {
-  parts: Array<UIMessagePart<UIDataTypes, UITools> | SpecialToolPart>;
+const createTurnEvents = (input: {
+  parts: (UIMessagePart<UIDataTypes, UITools> | SpecialToolPart)[];
   turnId: string;
   isFirstTurn: boolean;
   startSequence: number;
@@ -454,36 +468,32 @@ function createTurnEvents(input: {
   autoChunkText: boolean | RegExp;
   autoChunkReasoning: boolean | RegExp;
   at: () => string;
-}): TurnEvents {
+}): TurnEvents => {
   const builder: TurnBuilder = {
     events: [],
     nextSequence: input.startSequence,
-    stepIndex: 0,
-    stepOpen: false,
     stepHasText: false,
     stepHasTools: false,
+    stepIndex: 0,
+    stepOpen: false,
     turnId: input.turnId,
   };
   const { at, turnId } = input;
 
   if (input.isFirstTurn) {
-    stamp(builder, { type: "session.started", data: {} }, at());
+    stamp(builder, { data: {}, type: "session.started" }, at());
   }
-  stamp(
-    builder,
-    { type: "turn.started", data: { sequence: builder.nextSequence++, turnId } },
-    at(),
-  );
+  stamp(builder, { data: { sequence: takeSequence(builder), turnId }, type: "turn.started" }, at());
   stamp(
     builder,
     {
-      type: "message.received",
       data: {
         message: input.userMessage.text,
         parts: input.userMessage.receivedParts,
-        sequence: builder.nextSequence++,
+        sequence: takeSequence(builder),
         turnId,
       },
+      type: "message.received",
     },
     at(),
   );
@@ -500,14 +510,14 @@ function createTurnEvents(input: {
           stamp(
             builder,
             {
-              type: "message.appended",
               data: {
                 messageDelta: segment,
                 messageSoFar: soFar,
-                sequence: builder.nextSequence++,
+                sequence: takeSequence(builder),
                 stepIndex: builder.stepIndex,
                 turnId,
               },
+              type: "message.appended",
             },
             at(),
           );
@@ -515,14 +525,14 @@ function createTurnEvents(input: {
         stamp(
           builder,
           {
-            type: "message.completed",
             data: {
               finishReason: "stop",
               message: textPart.text,
-              sequence: builder.nextSequence++,
+              sequence: takeSequence(builder),
               stepIndex: builder.stepIndex,
               turnId,
             },
+            type: "message.completed",
           },
           at(),
         );
@@ -539,14 +549,14 @@ function createTurnEvents(input: {
           stamp(
             builder,
             {
-              type: "reasoning.appended",
               data: {
                 reasoningDelta: segment,
                 reasoningSoFar: soFar,
-                sequence: builder.nextSequence++,
+                sequence: takeSequence(builder),
                 stepIndex: builder.stepIndex,
                 turnId,
               },
+              type: "reasoning.appended",
             },
             at(),
           );
@@ -554,13 +564,13 @@ function createTurnEvents(input: {
         stamp(
           builder,
           {
-            type: "reasoning.completed",
             data: {
               reasoning: reasoningPart.text,
-              sequence: builder.nextSequence++,
+              sequence: takeSequence(builder),
               stepIndex: builder.stepIndex,
               turnId,
             },
+            type: "reasoning.completed",
           },
           at(),
         );
@@ -591,15 +601,15 @@ function createTurnEvents(input: {
           stamp(
             builder,
             {
-              type: "actions.requested",
               data: {
                 actions: [
                   { callId: toolPart.toolCallId, input: toolInput, kind: "tool-call", toolName },
                 ],
-                sequence: builder.nextSequence++,
+                sequence: takeSequence(builder),
                 stepIndex: builder.stepIndex,
                 turnId,
               },
+              type: "actions.requested",
             },
             at(),
           );
@@ -609,7 +619,6 @@ function createTurnEvents(input: {
             stamp(
               builder,
               {
-                type: "action.result",
                 data: {
                   result: {
                     callId: toolPart.toolCallId,
@@ -617,11 +626,12 @@ function createTurnEvents(input: {
                     output: toolPart.output ?? null,
                     toolName,
                   },
-                  sequence: builder.nextSequence++,
-                  stepIndex: builder.stepIndex,
+                  sequence: takeSequence(builder),
                   status: "completed",
+                  stepIndex: builder.stepIndex,
                   turnId,
                 },
+                type: "action.result",
               },
               at(),
             );
@@ -630,7 +640,6 @@ function createTurnEvents(input: {
             stamp(
               builder,
               {
-                type: "action.result",
                 data: {
                   error: { code: "TOOL_EXECUTION_FAILED", message },
                   result: {
@@ -640,11 +649,12 @@ function createTurnEvents(input: {
                     output: null,
                     toolName,
                   },
-                  sequence: builder.nextSequence++,
-                  stepIndex: builder.stepIndex,
+                  sequence: takeSequence(builder),
                   status: "failed",
+                  stepIndex: builder.stepIndex,
                   turnId,
                 },
+                type: "action.result",
               },
               at(),
             );
@@ -662,15 +672,15 @@ function createTurnEvents(input: {
   closeStep(builder, at());
   stamp(
     builder,
-    { type: "turn.completed", data: { sequence: builder.nextSequence++, turnId } },
+    { data: { sequence: takeSequence(builder), turnId }, type: "turn.completed" },
     at(),
   );
-  stamp(builder, { type: "session.waiting", data: { wait: "next-user-message" } }, at());
+  stamp(builder, { data: { wait: "next-user-message" }, type: "session.waiting" }, at());
 
   return { events: builder.events, nextSequence: builder.nextSequence };
-}
+};
 
-function createFailureEvents(input: {
+const createFailureEvents = (input: {
   error: unknown;
   turnId: string;
   sessionId: string;
@@ -678,53 +688,64 @@ function createFailureEvents(input: {
   startSequence: number;
   userMessage: ParsedUserMessage;
   at: () => string;
-}): TurnEvents {
+}): TurnEvents => {
   const message = input.error instanceof Error ? input.error.message : "The mock response failed.";
   const events: EveStreamEvent[] = [];
-  let sequence = input.startSequence;
+  const counter = { nextSequence: input.startSequence };
   const push = (event: EveStreamEvent) => events.push({ ...event, meta: { at: input.at() } });
 
   if (input.isFirstTurn) {
-    push({ type: "session.started", data: {} });
+    push({ data: {}, type: "session.started" });
   }
-  push({ type: "turn.started", data: { sequence: sequence++, turnId: input.turnId } });
+  push({ data: { sequence: takeSequence(counter), turnId: input.turnId }, type: "turn.started" });
   push({
-    type: "message.received",
     data: {
       message: input.userMessage.text,
       parts: input.userMessage.receivedParts,
-      sequence: sequence++,
+      sequence: takeSequence(counter),
       turnId: input.turnId,
     },
+    type: "message.received",
   });
   push({
+    data: {
+      code: "MOCK_RESPONSE_FAILED",
+      message,
+      sequence: takeSequence(counter),
+      turnId: input.turnId,
+    },
     type: "turn.failed",
-    data: { code: "MOCK_RESPONSE_FAILED", message, sequence: sequence++, turnId: input.turnId },
   });
   push({
-    type: "session.failed",
     data: { code: "MOCK_RESPONSE_FAILED", message, sessionId: input.sessionId },
+    type: "session.failed",
   });
 
-  return { events, nextSequence: sequence };
-}
+  return { events, nextSequence: counter.nextSequence };
+};
 
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
-function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-}
+const generateId = (prefix: string): string =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+/** Content events are paced by `chunkDelayMs`; lifecycle events are emitted immediately. */
+const isDelayedEvent = (event: EveStreamEvent): boolean =>
+  event.type === "message.appended" ||
+  event.type === "reasoning.appended" ||
+  event.type === "actions.requested" ||
+  event.type === "action.result";
 
 /**
  * Creates the static eve fetch handler. See the module doc for mounting
  * patterns; the handler routes on the `/eve/v1/` segment of the request path,
  * so any mount prefix works (`/api/mock`, `/eve/agents/<name>`, "").
  */
-export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>(
+export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>(
   init: StaticEveHandlerInit<UI_MESSAGE>,
-): StaticEveHandler {
+): StaticEveHandler => {
   const sessionStore = init.sessionStore ?? createMemoryEveSessionStore<UI_MESSAGE>();
   const autoChunkText = init.autoChunkText ?? true;
   const autoChunkReasoning = init.autoChunkReasoning ?? true;
@@ -733,7 +754,7 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
   const at = () => now().toISOString();
   const cors = init.cors ?? true;
 
-  const corsHeaderEntries = (): Array<[string, string]> => {
+  const corsHeaderEntries = (): [string, string][] => {
     if (cors === false) {
       return [];
     }
@@ -755,14 +776,14 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
   const corsHeaders = () => Object.fromEntries(corsHeaderEntries());
 
   const json = (status: number, body: JsonObject, headers: Record<string, string> = {}): Response =>
-    new Response(JSON.stringify(body), {
-      status,
+    Response.json(body, {
       headers: {
-        "content-type": "application/json",
         "cache-control": "no-store",
+        "content-type": "application/json",
         ...corsHeaders(),
         ...headers,
       },
+      status,
     });
 
   const runTurn = async (
@@ -779,21 +800,21 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
     // carries every field `mockResponse` and the session log read.
     const userUiMessage = {
       id: `${turnId}:user`,
+      parts: [{ text: userMessage.text, type: "text" }],
       role: "user",
-      parts: [{ type: "text", text: userMessage.text }],
     } as UI_MESSAGE;
     const contextMessages = [...record.messages, userUiMessage];
 
     const context: StaticTransportContext<UI_MESSAGE> = {
       id: sessionId,
+      messageId: undefined,
       messages: contextMessages,
       requestMetadata: clientContext,
       trigger: "submit-message",
-      messageId: undefined,
     };
 
     let turn: { events: EveStreamEvent[]; nextSequence: number };
-    let assistantParts: Array<UI_MESSAGE["parts"][number] | SpecialToolPart> = [];
+    let assistantParts: (UI_MESSAGE["parts"][number] | SpecialToolPart)[] = [];
     try {
       for await (const part of init.mockResponse(context)) {
         assistantParts.push(part);
@@ -802,25 +823,25 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
         throw new Error("StaticEveHandler: mockResponse must yield at least one part.");
       }
       turn = createTurnEvents({
-        parts: assistantParts,
-        turnId,
-        isFirstTurn,
-        startSequence: record.nextSequence,
-        userMessage,
-        autoChunkText,
-        autoChunkReasoning,
         at,
+        autoChunkReasoning,
+        autoChunkText,
+        isFirstTurn,
+        parts: assistantParts,
+        startSequence: record.nextSequence,
+        turnId,
+        userMessage,
       });
     } catch (error) {
       assistantParts = [];
       turn = createFailureEvents({
-        error,
-        turnId,
-        sessionId,
-        isFirstTurn,
-        startSequence: record.nextSequence,
-        userMessage,
         at,
+        error,
+        isFirstTurn,
+        sessionId,
+        startSequence: record.nextSequence,
+        turnId,
+        userMessage,
       });
     }
 
@@ -833,8 +854,8 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       // assistantParts may additionally carry SpecialToolPart values by design.
       record.messages.push({
         id: `${turnId}:assistant`,
-        role: "assistant",
         parts: assistantParts,
+        role: "assistant",
       } as UI_MESSAGE);
     }
     await sessionStore.set(sessionId, record);
@@ -849,20 +870,17 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
     const encoder = new TextEncoder();
     let cancelled = false;
 
-    const isDelayed = (event: EveStreamEvent): boolean =>
-      event.type === "message.appended" ||
-      event.type === "reasoning.appended" ||
-      event.type === "actions.requested" ||
-      event.type === "action.result";
-
     const stream = new ReadableStream<Uint8Array>({
+      cancel: () => {
+        cancelled = true;
+      },
       start: async (controller) => {
         try {
           for (const event of events) {
             if (cancelled || signal.aborted) {
               break;
             }
-            if (isDelayed(event)) {
+            if (isDelayedEvent(event)) {
               const delay = await resolveChunkDelay(init.chunkDelayMs, event);
               if (delay && delay > 0) {
                 await sleep(delay);
@@ -877,9 +895,6 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
         } catch (error) {
           controller.error(error);
         }
-      },
-      cancel: () => {
-        cancelled = true;
       },
     });
 
@@ -896,20 +911,127 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       headers.set(EVE_STREAM_TAIL_INDEX_HEADER, String(tailIndex));
     }
 
-    return new Response(stream, { status: 200, headers });
+    return new Response(stream, { headers, status: 200 });
+  };
+
+  const readJsonBody = async (request: Request): Promise<JsonObject | Response> => {
+    let rawBody;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return json(400, { error: "Request body must be JSON.", ok: false });
+    }
+    const parsedBody = jsonObject.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return json(400, { error: "Request body must be an object.", ok: false });
+    }
+    return parsedBody.data;
+  };
+
+  // POST /eve/v1/session — create session + first turn
+  const createSession = async (request: Request): Promise<Response> => {
+    if (request.method !== "POST") {
+      return json(405, { error: "Method not allowed.", ok: false });
+    }
+    const body = await readJsonBody(request);
+    if (body instanceof Response) {
+      return body;
+    }
+    const userMessage = parseUserMessage(body.message);
+    if (!userMessage) {
+      return json(400, { error: "A non-empty message is required.", ok: false });
+    }
+
+    const sessionId = generateSessionId();
+    const record: EveSessionRecord<UI_MESSAGE> = {
+      continuationToken: `eve:${generateId("tok")}`,
+      events: [],
+      messages: [],
+      nextSequence: 0,
+      turnCount: 0,
+    };
+    await runTurn(sessionId, record, userMessage, body.clientContext);
+
+    return json(
+      202,
+      { continuationToken: record.continuationToken, ok: true, sessionId },
+      { [EVE_SESSION_ID_HEADER]: sessionId },
+    );
+  };
+
+  // POST /eve/v1/session/:id — send a turn to one exact session id
+  const sendTurn = async (request: Request, sessionId: string): Promise<Response> => {
+    if (request.method !== "POST") {
+      return json(405, { error: "Method not allowed.", ok: false });
+    }
+    const record = await sessionStore.get(sessionId);
+    if (!record) {
+      return json(404, { error: "Session not found.", ok: false });
+    }
+    const body = await readJsonBody(request);
+    if (body instanceof Response) {
+      return body;
+    }
+    // A session id addresses the conversation on its own; eve rejects the
+    // token here rather than letting a stale one silently pick a session.
+    if ("continuationToken" in body) {
+      return json(400, {
+        error: "Session-ID routes do not accept 'continuationToken'.",
+        ok: false,
+      });
+    }
+    const userMessage = parseUserMessage(body.message);
+    if (!userMessage) {
+      const hasInputResponses =
+        Array.isArray(body.inputResponses) && body.inputResponses.length > 0;
+      return json(400, {
+        error: hasInputResponses
+          ? "StaticEveHandler does not support inputResponses (HITL) turns."
+          : "A non-empty message is required.",
+        ok: false,
+      });
+    }
+
+    await runTurn(sessionId, record, userMessage, body.clientContext);
+    return json(200, { ok: true, sessionId }, { [EVE_SESSION_ID_HEADER]: sessionId });
+  };
+
+  // GET /eve/v1/session/:id/stream
+  const streamSession = async (request: Request, sessionId: string): Promise<Response> => {
+    if (request.method !== "GET") {
+      return json(405, { error: "Method not allowed.", ok: false });
+    }
+    const record = await sessionStore.get(sessionId);
+    if (!record) {
+      return json(404, { error: "Session not found.", ok: false });
+    }
+    const { searchParams } = new URL(request.url);
+    const rawStartIndex = searchParams.get("startIndex");
+    const startIndex = rawStartIndex === null ? 0 : Number(rawStartIndex);
+    if (!Number.isSafeInteger(startIndex) || startIndex < 0) {
+      return json(400, { error: "startIndex must be a non-negative integer.", ok: false });
+    }
+    const rawIncludeTailIndex = searchParams.get("includeTailIndex");
+    // Bounded reads (`stream({ follow: false })`, `snapshot()`) throw client-side
+    // without this header, so it must be the index of the last stored event.
+    const tailIndex =
+      rawIncludeTailIndex === "1" || rawIncludeTailIndex === "true"
+        ? record.events.length - 1
+        : undefined;
+    return streamResponse(sessionId, record.events.slice(startIndex), request.signal, tailIndex);
   };
 
   return async (request: Request): Promise<Response> => {
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
+      return new Response(null, { headers: corsHeaders(), status: 204 });
     }
 
-    const pathname = new URL(request.url).pathname;
+    const { pathname } = new URL(request.url);
     const prefixIndex = pathname.indexOf(EVE_ROUTE_PREFIX);
     if (prefixIndex === -1) {
       return json(404, { error: "Not an eve route.", ok: false });
     }
-    const route = pathname.slice(prefixIndex + EVE_ROUTE_PREFIX.length).replace(/\/+$/, "");
+    const route = pathname.slice(prefixIndex + EVE_ROUTE_PREFIX.length).replace(/\/+$/u, "");
     const segments = route.split("/").map((segment) => decodeURIComponent(segment));
 
     if (segments[0] === "health" && request.method === "GET") {
@@ -920,118 +1042,23 @@ export function createStaticEveHandler<UI_MESSAGE extends UIMessage = UIMessage>
       return json(404, { error: `Unknown eve route "${route}".`, ok: false });
     }
 
-    // POST /eve/v1/session — create session + first turn
     if (segments.length === 1) {
-      if (request.method !== "POST") {
-        return json(405, { error: "Method not allowed.", ok: false });
-      }
-      let rawBody;
-      try {
-        rawBody = await request.json();
-      } catch {
-        return json(400, { error: "Request body must be JSON.", ok: false });
-      }
-      const parsedBody = jsonObject.safeParse(rawBody);
-      if (!parsedBody.success) {
-        return json(400, { error: "Request body must be an object.", ok: false });
-      }
-      const body = parsedBody.data;
-      const userMessage = parseUserMessage(body.message);
-      if (!userMessage) {
-        return json(400, { error: "A non-empty message is required.", ok: false });
-      }
-
-      const sessionId = generateSessionId();
-      const record: EveSessionRecord<UI_MESSAGE> = {
-        continuationToken: `eve:${generateId("tok")}`,
-        events: [],
-        messages: [],
-        nextSequence: 0,
-        turnCount: 0,
-      };
-      await runTurn(sessionId, record, userMessage, body.clientContext);
-
-      return json(
-        202,
-        { continuationToken: record.continuationToken, ok: true, sessionId },
-        { [EVE_SESSION_ID_HEADER]: sessionId },
-      );
+      return await createSession(request);
     }
 
-    const sessionId = segments[1];
+    const [, sessionId] = segments;
     if (!sessionId) {
       return json(404, { error: "Session id missing.", ok: false });
     }
 
-    // POST /eve/v1/session/:id — send a turn to one exact session id
     if (segments.length === 2) {
-      if (request.method !== "POST") {
-        return json(405, { error: "Method not allowed.", ok: false });
-      }
-      const record = await sessionStore.get(sessionId);
-      if (!record) {
-        return json(404, { error: "Session not found.", ok: false });
-      }
-      let rawBody;
-      try {
-        rawBody = await request.json();
-      } catch {
-        return json(400, { error: "Request body must be JSON.", ok: false });
-      }
-      const parsedBody = jsonObject.safeParse(rawBody);
-      if (!parsedBody.success) {
-        return json(400, { error: "Request body must be an object.", ok: false });
-      }
-      const body = parsedBody.data;
-      // A session id addresses the conversation on its own; eve rejects the
-      // token here rather than letting a stale one silently pick a session.
-      if ("continuationToken" in body) {
-        return json(400, {
-          error: "Session-ID routes do not accept 'continuationToken'.",
-          ok: false,
-        });
-      }
-      const userMessage = parseUserMessage(body.message);
-      if (!userMessage) {
-        const hasInputResponses =
-          Array.isArray(body.inputResponses) && body.inputResponses.length > 0;
-        return json(400, {
-          error: hasInputResponses
-            ? "StaticEveHandler does not support inputResponses (HITL) turns."
-            : "A non-empty message is required.",
-          ok: false,
-        });
-      }
-
-      await runTurn(sessionId, record, userMessage, body.clientContext);
-      return json(200, { ok: true, sessionId }, { [EVE_SESSION_ID_HEADER]: sessionId });
+      return await sendTurn(request, sessionId);
     }
 
-    // GET /eve/v1/session/:id/stream
     if (segments.length === 3 && segments[2] === "stream") {
-      if (request.method !== "GET") {
-        return json(405, { error: "Method not allowed.", ok: false });
-      }
-      const record = await sessionStore.get(sessionId);
-      if (!record) {
-        return json(404, { error: "Session not found.", ok: false });
-      }
-      const searchParams = new URL(request.url).searchParams;
-      const rawStartIndex = searchParams.get("startIndex");
-      const startIndex = rawStartIndex === null ? 0 : Number(rawStartIndex);
-      if (!Number.isSafeInteger(startIndex) || startIndex < 0) {
-        return json(400, { error: "startIndex must be a non-negative integer.", ok: false });
-      }
-      const rawIncludeTailIndex = searchParams.get("includeTailIndex");
-      // Bounded reads (`stream({ follow: false })`, `snapshot()`) throw client-side
-      // without this header, so it must be the index of the last stored event.
-      const tailIndex =
-        rawIncludeTailIndex === "1" || rawIncludeTailIndex === "true"
-          ? record.events.length - 1
-          : undefined;
-      return streamResponse(sessionId, record.events.slice(startIndex), request.signal, tailIndex);
+      return await streamSession(request, sessionId);
     }
 
     return json(404, { error: `Unknown eve route "${route}".`, ok: false });
   };
-}
+};

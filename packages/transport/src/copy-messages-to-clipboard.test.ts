@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, mock, test } from "node:test";
+import { setTimeout as sleep } from "node:timers/promises";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 
@@ -7,11 +8,11 @@ import { copyMessagesToClipboard } from "./copy-messages-to-clipboard";
 import type { ToolPart } from "./index";
 
 type MessagePart = UIMessage["parts"][number];
-type NavigatorWithClipboard = {
+interface NavigatorWithClipboard {
   clipboard?: {
     writeText?: (value: string) => Promise<void> | void;
   };
-};
+}
 
 // SAFETY: only loosens globalThis — navigator and alert become optional and
 // writable so the tests can install and remove fakes.
@@ -22,26 +23,23 @@ const globalScope = globalThis as typeof globalThis & {
 
 const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalScope, "navigator");
 const originalAlert = globalScope.alert;
-const hadAlert = Object.prototype.hasOwnProperty.call(globalScope, "alert");
+const hadAlert = Object.hasOwn(globalScope, "alert");
 
 const alertSpy = mock.fn((_message?: string): void => {});
 let messageId = 0;
 
-const createMessage = (
-  role: UIMessage["role"],
-  parts: Array<MessagePart | ToolPart>,
-): UIMessage => ({
-  id: `${role}-${++messageId}`,
-  role,
+const createMessage = (role: UIMessage["role"], parts: (MessagePart | ToolPart)[]): UIMessage => ({
+  id: `${role}-${(messageId += 1)}`,
   parts,
+  role,
 });
 
 const setNavigator = (value: NavigatorWithClipboard | undefined): void => {
   Object.defineProperty(globalScope, "navigator", {
     configurable: true,
     enumerable: true,
-    writable: true,
     value,
+    writable: true,
   });
 };
 
@@ -59,11 +57,7 @@ afterEach(() => {
     globalScope.navigator = undefined;
   }
 
-  if (hadAlert) {
-    globalScope.alert = originalAlert;
-  } else {
-    globalScope.alert = undefined;
-  }
+  globalScope.alert = hadAlert ? originalAlert : undefined;
 
   mock.restoreAll();
 });
@@ -76,13 +70,13 @@ describe("copyMessagesToClipboard", () => {
     });
 
     const messages: UIMessage[] = [
-      createMessage("user", [{ type: "text", text: "Hello!" }]),
-      createMessage("assistant", [{ type: "text", text: "Hi there" }]),
-      createMessage("assistant", [{ type: "text", text: "What else can I help with?" }]),
+      createMessage("user", [{ text: "Hello!", type: "text" }]),
+      createMessage("assistant", [{ text: "Hi there", type: "text" }]),
+      createMessage("assistant", [{ text: "What else can I help with?", type: "text" }]),
     ];
 
     copyMessagesToClipboard({ messages });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await sleep(0);
 
     assert.strictEqual(writeText.mock.callCount(), 1);
     const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
@@ -106,7 +100,7 @@ describe("copyMessagesToClipboard", () => {
     });
 
     copyMessagesToClipboard({
-      messages: [createMessage("user", [{ type: "text", text: "Only user input" }])],
+      messages: [createMessage("user", [{ text: "Only user input", type: "text" }])],
     });
 
     assert.strictEqual(writeText.mock.callCount(), 0);
@@ -122,7 +116,7 @@ describe("copyMessagesToClipboard", () => {
     assert.throws(
       () => {
         copyMessagesToClipboard({
-          messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
+          messages: [createMessage("assistant", [{ text: "Response", type: "text" }])],
         });
       },
       { message: "Clipboard access is not available in this environment." },
@@ -142,11 +136,11 @@ describe("copyMessagesToClipboard", () => {
     });
 
     copyMessagesToClipboard({
-      messages: [createMessage("assistant", [{ type: "text", text: "Response" }])],
+      messages: [createMessage("assistant", [{ text: "Response", type: "text" }])],
     });
 
     // Wait for the promise to reject and error handling to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await sleep(50);
 
     assert.strictEqual(writeText.mock.callCount(), 1);
     assert.strictEqual(alertSpy.mock.callCount(), 1);
@@ -165,21 +159,21 @@ describe("copyMessagesToClipboard", () => {
     const messages: UIMessage[] = [
       createMessage("assistant", [
         {
-          type: "tool-weather",
+          input: { location: "San Francisco" },
+          state: "input-available",
           toolCallId,
           toolName: "weather",
-          state: "input-available",
-          input: { location: "San Francisco" },
+          type: "tool-weather",
         },
         {
-          type: "text",
           text: "The weather is sunny.",
+          type: "text",
         },
       ]),
     ];
 
     copyMessagesToClipboard({ messages });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await sleep(0);
 
     assert.strictEqual(writeText.mock.callCount(), 1);
     const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
@@ -203,18 +197,18 @@ describe("copyMessagesToClipboard", () => {
     const messages: UIMessage[] = [
       createMessage("assistant", [
         {
-          type: "tool-weather",
+          input: { location: "New York" },
+          output: { condition: "sunny", temperature: 75 },
+          state: "output-available",
           toolCallId,
           toolName: "weather",
-          state: "output-available",
-          input: { location: "New York" },
-          output: { temperature: 75, condition: "sunny" },
+          type: "tool-weather",
         },
       ]),
     ];
 
     copyMessagesToClipboard({ messages });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await sleep(0);
 
     assert.strictEqual(writeText.mock.callCount(), 1);
     const template = z.string().parse(writeText.mock.calls[0]?.arguments[0]);
@@ -223,8 +217,8 @@ describe("copyMessagesToClipboard", () => {
     const inputAvailableIndex = template.indexOf('"state": "input-available"');
     const outputAvailableIndex = template.indexOf('"state": "output-available"');
 
-    assert.ok(inputAvailableIndex > -1);
-    assert.ok(outputAvailableIndex > -1);
+    assert.ok(inputAvailableIndex !== -1);
+    assert.ok(outputAvailableIndex !== -1);
     // input-available should come before output-available
     assert.ok(inputAvailableIndex < outputAvailableIndex);
     assert.ok(template.includes(`"toolCallId": "${toolCallId}"`));

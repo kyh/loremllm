@@ -9,104 +9,104 @@ import { TextAnimator } from "./text-animator";
 
 type HoverTextVariant = "cursor-square" | "bg";
 
-export type HoverTextHandle = {
+export interface HoverTextHandle {
   animate: () => void;
   animateBack: () => void;
-};
+}
 
 type HoverTextProps = {
   children: React.ReactNode;
-  asChild?: boolean; // Merge props with child element instead of wrapping
+  // Merge props with child element instead of wrapping
+  asChild?: boolean;
+  ref?: React.Ref<HoverTextHandle>;
 } & React.HTMLAttributes<HTMLSpanElement>;
 
-const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
-  ({ children, className, asChild = false, onMouseEnter, onMouseLeave, ...props }, ref) => {
-    const { theme } = useTheme();
-    // Light theme = cursor-square (V1), Dark theme = bg (V2)
-    const effectiveVariant: HoverTextVariant = theme === "dark" ? "bg" : "cursor-square";
-    const internalRef = React.useRef<HTMLElement>(null);
-    const animatorRef = React.useRef<TextAnimator | null>(null);
+const HoverText = ({
+  children,
+  className,
+  asChild = false,
+  onMouseEnter,
+  onMouseLeave,
+  ref,
+  ...props
+}: HoverTextProps) => {
+  const { theme } = useTheme();
+  // Light theme = cursor-square (V1), Dark theme = bg (V2)
+  const effectiveVariant: HoverTextVariant = theme === "dark" ? "bg" : "cursor-square";
+  const internalRef = React.useRef<HTMLElement>(null);
+  const animatorRef = React.useRef<TextAnimator | null>(null);
 
-    // Expose animate methods via imperative handle
-    React.useImperativeHandle(
-      ref,
-      () => ({
-        animate: () => {
-          animatorRef.current?.animate();
-        },
-        animateBack: () => {
-          animatorRef.current?.animateBack();
-        },
-      }),
-      [],
-    );
-
-    // Set internal ref when element is available
-    const setRef = React.useCallback((el: HTMLElement | null) => {
-      internalRef.current = el;
-    }, []);
-
-    // Initialize TextAnimator when component mounts and element is available
-    React.useEffect(() => {
-      const element = internalRef.current;
-      if (!element || animatorRef.current) return;
-
-      // Use requestAnimationFrame to ensure DOM is fully ready (especially for Slot)
-      const rafId = requestAnimationFrame(() => {
-        const currentElement = internalRef.current;
-        if (!currentElement || animatorRef.current) return;
-
-        animatorRef.current = new TextAnimator(currentElement, effectiveVariant);
-      });
-
-      return () => {
-        cancelAnimationFrame(rafId);
-        animatorRef.current?.reset();
-        animatorRef.current = null;
-      };
-    }, [effectiveVariant]);
-
-    // Handle mouse events
-    const handleMouseEnter = React.useCallback(
-      (e: React.MouseEvent<HTMLSpanElement>) => {
+  // Expose animate methods via imperative handle
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      animate: () => {
         animatorRef.current?.animate();
-        onMouseEnter?.(e);
       },
-      [onMouseEnter],
-    );
-
-    const handleMouseLeave = React.useCallback(
-      (e: React.MouseEvent<HTMLSpanElement>) => {
+      animateBack: () => {
         animatorRef.current?.animateBack();
-        onMouseLeave?.(e);
       },
-      [onMouseLeave],
-    );
+    }),
+    [],
+  );
 
-    const baseClassName = cn(
-      "hover-effect",
-      "relative whitespace-nowrap [font-kerning:none]",
-      effectiveVariant === "cursor-square" && "hover-effect--cursor-square",
-      effectiveVariant === "bg" && "hover-effect--bg",
-      className,
-    );
+  // Set internal ref when element is available
+  const setRef = React.useCallback((el: HTMLElement | null) => {
+    internalRef.current = el;
+  }, []);
 
-    if (asChild) {
-      return (
-        <Slot.Root
-          ref={setRef}
-          className={baseClassName}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          {...props}
-        >
-          {children}
-        </Slot.Root>
-      );
+  // Initialize TextAnimator when component mounts and element is available
+  React.useEffect(() => {
+    const element = internalRef.current;
+    if (!element || animatorRef.current) {
+      return;
     }
 
+    // Use requestAnimationFrame to ensure DOM is fully ready (especially for Slot)
+    const rafId = requestAnimationFrame(() => {
+      const currentElement = internalRef.current;
+      if (!currentElement || animatorRef.current) {
+        return;
+      }
+
+      animatorRef.current = new TextAnimator(currentElement, effectiveVariant);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      animatorRef.current?.reset();
+      animatorRef.current = null;
+    };
+  }, [effectiveVariant]);
+
+  // Handle mouse events
+  const handleMouseEnter = React.useCallback(
+    (e: React.MouseEvent<HTMLSpanElement>) => {
+      animatorRef.current?.animate();
+      onMouseEnter?.(e);
+    },
+    [onMouseEnter],
+  );
+
+  const handleMouseLeave = React.useCallback(
+    (e: React.MouseEvent<HTMLSpanElement>) => {
+      animatorRef.current?.animateBack();
+      onMouseLeave?.(e);
+    },
+    [onMouseLeave],
+  );
+
+  const baseClassName = cn(
+    "hover-effect",
+    "relative whitespace-nowrap [font-kerning:none]",
+    effectiveVariant === "cursor-square" && "hover-effect--cursor-square",
+    effectiveVariant === "bg" && "hover-effect--bg",
+    className,
+  );
+
+  if (asChild) {
     return (
-      <span
+      <Slot.Root
         ref={setRef}
         className={baseClassName}
         onMouseEnter={handleMouseEnter}
@@ -114,11 +114,21 @@ const HoverText = React.forwardRef<HoverTextHandle, HoverTextProps>(
         {...props}
       >
         {children}
-      </span>
+      </Slot.Root>
     );
-  },
-);
+  }
 
-HoverText.displayName = "HoverText";
+  return (
+    <span
+      ref={setRef}
+      className={baseClassName}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+};
 
 export { HoverText, type HoverTextProps, type HoverTextVariant };

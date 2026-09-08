@@ -8,43 +8,43 @@ import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqli
 // indexed here, not by the generator.
 
 export const user = sqliteTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
-  image: text("image"),
+  banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
+  banReason: text("ban_reason"),
+  banned: integer("banned", { mode: "boolean" }).default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
+  id: text("id").primaryKey(),
+  image: text("image"),
+  name: text("name").notNull(),
+  role: text("role"),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .$onUpdate(() => new Date())
     .notNull(),
-  role: text("role"),
-  banned: integer("banned", { mode: "boolean" }).default(false),
-  banReason: text("ban_reason"),
-  banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
 });
 
 export const session = sqliteTable(
   "session",
   {
-    id: text("id").primaryKey(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-    token: text("token").notNull().unique(),
+    activeOrganizationId: text("active_organization_id"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    id: text("id").primaryKey(),
+    impersonatedBy: text("impersonated_by"),
     ipAddress: text("ip_address"),
+    token: text("token").notNull().unique(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$onUpdate(() => new Date())
+      .notNull(),
     userAgent: text("user_agent"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    activeOrganizationId: text("active_organization_id"),
-    impersonatedBy: text("impersonated_by"),
   },
   // better-auth loads a user's sessions by user_id
   (table) => [index("session_userId_idx").on(table.userId)],
@@ -53,30 +53,30 @@ export const session = sqliteTable(
 export const account = sqliteTable(
   "account",
   {
-    id: text("id").primaryKey(),
-    issuer: text("issuer").notNull(),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
     accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    idToken: text("id_token"),
     accessTokenExpiresAt: integer("access_token_expires_at", {
       mode: "timestamp_ms",
     }),
+    accountId: text("account_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    id: text("id").primaryKey(),
+    idToken: text("id_token"),
+    issuer: text("issuer").notNull(),
+    password: text("password"),
+    providerId: text("provider_id").notNull(),
+    refreshToken: text("refresh_token"),
     refreshTokenExpiresAt: integer("refresh_token_expires_at", {
       mode: "timestamp_ms",
     }),
     scope: text("scope"),
-    password: text("password"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .$onUpdate(() => new Date())
       .notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
   },
   (table) => [
     // better-auth resolves a user's linked accounts by user_id
@@ -89,43 +89,43 @@ export const account = sqliteTable(
 export const verification = sqliteTable(
   "verification",
   {
-    id: text("id").primaryKey(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .$onUpdate(() => new Date())
       .notNull(),
+    value: text("value").notNull(),
   },
   // every verification lookup (email verify, password reset) filters by identifier
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
 export const organization = sqliteTable("organization", {
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   id: text("id").primaryKey(),
+  logo: text("logo"),
+  metadata: text("metadata"),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-  metadata: text("metadata"),
 });
 
 export const member = sqliteTable(
   "member",
   {
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     id: text("id").primaryKey(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
+    role: text("role").default("member").notNull(),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    role: text("role").default("member").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   // membership is read by organization (member lists) and by user (active-org resolution)
   (table) => [
@@ -137,20 +137,20 @@ export const member = sqliteTable(
 export const invitation = sqliteTable(
   "invitation",
   {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
-    role: text("role"),
-    status: text("status").default("pending").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
+    email: text("email").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    id: text("id").primaryKey(),
     inviterId: text("inviter_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    role: text("role"),
+    status: text("status").default("pending").notNull(),
   },
   // pending invitations are listed per organization, and looked up by email on accept
   (table) => [
@@ -164,9 +164,9 @@ export const invitation = sqliteTable(
 // indexed lookup. Hand-added — the CLI regen does not emit this table, so re-add
 // it if you regenerate.
 export const rateLimit = sqliteTable("rate_limit", {
+  count: integer("count").notNull(),
   id: text("id").primaryKey(),
   key: text("key").notNull().unique(),
-  count: integer("count").notNull(),
   lastRequest: integer("last_request").notNull(),
 });
 

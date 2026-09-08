@@ -20,9 +20,9 @@ const url = "https://app.kyh.io/api/orpc/organization/get";
 const post = (headers: Record<string, string>) =>
   POST(
     new NextRequest(url, {
-      method: "POST",
-      headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify({ json: { slug: "acme" } }),
+      headers: { "content-type": "application/json", ...headers },
+      method: "POST",
     }),
   );
 
@@ -37,13 +37,13 @@ describe("rpc endpoint", () => {
     const response = await post({ origin: "https://app.kyh.io" });
 
     assert.strictEqual(response.status, 401);
-    assert.match(await response.text(), /UNAUTHORIZED/);
+    assert.match(await response.text(), /UNAUTHORIZED/u);
   });
 
   test("allows a POST with no Origin at all, so non-browser callers still reach it", async () => {
     const response = await post({});
 
     assert.strictEqual(response.status, 401);
-    assert.match(await response.text(), /UNAUTHORIZED/);
+    assert.match(await response.text(), /UNAUTHORIZED/u);
   });
 });

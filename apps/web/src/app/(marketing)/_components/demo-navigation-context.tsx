@@ -4,7 +4,7 @@ import * as React from "react";
 
 import type { Demo } from "./demo-data";
 
-type DemoNavigationContextValue = {
+interface DemoNavigationContextValue {
   allDemos: Demo[];
   openIndex: number | null;
   openDemo: (demo: Demo) => void;
@@ -13,14 +13,14 @@ type DemoNavigationContextValue = {
   goToNext: () => void;
   hasPrevious: boolean;
   hasNext: boolean;
-};
+}
 
 const DemoNavigationContext = React.createContext<DemoNavigationContextValue | null>(null);
 
-type DemoNavigationProviderProps = {
+interface DemoNavigationProviderProps {
   demos: Demo[];
   children: React.ReactNode;
-};
+}
 
 export const DemoNavigationProvider = ({ demos, children }: DemoNavigationProviderProps) => {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
@@ -52,13 +52,13 @@ export const DemoNavigationProvider = ({ demos, children }: DemoNavigationProvid
   const value = React.useMemo(
     () => ({
       allDemos: demos,
-      openIndex,
-      openDemo,
       closeDemo,
-      goToPrevious,
       goToNext,
-      hasPrevious: openIndex !== null && openIndex > 0,
+      goToPrevious,
       hasNext: openIndex !== null && openIndex < demos.length - 1,
+      hasPrevious: openIndex !== null && openIndex > 0,
+      openDemo,
+      openIndex,
     }),
     [demos, openIndex, openDemo, closeDemo, goToPrevious, goToNext],
   );

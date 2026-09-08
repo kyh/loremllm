@@ -40,8 +40,129 @@ import { orpc } from "@/orpc/react";
 
 type Interaction = RouterOutputs["collection"]["byId"]["interactions"][number];
 
-type InteractionsTableProps = {
+interface InteractionsTableProps {
   interactions: Interaction[];
+}
+
+interface EditFormState {
+  title: string;
+  description: string;
+  input: string;
+  output: string;
+}
+
+const toFormState = (interaction: Interaction): EditFormState => ({
+  description: interaction.description ?? "",
+  input: interaction.input,
+  output: interaction.output,
+  title: interaction.title,
+});
+
+const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) => {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<EditFormState>(() => toFormState(interaction));
+
+  const updateInteraction = useMutation({
+    ...orpc.interaction.update.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to update interaction");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
+      toast.success("Mock interaction updated");
+      setOpen(false);
+    },
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setForm(toFormState(interaction));
+    }
+    setOpen(nextOpen);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const title = form.title.trim();
+    const input = form.input.trim();
+    const output = form.output.trim();
+
+    if (!title.length || !input.length || !output.length) {
+      toast.error("Title, input, and output are required");
+      return;
+    }
+
+    updateInteraction.mutate({
+      description: form.description.trim(),
+      input,
+      interactionId: interaction.id,
+      output,
+      title,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>Edit</DialogTrigger>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit mock response</DialogTitle>
+          <DialogDescription>
+            Changing the input re-generates the embedding used for matching.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`edit-title-${interaction.id}`}>Title</Label>
+            <Input
+              id={`edit-title-${interaction.id}`}
+              value={form.title}
+              onChange={(event) => setForm((state) => ({ ...state, title: event.target.value }))}
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`edit-description-${interaction.id}`}>Description (optional)</Label>
+            <Textarea
+              id={`edit-description-${interaction.id}`}
+              value={form.description}
+              onChange={(event) =>
+                setForm((state) => ({ ...state, description: event.target.value }))
+              }
+              rows={2}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`edit-input-${interaction.id}`}>Input (User Query)</Label>
+            <Textarea
+              id={`edit-input-${interaction.id}`}
+              value={form.input}
+              onChange={(event) => setForm((state) => ({ ...state, input: event.target.value }))}
+              rows={3}
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`edit-output-${interaction.id}`}>Output (Response)</Label>
+            <Textarea
+              id={`edit-output-${interaction.id}`}
+              value={form.output}
+              onChange={(event) => setForm((state) => ({ ...state, output: event.target.value }))}
+              rows={6}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" loading={updateInteraction.isPending}>
+              Save changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
@@ -49,24 +170,24 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
 
   const deleteInteraction = useMutation({
     ...orpc.interaction.delete.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete interaction");
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
       toast.success("Mock interaction deleted");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete interaction");
     },
   });
 
   const confirmDelete = (interaction: Interaction) => {
     alertDialog.open(`Delete "${interaction.title}"?`, {
-      description: "This mock response will stop matching queries immediately.",
       action: {
         label: "Delete",
         onClick: async () => {
           await deleteInteraction.mutateAsync({ interactionId: interaction.id });
         },
       },
+      description: "This mock response will stop matching queries immediately.",
     });
   };
 
@@ -133,126 +254,5 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
         )}
       </CardContent>
     </Card>
-  );
-};
-
-type EditFormState = {
-  title: string;
-  description: string;
-  input: string;
-  output: string;
-};
-
-const toFormState = (interaction: Interaction): EditFormState => ({
-  title: interaction.title,
-  description: interaction.description ?? "",
-  input: interaction.input,
-  output: interaction.output,
-});
-
-const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) => {
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<EditFormState>(() => toFormState(interaction));
-
-  const updateInteraction = useMutation({
-    ...orpc.interaction.update.mutationOptions(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
-      toast.success("Mock interaction updated");
-      setOpen(false);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update interaction");
-    },
-  });
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setForm(toFormState(interaction));
-    }
-    setOpen(nextOpen);
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const title = form.title.trim();
-    const input = form.input.trim();
-    const output = form.output.trim();
-
-    if (!title.length || !input.length || !output.length) {
-      toast.error("Title, input, and output are required");
-      return;
-    }
-
-    updateInteraction.mutate({
-      interactionId: interaction.id,
-      title,
-      description: form.description.trim(),
-      input,
-      output,
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="ghost" size="sm" />}>Edit</DialogTrigger>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit mock response</DialogTitle>
-          <DialogDescription>
-            Changing the input re-generates the embedding used for matching.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor={`edit-title-${interaction.id}`}>Title</Label>
-            <Input
-              id={`edit-title-${interaction.id}`}
-              value={form.title}
-              onChange={(event) => setForm((state) => ({ ...state, title: event.target.value }))}
-              required
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`edit-description-${interaction.id}`}>Description (optional)</Label>
-            <Textarea
-              id={`edit-description-${interaction.id}`}
-              value={form.description}
-              onChange={(event) =>
-                setForm((state) => ({ ...state, description: event.target.value }))
-              }
-              rows={2}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`edit-input-${interaction.id}`}>Input (User Query)</Label>
-            <Textarea
-              id={`edit-input-${interaction.id}`}
-              value={form.input}
-              onChange={(event) => setForm((state) => ({ ...state, input: event.target.value }))}
-              rows={3}
-              required
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`edit-output-${interaction.id}`}>Output (Response)</Label>
-            <Textarea
-              id={`edit-output-${interaction.id}`}
-              value={form.output}
-              onChange={(event) => setForm((state) => ({ ...state, output: event.target.value }))}
-              rows={6}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button type="submit" loading={updateInteraction.isPending}>
-              Save changes
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 };
