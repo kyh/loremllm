@@ -15,20 +15,18 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   showLineNumbers?: boolean;
 };
 
-type CodeBlockContextType = {
+interface CodeBlockContextType {
   code: string;
-};
+}
 
 const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
 const lineNumberTransformer: ShikiTransformer = {
-  name: "line-numbers",
   line(node, line) {
     node.children.unshift({
-      type: "element",
-      tagName: "span",
+      children: [{ type: "text", value: String(line) }],
       properties: {
         className: [
           "inline-block",
@@ -39,12 +37,14 @@ const lineNumberTransformer: ShikiTransformer = {
           "text-muted-foreground",
         ],
       },
-      children: [{ type: "text", value: String(line) }],
+      tagName: "span",
+      type: "element",
     });
   },
+  name: "line-numbers",
 };
 
-async function highlightCode(code: string, language: BundledLanguage, showLineNumbers = false) {
+const highlightCode = async (code: string, language: BundledLanguage, showLineNumbers = false) => {
   const transformers: ShikiTransformer[] = showLineNumbers ? [lineNumberTransformer] : [];
 
   return await Promise.all([
@@ -59,7 +59,7 @@ async function highlightCode(code: string, language: BundledLanguage, showLineNu
       transformers,
     }),
   ]);
-}
+};
 
 export const CodeBlock = ({
   code,
@@ -76,18 +76,21 @@ export const CodeBlock = ({
   useEffect(() => {
     let cancelled = false;
 
-    void highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
+    const highlight = async () => {
+      const [light, dark] = await highlightCode(code, language, showLineNumbers);
       if (!cancelled) {
         setHtml(light);
         setDarkHtml(dark);
       }
-    });
+    };
+    void highlight();
 
     return () => {
       cancelled = true;
     };
   }, [code, language, showLineNumbers]);
 
+  /* oxlint-disable react/no-danger -- Shiki escapes source code and returns trusted highlight markup */
   return (
     <CodeBlockContext.Provider value={contextValue}>
       <div
@@ -100,12 +103,10 @@ export const CodeBlock = ({
         <div className="relative">
           <div
             className="[&>pre]:bg-background! [&>pre]:text-foreground! overflow-hidden dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            // Shiki escapes source code and returns trusted highlight markup.
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
             className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden overflow-hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            // Shiki escapes source code and returns trusted highlight markup.
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
@@ -115,6 +116,7 @@ export const CodeBlock = ({
       </div>
     </CodeBlockContext.Provider>
   );
+  /* oxlint-enable react/no-danger */
 };
 
 export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {

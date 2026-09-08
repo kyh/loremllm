@@ -17,14 +17,15 @@ import { createDbEveSessionStore } from "../../eve-session-store";
 
 export const dynamic = "force-dynamic";
 
-type RouteContext = { params: Promise<{ collectionId: string }> };
+interface RouteContext {
+  params: Promise<{ collectionId: string }>;
+}
 
-async function handleEveRequest(request: Request, context: RouteContext): Promise<Response> {
+const handleEveRequest = async (request: Request, context: RouteContext): Promise<Response> => {
   const { collectionId } = await context.params;
 
   const handler = createStaticEveHandler({
     chunkDelayMs: 20,
-    sessionStore: createDbEveSessionStore(collectionId),
     async *mockResponse({ messages }) {
       // Dynamically import caller only when needed
       const { caller } = await import("@/orpc/server");
@@ -39,22 +40,23 @@ async function handleEveRequest(request: Request, context: RouteContext): Promis
       // Throws a descriptive ORPCError when nothing matches; the eve handler
       // streams it to the client as a failed session.
       const queryResult = await caller.interaction.query({
+        limit: 1,
         publicId: collectionId,
         query,
-        limit: 1,
       });
 
-      const bestMatch = queryResult.matches[0];
+      const [bestMatch] = queryResult.matches;
       if (!bestMatch) {
         throw new Error("No matching response found");
       }
 
-      yield { type: "text", text: bestMatch.output };
+      yield { text: bestMatch.output, type: "text" };
     },
+    sessionStore: createDbEveSessionStore(collectionId),
   });
 
   return handler(request);
-}
+};
 
 export const GET = handleEveRequest;
 export const POST = handleEveRequest;

@@ -36,16 +36,18 @@ for (const key of Object.keys(authTables)) {
     test("is exported from the Drizzle schema", () => {
       assert.deepEqual(
         {
-          model: authTable?.modelName,
           found: drizzleTables.has(authTable?.modelName ?? ""),
+          model: authTable?.modelName,
         },
-        { model: authTable?.modelName, found: true },
+        { found: true, model: authTable?.modelName },
       );
     });
 
     test("declares every field better-auth requires", () => {
       const table = drizzleTables.get(authTable?.modelName ?? "");
-      if (!authTable || !table) return;
+      if (!authTable || !table) {
+        return;
+      }
       const properties = new Set(Object.keys(getTableColumns(table)));
       const missing = fieldNamesOf(authTable).filter((fieldName) => !properties.has(fieldName));
       assert.deepEqual(missing, []);
@@ -53,7 +55,9 @@ for (const key of Object.keys(authTables)) {
 
     test("does not declare fields better-auth does not know about", () => {
       const table = drizzleTables.get(authTable?.modelName ?? "");
-      if (!authTable || !table) return;
+      if (!authTable || !table) {
+        return;
+      }
       const known = new Set([...fieldNamesOf(authTable), "id"]);
       const extra = Object.keys(getTableColumns(table)).filter((property) => !known.has(property));
       assert.deepEqual(extra, []);
@@ -61,11 +65,13 @@ for (const key of Object.keys(authTables)) {
 
     test("matches better-auth on which fields are NOT NULL", () => {
       const table = drizzleTables.get(authTable?.modelName ?? "");
-      if (!authTable || !table) return;
+      if (!authTable || !table) {
+        return;
+      }
       const columns = getTableColumns(table);
       const mismatched = Object.entries(authTable.fields)
-        .map(([key, field]) => ({
-          fieldName: field.fieldName ?? key,
+        .map(([fieldKey, field]) => ({
+          fieldName: field.fieldName ?? fieldKey,
           required: field.required === true,
         }))
         .filter(({ fieldName, required }) => {

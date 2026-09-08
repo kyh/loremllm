@@ -9,16 +9,20 @@ import type { JsonBody } from "./schema";
 // instead of failing the whole request, mirroring how unmatched shapes were
 // previously skipped.
 const inboundTextPart = z
-  .object({ type: z.literal("text"), text: z.string() })
+  .object({ text: z.string(), type: z.literal("text") })
   .nullable()
+  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   .catch(null);
 
 const inboundMessage = z
   .object({
-    role: z.string().catch(""),
+    // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
     parts: z.array(inboundTextPart).catch([]),
+    // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
+    role: z.string().catch(""),
   })
-  .catch({ role: "", parts: [] });
+  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
+  .catch({ parts: [], role: "" });
 
 /**
  * Extract the user query from the messages array
@@ -39,9 +43,12 @@ export const extractUserQuery = (messages: readonly JsonBody[]): string => {
  */
 export type ToolInvocationState = ToolUIPart["state"];
 
-export type TextChunk = { type: "text"; value: string };
+export interface TextChunk {
+  type: "text";
+  value: string;
+}
 
-export type ToolCallChunk = {
+export interface ToolCallChunk {
   type: "tool";
   toolCallId: string;
   toolName: string;
@@ -49,11 +56,11 @@ export type ToolCallChunk = {
   input?: JSONValue;
   output?: JSONValue;
   errorText?: string;
-};
+}
 
 export type MarkdownChunk = TextChunk | ToolCallChunk;
 
-const TOOL_FENCE_REGEX = /```tool[^\n]*\n[\s\S]*?```/gi;
+const TOOL_FENCE_REGEX = /```tool[^\n]*\n[\s\S]*?```/giu;
 
 const stripSurroundingQuotes = (value: string): string => {
   if (
@@ -66,10 +73,13 @@ const stripSurroundingQuotes = (value: string): string => {
   return value;
 };
 
-type ToolFenceHeader = { headerToolName?: string; headerToolCallId?: string };
+interface ToolFenceHeader {
+  headerToolName?: string;
+  headerToolCallId?: string;
+}
 
 const parseToolFenceInfo = (infoString: string): ToolFenceHeader => {
-  const tokens = infoString.trim().split(/\s+/).filter(Boolean);
+  const tokens = infoString.trim().split(/\s+/u).filter(Boolean);
 
   if (!tokens.length) {
     return {};
@@ -80,7 +90,7 @@ const parseToolFenceInfo = (infoString: string): ToolFenceHeader => {
 
   for (const token of tokens) {
     const [rawKey = token, rawValue] = token.includes("=")
-      ? token.split(/=/, 2)
+      ? token.split(/[=]/u, 2)
       : [token, undefined];
 
     if (rawValue !== undefined) {
@@ -107,7 +117,7 @@ const parseToolFenceInfo = (infoString: string): ToolFenceHeader => {
     }
   }
 
-  return { headerToolName, headerToolCallId };
+  return { headerToolCallId, headerToolName };
 };
 
 const toolInvocationState = z.enum([
@@ -151,19 +161,19 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
     return null;
   }
 
-  const rawHeaderLine = lines[0];
+  const [rawHeaderLine] = lines;
 
   if (!rawHeaderLine) {
     return null;
   }
 
-  const infoString = rawHeaderLine.replace(/^```tool/i, "");
+  const infoString = rawHeaderLine.replace(/^```tool/iu, "");
   const { headerToolName, headerToolCallId } = parseToolFenceInfo(infoString);
 
   const bodyLines = lines.slice(1);
 
   while (bodyLines.length > 0) {
-    const lastLine = bodyLines[bodyLines.length - 1];
+    const lastLine = bodyLines.at(-1);
 
     if (!lastLine || lastLine.trim() !== "```") {
       break;
@@ -191,7 +201,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
       return null;
     }
 
-    data = result.data;
+    ({ data } = result);
   }
 
   const toolCallId =
@@ -204,11 +214,11 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
   const errorText = getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
 
   const chunk: ToolCallChunk = {
-    type: "tool",
+    errorText,
+    state,
     toolCallId,
     toolName,
-    state,
-    errorText,
+    type: "tool",
   };
 
   if ("input" in data) {
@@ -227,7 +237,7 @@ const splitIntoTextChunks = (segment: string): TextChunk[] => {
     return [];
   }
 
-  const tokens = segment.split(/(\s+)/);
+  const tokens = segment.split(/(?<whitespace>\s+)/u);
 
   return tokens
     .filter((token) => token.length > 0)
@@ -240,7 +250,7 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
   let toolIndex = 1;
 
   for (const match of markdown.matchAll(TOOL_FENCE_REGEX)) {
-    const fullMatch = match[0];
+    const [fullMatch] = match;
     const content = fullMatch;
     const startIndex = match.index ?? 0;
     const endIndex = startIndex + fullMatch.length;
@@ -248,7 +258,8 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
     const precedingText = markdown.slice(lastIndex, startIndex);
     chunks.push(...splitIntoTextChunks(precedingText));
 
-    const fallbackId = `tool-call-${toolIndex++}`;
+    const fallbackId = `tool-call-${toolIndex}`;
+    toolIndex += 1;
     const toolChunk = parseToolCallChunk(content, fallbackId);
 
     if (toolChunk) {
@@ -291,24 +302,24 @@ export const createStreamChunks = (
   userQuery: string,
   output: string,
 ): LanguageModelV3StreamPart[] => [
-  { type: "text-start", id: "text-1" },
+  { id: "text-1", type: "text-start" },
   ...chunks.flatMap<LanguageModelV3StreamPart>((chunk) => {
     if (chunk.type === "text") {
       return [
         {
-          type: "text-delta",
-          id: "text-1",
           delta: chunk.value,
+          id: "text-1",
+          type: "text-delta",
         },
       ];
     }
 
     const events: LanguageModelV3StreamPart[] = [
       {
-        type: "tool-call",
+        input: stringifyToolInput(chunk.input),
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
-        input: stringifyToolInput(chunk.input),
+        type: "tool-call",
       },
     ];
 
@@ -316,41 +327,41 @@ export const createStreamChunks = (
 
     if (finalState === "output-error" || finalState === "output-denied" || chunk.errorText) {
       events.push({
-        type: "tool-result",
+        isError: true,
+        result: chunk.errorText ?? "An unknown tool error occurred.",
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
-        result: chunk.errorText ?? "An unknown tool error occurred.",
-        isError: true,
+        type: "tool-result",
       });
     } else if (finalState === "output-available" || chunk.output !== undefined) {
       events.push({
-        type: "tool-result",
+        result: normalizeToolResult(chunk.output),
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
-        result: normalizeToolResult(chunk.output),
+        type: "tool-result",
       });
     }
 
     return events;
   }),
-  { type: "text-end", id: "text-1" },
+  { id: "text-1", type: "text-end" },
   {
-    type: "finish",
     finishReason: {
-      unified: "stop",
       raw: "stop",
+      unified: "stop",
     },
+    type: "finish",
     usage: {
       inputTokens: {
-        total: userQuery.length,
-        noCache: undefined,
         cacheRead: undefined,
         cacheWrite: undefined,
+        noCache: undefined,
+        total: userQuery.length,
       },
       outputTokens: {
-        total: output.length,
-        text: output.length,
         reasoning: undefined,
+        text: output.length,
+        total: output.length,
       },
     },
   },

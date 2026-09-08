@@ -47,7 +47,12 @@ export type ParsedRequestPayload =
   | { type: "lorem"; data: LoremRequest };
 
 /** Invalid request body — mapped to a 400 response by the route handler */
-export class PayloadError extends Error {}
+export class PayloadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PayloadError";
+  }
+}
 
 const parseOrThrow = <T>(schema: z.ZodType<T>, body: JsonBody, label: string): T => {
   const result = schema.safeParse(body);
@@ -79,32 +84,36 @@ export const parseRequestPayload = (body: JsonBody): ParsedRequestPayload => {
 
   if (explicitType !== null) {
     switch (explicitType) {
-      case "markdown":
-        return { type: "markdown", data: parseOrThrow(MarkdownRequestSchema, body, "markdown") };
-      case "chat":
-        return { type: "chat", data: parseOrThrow(ChatRequestSchema, body, "chat") };
-      case "lorem":
-        return { type: "lorem", data: parseOrThrow(LoremRequestSchema, body, "lorem") };
-      default:
+      case "markdown": {
+        return { data: parseOrThrow(MarkdownRequestSchema, body, "markdown"), type: "markdown" };
+      }
+      case "chat": {
+        return { data: parseOrThrow(ChatRequestSchema, body, "chat"), type: "chat" };
+      }
+      case "lorem": {
+        return { data: parseOrThrow(LoremRequestSchema, body, "lorem"), type: "lorem" };
+      }
+      default: {
         throw new PayloadError(
           `Unknown request type "${explicitType}". Expected "chat", "markdown", or "lorem".`,
         );
+      }
     }
   }
 
   const markdownResult = MarkdownRequestSchema.safeParse(body);
   if (markdownResult.success) {
-    return { type: "markdown", data: markdownResult.data };
+    return { data: markdownResult.data, type: "markdown" };
   }
 
   const chatResult = ChatRequestSchema.safeParse(body);
   if (chatResult.success) {
-    return { type: "chat", data: chatResult.data };
+    return { data: chatResult.data, type: "chat" };
   }
 
   const loremResult = LoremRequestSchema.safeParse(body);
   if (loremResult.success) {
-    return { type: "lorem", data: loremResult.data };
+    return { data: loremResult.data, type: "lorem" };
   }
 
   throw new PayloadError("Invalid request payload");

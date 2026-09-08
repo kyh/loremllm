@@ -12,23 +12,29 @@ export type DelayResolver<CHUNK> =
   | [number, number]
   | ((chunk: CHUNK) => MaybePromise<number | [number, number] | undefined>);
 
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type DelayFunction<CHUNK> = Exclude<DelayResolver<CHUNK>, number | [number, number]>;
 
-function randomDelay(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+export const sleep = (ms: number): Promise<void> =>
+  // oxlint-disable-next-line promise/avoid-new -- a timer has no promise form
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const randomDelay = (min: number, max: number): number =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const isDelayFunction = <CHUNK>(resolver: DelayResolver<CHUNK>): resolver is DelayFunction<CHUNK> =>
+  typeof resolver === "function";
 
 /**
  * Resolves a {@link DelayResolver} to a concrete millisecond delay for one chunk.
  * Returns `undefined` when no delay should be applied.
  */
-export async function resolveChunkDelay<CHUNK>(
+export const resolveChunkDelay = async <CHUNK>(
   resolver: DelayResolver<CHUNK> | undefined,
   chunk: CHUNK,
-): Promise<number | undefined> {
-  if (resolver == null) {
+): Promise<number | undefined> => {
+  if (resolver === undefined) {
     return undefined;
   }
 
@@ -36,9 +42,9 @@ export async function resolveChunkDelay<CHUNK>(
     return randomDelay(resolver[0], resolver[1]);
   }
 
-  if (resolver instanceof Function) {
+  if (isDelayFunction(resolver)) {
     const result = await resolver(chunk);
-    if (result == null) {
+    if (result === undefined) {
       return undefined;
     }
 
@@ -46,7 +52,14 @@ export async function resolveChunkDelay<CHUNK>(
   }
 
   return resolver;
-}
+};
+
+const toGlobalPattern = (autoChunk: true | RegExp): RegExp => {
+  if (autoChunk === true) {
+    return /(?<word>\S+|\s+)/gu;
+  }
+  return autoChunk.global ? autoChunk : new RegExp(autoChunk.source, `${autoChunk.flags}g`);
+};
 
 /**
  * Splits text into streamable segments.
@@ -55,7 +68,7 @@ export async function resolveChunkDelay<CHUNK>(
  * - `RegExp`: a custom pattern — with capturing groups it matches content,
  *   without it splits on the pattern while preserving separators
  */
-export function segmentText(text: string, autoChunk: boolean | RegExp): string[] {
+export const segmentText = (text: string, autoChunk: boolean | RegExp): string[] => {
   if (text.length === 0) {
     return [];
   }
@@ -64,12 +77,7 @@ export function segmentText(text: string, autoChunk: boolean | RegExp): string[]
     return [text];
   }
 
-  const matchPattern =
-    autoChunk === true
-      ? /(\S+|\s+)/g // Default: word-by-word (words and spaces)
-      : autoChunk.global
-        ? autoChunk
-        : new RegExp(autoChunk.source, autoChunk.flags + "g");
+  const matchPattern = toGlobalPattern(autoChunk);
 
   // Check if regex has capturing groups (matches content) vs separators (splits on)
   const hasCapturingGroups = matchPattern.source.includes("(");
@@ -93,4 +101,4 @@ export function segmentText(text: string, autoChunk: boolean | RegExp): string[]
   }
 
   return segments;
-}
+};

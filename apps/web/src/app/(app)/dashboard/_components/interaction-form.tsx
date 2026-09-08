@@ -18,23 +18,23 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { orpc } from "@/orpc/react";
 
-type InteractionFormState = {
+interface InteractionFormState {
   title: string;
   description: string;
   input: string;
   output: string;
-};
+}
 
 const emptyForm: InteractionFormState = {
-  title: "",
   description: "",
   input: "",
   output: "",
+  title: "",
 };
 
-type InteractionFormProps = {
+interface InteractionFormProps {
   collectionId: string;
-};
+}
 
 export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
   const queryClient = useQueryClient();
@@ -42,13 +42,13 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
 
   const createInteraction = useMutation({
     ...orpc.interaction.create.mutationOptions(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to save interaction");
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
       setForm(emptyForm);
       toast.success("Mock interaction saved");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to save interaction");
     },
   });
 
@@ -66,10 +66,10 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
 
     createInteraction.mutate({
       collectionId,
-      title,
       description: form.description.trim() || undefined,
       input,
       output,
+      title,
     });
   };
 

@@ -1,7 +1,11 @@
 import type { User } from "better-auth";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import { user as userSchema } from "@repo/db/drizzle-schema-auth";
+import {
+  member as memberSchema,
+  organization as organizationSchema,
+  user as userSchema,
+} from "@repo/db/drizzle-schema-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
@@ -9,12 +13,17 @@ import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugi
 import { env } from "../env";
 import { FALLBACK_ORGANIZATION_SLUG, slugify } from "./utils";
 
-export const baseUrl =
-  process.env.VERCEL_ENV === "production"
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_ENV === "preview"
-      ? `https://${process.env.VERCEL_URL}`
-      : `http://localhost:${process.env.PORT ?? 3000}`;
+const resolveBaseUrl = () => {
+  if (process.env.VERCEL_ENV === "production") {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_ENV === "preview") {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return `http://localhost:${process.env.PORT ?? 3000}`;
+};
+
+export const baseUrl = resolveBaseUrl();
 
 // Origins allowed to drive authenticated requests, consumed by better-auth's
 // own Origin checks — these cover /api/auth/* only. /api/orpc runs the
@@ -26,11 +35,77 @@ export const trustedOrigins = [baseUrl];
 // Unset in production.
 const emulatorUrl = env.NEXT_PUBLIC_GITHUB_EMULATOR_URL;
 
+/**
+ * Generates an available organization slug by checking for conflicts
+ * Recursively adds numbers to the slug until a unique one is found
+ * @param slug - The base slug to check
+ * @param attempt - The current attempt number for uniqueness
+ * @returns Promise<string> - A unique, available slug
+ */
+const generateAvailableSlug = async (slug: string, attempt = 0): Promise<string> => {
+  const org = await db.query.organization.findFirst({
+    where: eq(organizationSchema.slug, slug),
+  });
+  if (org) {
+    return generateAvailableSlug(`${slug}-${attempt + 1}`, attempt + 1);
+  }
+  return slug;
+};
+
+/**
+ * Sets the active organization for a user session
+ * Finds the first organization the user is a member of and sets it as active
+ * @param session - The session object containing the user ID
+ * @returns Promise<object> - Session data with activeOrganizationId set
+ */
+const setActiveOrganization = async (session: { userId: string }) => {
+  const firstOrg = await db.query.member.findFirst({
+    where: eq(memberSchema.userId, session.userId),
+  });
+
+  return {
+    data: {
+      ...session,
+      activeOrganizationId: firstOrg?.organizationId,
+    },
+  };
+};
+
 export const auth = betterAuth({
+  advanced: {
+    defaultCookieAttributes: {
+      // Every surface authenticates first-party. This denies a cross-*site*
+      // POST the session; it says nothing about a same-site cross-origin one,
+      // which the /api/orpc route's Origin check handles. Stated rather than
+      // inherited from better-auth's default, because loosening it to "none"
+      // would hand the cookie to every site on the internet. `secure` is
+      // deliberately left to better-auth, which derives it from the baseURL
+      // protocol so local http dev still gets a cookie.
+      sameSite: "lax",
+    },
+  },
+  baseURL: baseUrl,
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),
-  baseURL: baseUrl,
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => await setActiveOrganization(session),
+      },
+    },
+    user: {
+      create: {
+        after: async (user) => {
+          // oxlint-disable-next-line no-use-before-define -- the hook creates the organization through the auth instance it is registered on
+          await createDefaultOrganization(user);
+        },
+      },
+    },
+  },
+  emailAndPassword: {
+    enabled: true,
+  },
   plugins: [
     // Proxies the OAuth callback through the production deployment so preview
     // deployments can share one registered GitHub callback URL. Off the
@@ -58,10 +133,10 @@ export const auth = betterAuth({
           genericOAuth({
             config: [
               {
-                providerId: "github",
+                authorizationUrl: `${emulatorUrl}/login/oauth/authorize`,
                 clientId: "loremllm-local-github",
                 clientSecret: "loremllm-local-github-secret",
-                authorizationUrl: `${emulatorUrl}/login/oauth/authorize`,
+                providerId: "github",
                 tokenUrl: `${emulatorUrl}/login/oauth/access_token`,
                 userInfoUrl: `${emulatorUrl}/user`,
               },
@@ -70,31 +145,15 @@ export const auth = betterAuth({
         ]
       : []),
   ],
-  trustedOrigins,
-  advanced: {
-    defaultCookieAttributes: {
-      // Every surface authenticates first-party. This denies a cross-*site*
-      // POST the session; it says nothing about a same-site cross-origin one,
-      // which the /api/orpc route's Origin check handles. Stated rather than
-      // inherited from better-auth's default, because loosening it to "none"
-      // would hand the cookie to every site on the internet. `secure` is
-      // deliberately left to better-auth, which derives it from the baseURL
-      // protocol so local http dev still gets a cookie.
-      sameSite: "lax",
-    },
-  },
   // Persist rate-limit counters in the database. The default in-memory store
   // keeps per-instance counters, so on serverless (Vercel) the effective limit
   // multiplies across cold-started instances and resets on every deploy. 10
   // requests/60s per IP throttles credential-stuffing against the auth routes.
   rateLimit: {
     enabled: true,
+    max: 10,
     storage: "database",
     window: 60,
-    max: 10,
-  },
-  emailAndPassword: {
-    enabled: true,
   },
   socialProviders: {
     github: {
@@ -103,22 +162,7 @@ export const auth = betterAuth({
       redirectURI: `${baseUrl}/api/auth/callback/github`,
     },
   },
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          await createDefaultOrganization(user);
-        },
-      },
-    },
-    session: {
-      create: {
-        before: async (session) => {
-          return await setActiveOrganization(session);
-        },
-      },
-    },
-  },
+  trustedOrigins,
 });
 
 export type Auth = typeof auth;
@@ -129,26 +173,9 @@ export type Session = Auth["$Infer"]["Session"];
  * Generates a unique slug and creates the organization
  * If organization creation fails, the user is deleted to maintain data consistency
  * @param user - The user object for whom to create the organization
- * @throws Error if organization creation fails
+ * @throws {Error} if organization creation fails
  */
 const createDefaultOrganization = async (user: User) => {
-  /**
-   * Generates an available organization slug by checking for conflicts
-   * Recursively adds numbers to the slug until a unique one is found
-   * @param slug - The base slug to check
-   * @param attempt - The current attempt number for uniqueness
-   * @returns Promise<string> - A unique, available slug
-   */
-  const generateAvailableSlug = async (slug: string, attempt = 0) => {
-    const org = await db.query.organization.findFirst({
-      where: (organization, { eq }) => eq(organization.slug, slug),
-    });
-    if (org) {
-      return generateAvailableSlug(slug + `-${attempt + 1}`, attempt + 1);
-    }
-    return slug;
-  };
-
   // A name in a script with no ASCII base ("李明") slugifies to "", which would
   // create an organization at the unroutable /dashboard/. Signup has no user to
   // prompt, so fall back to a generic base and let them rename it later.
@@ -157,36 +184,17 @@ const createDefaultOrganization = async (user: User) => {
   try {
     await auth.api.createOrganization({
       body: {
-        userId: user.id,
-        name: "Personal Organization",
-        slug,
         metadata: {
           personal: true,
         },
+        name: "Personal Organization",
+        slug,
+        userId: user.id,
       },
     });
-  } catch (err) {
+  } catch (error) {
     // If organization creation fails, delete the user to maintain data consistency
     await db.delete(userSchema).where(eq(userSchema.id, user.id));
-    throw err;
+    throw error;
   }
-};
-
-/**
- * Sets the active organization for a user session
- * Finds the first organization the user is a member of and sets it as active
- * @param session - The session object containing the user ID
- * @returns Promise<object> - Session data with activeOrganizationId set
- */
-const setActiveOrganization = async (session: { userId: string }) => {
-  const firstOrg = await db.query.member.findFirst({
-    where: (member, { eq }) => eq(member.userId, session.userId),
-  });
-
-  return {
-    data: {
-      ...session,
-      activeOrganizationId: firstOrg?.organizationId,
-    },
-  };
 };

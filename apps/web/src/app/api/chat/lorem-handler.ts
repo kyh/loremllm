@@ -4,7 +4,7 @@ import { loremIpsum } from "lorem-ipsum";
 
 import { createStreamChunks, parseMarkdownIntoChunks } from "./utils";
 
-export type LoremParams = {
+export interface LoremParams {
   count?: number;
   paragraphLowerBound?: number;
   paragraphUpperBound?: number;
@@ -13,13 +13,12 @@ export type LoremParams = {
   suffix?: string;
   units?: "words" | "sentences" | "paragraphs";
   words?: string[];
-};
+}
 
 /**
  * Handle lorem ipsum generation
  */
-export const handleLoremGeneration = async (params: LoremParams) => {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+export const handleLoremGeneration = (params: LoremParams) => {
   // Generate lorem ipsum with validated parameters and defaults
   const loremParams = {
     count: params.count ?? 1,
@@ -37,18 +36,16 @@ export const handleLoremGeneration = async (params: LoremParams) => {
   const streamChunks = createStreamChunks(chunks, "", output);
 
   const result = streamText({
-    prompt: "",
     model: new MockLanguageModelV3({
-      doStream: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        return {
+      doStream: () =>
+        Promise.resolve({
           stream: simulateReadableStream({
-            chunks: streamChunks,
             chunkDelayInMs: 20,
+            chunks: streamChunks,
           }),
-        };
-      },
+        }),
     }),
+    prompt: "",
   });
 
   return result.toUIMessageStreamResponse();

@@ -8,12 +8,13 @@ export const metadata: Metadata = {
   title: "Login",
 };
 
-type PageProps = {
+interface PageProps {
   searchParams: Promise<{ next?: string | string[] }>;
-};
+}
 
 const Page = async ({ searchParams }: PageProps) => {
-  const nextPath = safeNextPath((await searchParams).next);
+  const { next } = await searchParams;
+  const nextPath = safeNextPath(next);
 
   return (
     <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
@@ -22,7 +23,7 @@ const Page = async ({ searchParams }: PageProps) => {
       </div>
       <AuthForm type="login" nextPath={nextPath} />
       <p className="text-muted-foreground px-8 text-center text-sm">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/auth/register" className="underline">
           Register
         </Link>

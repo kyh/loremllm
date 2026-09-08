@@ -9,20 +9,17 @@
  * Usage:
  *   pnpm -F api backfill-vectors
  */
-import { eq, sql } from "@repo/db";
+import { setTimeout as sleep } from "node:timers/promises";
+import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
 import { mockInteraction } from "@repo/db/drizzle-schema";
 
 import { generateEmbedding } from "../src/interaction/embedding-service";
 
 const BATCH_SIZE = 10;
-const DELAY_MS = 500; // Rate limit delay
+const DELAY_MS = 500;
 
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function main() {
+const main = async () => {
   console.log("Starting vector backfill...\n");
 
   // Fetch all interactions
@@ -44,15 +41,15 @@ async function main() {
         await db
           .update(mockInteraction)
           .set({
-            vector,
             updatedAt: new Date(),
+            vector,
           })
           .where(eq(mockInteraction.id, interaction.id));
 
-        successCount++;
+        successCount += 1;
         console.log(`   Done (${vector.length}d)`);
       } catch (error) {
-        errorCount++;
+        errorCount += 1;
         console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -63,15 +60,16 @@ async function main() {
     }
   }
 
-  console.log("\n" + "=".repeat(40));
+  console.log(`\n${"=".repeat(40)}`);
   console.log("Backfill complete");
   console.log(`Success: ${successCount}`);
   console.log(`Errors: ${errorCount}`);
-}
+};
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("Fatal error:", error);
-    process.exit(1);
-  });
+try {
+  await main();
+  process.exit(0);
+} catch (error) {
+  console.error("Fatal error:", error);
+  process.exit(1);
+}

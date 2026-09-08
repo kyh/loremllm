@@ -11,6 +11,7 @@ import type {
 } from "ai";
 import { isDataUIPart } from "ai";
 
+import { AbortTransportError } from "./abort-transport-error.ts";
 import type { DelayResolver } from "./shared.ts";
 import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
@@ -41,23 +42,23 @@ export type ToolPart = ToolUIPart & {
  * (e.g., tool-approval-request). These parts are supported but will be skipped during
  * standard tool processing since they don't have a `state` property.
  */
-export type SpecialToolPart = {
+export interface SpecialToolPart {
   type: `tool-${string}`;
   toolCallId: string;
   [key: string]: JSONValue | undefined;
-};
+}
 
-export type StaticTransportContext<UI_MESSAGE extends UIMessage> = {
+export interface StaticTransportContext<UI_MESSAGE extends UIMessage> {
   id: string;
   messages: UI_MESSAGE[];
   requestMetadata: unknown;
   trigger: "submit-message" | "regenerate-message";
   messageId: string | undefined;
-};
+}
 
 export type ChunkDelayResolver = DelayResolver<UIMessageChunk>;
 
-export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
+export interface StaticChatTransportInit<UI_MESSAGE extends UIMessage> {
   /**
    * Async generator function that yields UIMessagePart objects.
    * All yielded parts will be collected into a single assistant message.
@@ -90,18 +91,257 @@ export type StaticChatTransportInit<UI_MESSAGE extends UIMessage> = {
    * - `RegExp`: splits reasoning using the provided regex pattern
    */
   autoChunkReasoning?: boolean | RegExp;
+}
+
+const generateMessageId = (): string =>
+  `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+interface ToolLikePart {
+  type: `tool-${string}` | "dynamic-tool";
+  toolCallId: string;
+  toolName?: string;
+  state?: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+  providerMetadata?: ProviderMetadata;
+}
+
+interface ToolPartState {
+  hasEmittedInput: boolean;
+  lastInput?: unknown;
+  lastState?: string;
+  lastOutput?: unknown;
+  lastErrorText?: string;
+}
+
+const pushToolChunks = (
+  chunks: UIMessageChunk[],
+  toolPart: ToolLikePart,
+  toolPartStateMap: Map<string, ToolPartState>,
+): void => {
+  // Skip state-based processing for special tool parts that don't follow the standard pattern
+  // (e.g., tool-approval-request, which has approvalId instead of state)
+  const hasStandardState = "state" in toolPart && toolPart.state !== undefined;
+  if (!hasStandardState) {
+    return;
+  }
+
+  const toolState = toolPartStateMap.get(toolPart.toolCallId);
+  const currentState = toolPart.state;
+
+  // Emit tool-input-available only on first occurrence
+  if (!toolState?.hasEmittedInput) {
+    chunks.push({
+      input: toolPart.input ?? {},
+      providerMetadata: toolPart.providerMetadata,
+      toolCallId: toolPart.toolCallId,
+      toolName: toolPart.toolName ?? "tool",
+      type: "tool-input-available",
+    });
+  }
+
+  // Emit output chunks only when state changes from a non-output state to an output state
+  // or when transitioning between output states (e.g., error to success)
+  if (
+    currentState === "output-error" &&
+    toolState?.lastState !== "output-error" &&
+    toolState?.lastState !== "output-available"
+  ) {
+    chunks.push({
+      errorText: toolPart.errorText ?? "An unknown tool error occurred.",
+      providerMetadata: toolPart.providerMetadata,
+      toolCallId: toolPart.toolCallId,
+      type: "tool-output-error",
+    });
+  } else if (currentState === "output-available" && toolState?.lastState !== "output-available") {
+    chunks.push({
+      output: toolPart.output ?? null,
+      providerMetadata: toolPart.providerMetadata,
+      toolCallId: toolPart.toolCallId,
+      type: "tool-output-available",
+    });
+  }
+
+  // Update state tracking
+  toolPartStateMap.set(toolPart.toolCallId, {
+    hasEmittedInput: true,
+    lastErrorText: toolPart.errorText,
+    lastInput: toolPart.input,
+    lastOutput: toolPart.output,
+    lastState: currentState,
+  });
 };
 
-class AbortTransportError extends Error {
-  constructor() {
-    super("The transport request was aborted.");
-    this.name = "AbortError";
-  }
-}
+const createTextLikeChunks = (
+  chunks: UIMessageChunk[],
+  type: "text" | "reasoning",
+  id: string,
+  part: { text: string; providerMetadata?: ProviderMetadata },
+  autoChunk: boolean | RegExp,
+): void => {
+  const { providerMetadata } = part;
 
-function generateMessageId(): string {
-  return `assistant-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-}
+  chunks.push(
+    type === "text"
+      ? { id, providerMetadata, type: "text-start" }
+      : { id, providerMetadata, type: "reasoning-start" },
+  );
+
+  if (part.text.length === 0) {
+    return;
+  }
+
+  // Helper to push a delta chunk
+  const pushDelta = (delta: string) => {
+    if (delta.length > 0) {
+      chunks.push(
+        type === "text"
+          ? { delta, id, providerMetadata, type: "text-delta" }
+          : { delta, id, providerMetadata, type: "reasoning-delta" },
+      );
+    }
+  };
+
+  for (const segment of segmentText(part.text, autoChunk)) {
+    pushDelta(segment);
+  }
+
+  chunks.push(
+    type === "text"
+      ? { id, providerMetadata, type: "text-end" }
+      : { id, providerMetadata, type: "reasoning-end" },
+  );
+};
+
+const createDataChunks = (chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>): void => {
+  // SAFETY: mock authors may attach the chunk-level `transient` flag to a data
+  // part; DataUIPart's type omits it, and the transport forwards it verbatim.
+  const { transient } = part as DataUIPart<UIDataTypes> & { transient?: boolean };
+  chunks.push({
+    data: part.data,
+    id: part.id,
+    transient,
+    type: part.type,
+  });
+};
+
+const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
+  message: UI_MESSAGE,
+  autoChunkText: boolean | RegExp,
+  autoChunkReasoning: boolean | RegExp,
+): UIMessageChunk[] => {
+  const chunks: UIMessageChunk[] = [];
+  chunks.push({
+    messageId: message.id,
+    messageMetadata: message.metadata,
+    type: "start",
+  });
+
+  // Step management: steps group related content (text/reasoning) together
+  // Steps are opened automatically for text/reasoning parts and must be closed explicitly
+  let isStepOpen = false;
+  let nextTextId = 0;
+  let nextReasoningId = 0;
+
+  const openStepIfNeeded = () => {
+    if (!isStepOpen) {
+      chunks.push({ type: "start-step" });
+      isStepOpen = true;
+    }
+  };
+
+  const closeStepIfNeeded = () => {
+    if (isStepOpen) {
+      chunks.push({ type: "finish-step" });
+      isStepOpen = false;
+    }
+  };
+
+  // Track tool parts to emit progressive states
+  // We need to process parts in order to preserve progressive loading states
+  const toolPartStateMap = new Map<string, ToolPartState>();
+
+  for (const part of message.parts) {
+    switch (part.type) {
+      case "text": {
+        openStepIfNeeded();
+        const textId = `text-${(nextTextId += 1)}`;
+        createTextLikeChunks(chunks, "text", textId, part, autoChunkText);
+        break;
+      }
+      case "reasoning": {
+        openStepIfNeeded();
+        const reasoningId = `reasoning-${(nextReasoningId += 1)}`;
+        createTextLikeChunks(chunks, "reasoning", reasoningId, part, autoChunkReasoning);
+        break;
+      }
+      case "step-start": {
+        closeStepIfNeeded();
+        chunks.push({ type: "start-step" });
+        isStepOpen = true;
+        break;
+      }
+      case "file": {
+        chunks.push({
+          mediaType: part.mediaType,
+          providerMetadata: part.providerMetadata,
+          type: "file",
+          url: part.url,
+        });
+        break;
+      }
+      case "source-url": {
+        chunks.push({
+          providerMetadata: part.providerMetadata,
+          sourceId: part.sourceId,
+          title: part.title,
+          type: "source-url",
+          url: part.url,
+        });
+        break;
+      }
+      case "source-document": {
+        chunks.push({
+          filename: part.filename,
+          mediaType: part.mediaType,
+          providerMetadata: part.providerMetadata,
+          sourceId: part.sourceId,
+          title: part.title,
+          type: "source-document",
+        });
+        break;
+      }
+      default: {
+        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
+          // SAFETY: at runtime this array also carries SpecialToolPart values
+          // and ToolPart extras (toolName, providerMetadata) that the static
+          // part union cannot express; ToolLikePart names exactly the fields
+          // the state machine reads.
+          pushToolChunks(chunks, part as ToolLikePart, toolPartStateMap);
+          break;
+        }
+        if (isDataUIPart(part)) {
+          createDataChunks(chunks, part);
+          break;
+        }
+        throw new Error(
+          `StaticChatTransport does not yet support streaming parts of type "${part.type}".`,
+        );
+      }
+    }
+  }
+
+  // Ensure any open step is closed before finishing
+  closeStepIfNeeded();
+
+  chunks.push({
+    messageMetadata: message.metadata,
+    type: "finish",
+  });
+
+  return chunks;
+};
 
 type SendMessagesOptions<UI_MESSAGE extends UIMessage> = {
   trigger: "submit-message" | "regenerate-message";
@@ -136,10 +376,10 @@ export class StaticChatTransport<
 
     const context: StaticTransportContext<UI_MESSAGE> = {
       id: chatId,
+      messageId: options.messageId,
       messages: options.messages,
       requestMetadata: metadata,
       trigger: options.trigger,
-      messageId: options.messageId,
     };
 
     const assistantMessage = await this.resolveMessages(context);
@@ -210,8 +450,8 @@ export class StaticChatTransport<
     // message carries every field the chunk stream reads.
     const assistantMessage: UI_MESSAGE = {
       id: messageId,
-      role: "assistant",
       parts,
+      role: "assistant",
     } as UI_MESSAGE;
 
     return assistantMessage;
@@ -282,250 +522,4 @@ export class StaticChatTransport<
       },
     });
   }
-}
-
-function createTextLikeChunks(
-  chunks: UIMessageChunk[],
-  type: "text" | "reasoning",
-  id: string,
-  part: { text: string; providerMetadata?: ProviderMetadata },
-  autoChunk: boolean | RegExp,
-): void {
-  const { providerMetadata } = part;
-
-  chunks.push(
-    type === "text"
-      ? { type: "text-start", id, providerMetadata }
-      : { type: "reasoning-start", id, providerMetadata },
-  );
-
-  if (part.text.length === 0) {
-    return;
-  }
-
-  // Helper to push a delta chunk
-  const pushDelta = (delta: string) => {
-    if (delta.length > 0) {
-      chunks.push(
-        type === "text"
-          ? { type: "text-delta", id, delta, providerMetadata }
-          : { type: "reasoning-delta", id, delta, providerMetadata },
-      );
-    }
-  };
-
-  for (const segment of segmentText(part.text, autoChunk)) {
-    pushDelta(segment);
-  }
-
-  chunks.push(
-    type === "text"
-      ? { type: "text-end", id, providerMetadata }
-      : { type: "reasoning-end", id, providerMetadata },
-  );
-}
-
-function createDataChunks(chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>): void {
-  // SAFETY: mock authors may attach the chunk-level `transient` flag to a data
-  // part; DataUIPart's type omits it, and the transport forwards it verbatim.
-  const { transient } = part as DataUIPart<UIDataTypes> & { transient?: boolean };
-  chunks.push({
-    type: part.type,
-    id: part.id,
-    data: part.data,
-    transient,
-  });
-}
-
-function createChunksFromMessage<UI_MESSAGE extends UIMessage>(
-  message: UI_MESSAGE,
-  autoChunkText: boolean | RegExp,
-  autoChunkReasoning: boolean | RegExp,
-): UIMessageChunk[] {
-  const chunks: UIMessageChunk[] = [];
-  chunks.push({
-    type: "start",
-    messageId: message.id,
-    messageMetadata: message.metadata,
-  });
-
-  // Step management: steps group related content (text/reasoning) together
-  // Steps are opened automatically for text/reasoning parts and must be closed explicitly
-  let isStepOpen = false;
-  let nextTextId = 0;
-  let nextReasoningId = 0;
-
-  const openStepIfNeeded = () => {
-    if (!isStepOpen) {
-      chunks.push({ type: "start-step" });
-      isStepOpen = true;
-    }
-  };
-
-  const closeStepIfNeeded = () => {
-    if (isStepOpen) {
-      chunks.push({ type: "finish-step" });
-      isStepOpen = false;
-    }
-  };
-
-  // Track tool parts to emit progressive states
-  // We need to process parts in order to preserve progressive loading states
-  const toolPartStateMap = new Map<
-    string,
-    {
-      hasEmittedInput: boolean;
-      lastInput?: unknown;
-      lastState?: string;
-      lastOutput?: unknown;
-      lastErrorText?: string;
-    }
-  >();
-
-  for (const part of message.parts) {
-    switch (part.type) {
-      case "text": {
-        openStepIfNeeded();
-        const textId = `text-${++nextTextId}`;
-        createTextLikeChunks(chunks, "text", textId, part, autoChunkText);
-        break;
-      }
-      case "reasoning": {
-        openStepIfNeeded();
-        const reasoningId = `reasoning-${++nextReasoningId}`;
-        createTextLikeChunks(chunks, "reasoning", reasoningId, part, autoChunkReasoning);
-        break;
-      }
-      case "step-start": {
-        closeStepIfNeeded();
-        chunks.push({ type: "start-step" });
-        isStepOpen = true;
-        break;
-      }
-      case "file": {
-        chunks.push({
-          type: "file",
-          mediaType: part.mediaType,
-          url: part.url,
-          providerMetadata: part.providerMetadata,
-        });
-        break;
-      }
-      case "source-url": {
-        chunks.push({
-          type: "source-url",
-          sourceId: part.sourceId,
-          url: part.url,
-          title: part.title,
-          providerMetadata: part.providerMetadata,
-        });
-        break;
-      }
-      case "source-document": {
-        chunks.push({
-          type: "source-document",
-          sourceId: part.sourceId,
-          mediaType: part.mediaType,
-          title: part.title,
-          filename: part.filename,
-          providerMetadata: part.providerMetadata,
-        });
-        break;
-      }
-      default: {
-        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-          // SAFETY: at runtime this array also carries SpecialToolPart values
-          // and ToolPart extras (toolName, providerMetadata) that the static
-          // part union cannot express; this local shape names exactly the
-          // fields the state machine below reads.
-          const toolPart = part as {
-            type: `tool-${string}` | "dynamic-tool";
-            toolCallId: string;
-            toolName?: string;
-            state?: string;
-            input?: unknown;
-            output?: unknown;
-            errorText?: string;
-            providerMetadata?: ProviderMetadata;
-          };
-
-          // Skip state-based processing for special tool parts that don't follow the standard pattern
-          // (e.g., tool-approval-request, which has approvalId instead of state)
-          const hasStandardState = "state" in toolPart && toolPart.state !== undefined;
-
-          if (hasStandardState) {
-            const toolState = toolPartStateMap.get(toolPart.toolCallId);
-            const currentState = toolPart.state;
-
-            // Emit tool-input-available only on first occurrence
-            if (!toolState?.hasEmittedInput) {
-              chunks.push({
-                type: "tool-input-available",
-                toolCallId: toolPart.toolCallId,
-                toolName: toolPart.toolName ?? "tool",
-                input: toolPart.input ?? {},
-                providerMetadata: toolPart.providerMetadata,
-              });
-            }
-
-            // Emit output chunks only when state changes from a non-output state to an output state
-            // or when transitioning between output states (e.g., error to success)
-            if (currentState === "output-error") {
-              // Only emit if we haven't already emitted an error, or if transitioning from output-available
-              if (
-                toolState?.lastState !== "output-error" &&
-                toolState?.lastState !== "output-available"
-              ) {
-                chunks.push({
-                  type: "tool-output-error",
-                  toolCallId: toolPart.toolCallId,
-                  errorText: toolPart.errorText ?? "An unknown tool error occurred.",
-                  providerMetadata: toolPart.providerMetadata,
-                });
-              }
-            } else if (currentState === "output-available") {
-              // Only emit if we haven't already emitted output-available
-              if (toolState?.lastState !== "output-available") {
-                chunks.push({
-                  type: "tool-output-available",
-                  toolCallId: toolPart.toolCallId,
-                  output: toolPart.output ?? null,
-                  providerMetadata: toolPart.providerMetadata,
-                });
-              }
-            }
-
-            // Update state tracking
-            toolPartStateMap.set(toolPart.toolCallId, {
-              hasEmittedInput: true,
-              lastInput: toolPart.input,
-              lastState: currentState,
-              lastOutput: toolPart.output,
-              lastErrorText: toolPart.errorText,
-            });
-          }
-          // For special tool parts without state (like tool-approval-request),
-          // we skip the standard processing to avoid type errors
-          break;
-        }
-        if (isDataUIPart(part)) {
-          createDataChunks(chunks, part);
-          break;
-        }
-        throw new Error(
-          `StaticChatTransport does not yet support streaming parts of type "${part.type}".`,
-        );
-      }
-    }
-  }
-
-  // Ensure any open step is closed before finishing
-  closeStepIfNeeded();
-
-  chunks.push({
-    type: "finish",
-    messageMetadata: message.metadata,
-  });
-
-  return chunks;
 }

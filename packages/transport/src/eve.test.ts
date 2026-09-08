@@ -10,21 +10,19 @@ const HOST = "https://mock.test";
 
 const originalFetch = globalThis.fetch;
 
-function createRequest(path: string, init?: RequestInit): Request {
-  return new Request(`${HOST}${path}`, init);
-}
+const createRequest = (path: string, init?: RequestInit): Request =>
+  new Request(`${HOST}${path}`, init);
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-function postJson(path: string, body: JsonValue): Request {
-  return createRequest(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
+const postJson = (path: string, body: JsonValue): Request =>
+  createRequest(path, {
     body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+    method: "POST",
   });
-}
 
-async function readEvents(response: Response): Promise<EveStreamEvent[]> {
+const readEvents = async (response: Response): Promise<EveStreamEvent[]> => {
   const text = await response.text();
   return text
     .split("\n")
@@ -35,44 +33,47 @@ async function readEvents(response: Response): Promise<EveStreamEvent[]> {
         // NDJSON; each test then asserts the event shapes it relies on.
         JSON.parse(line) as EveStreamEvent,
     );
+};
+
+interface CreateResult {
+  sessionId: string;
+  continuationToken: string;
 }
 
-type CreateResult = { sessionId: string; continuationToken: string };
-
 const createSessionResponse = z.object({
-  sessionId: z.string(),
   continuationToken: z.string(),
   ok: z.boolean(),
+  sessionId: z.string(),
 });
 
-async function createSession(
+const createSession = async (
   handler: (request: Request) => Promise<Response>,
   message: JsonValue = "hello",
-): Promise<CreateResult> {
+): Promise<CreateResult> => {
   const response = await handler(postJson("/eve/v1/session", { message }));
   assert.strictEqual(response.status, 202);
   const body = createSessionResponse.parse(await response.json());
   assert.strictEqual(body.ok, true);
-  return { sessionId: body.sessionId, continuationToken: body.continuationToken };
-}
+  return { continuationToken: body.continuationToken, sessionId: body.sessionId };
+};
 
-async function streamEvents(
+const streamEvents = async (
   handler: (request: Request) => Promise<Response>,
   sessionId: string,
   startIndex?: number,
-): Promise<EveStreamEvent[]> {
+): Promise<EveStreamEvent[]> => {
   const query = startIndex === undefined ? "" : `?startIndex=${startIndex}`;
   const response = await handler(
     createRequest(`/eve/v1/session/${encodeURIComponent(sessionId)}/stream${query}`),
   );
   assert.strictEqual(response.status, 200);
   return readEvents(response);
-}
+};
 
 const textHandler = () =>
   createStaticEveHandler({
     async *mockResponse() {
-      yield { type: "text", text: "Hello there" };
+      yield { text: "Hello there", type: "text" };
     },
   });
 
@@ -97,8 +98,8 @@ describe("createStaticEveHandler", () => {
     test("accepts message part arrays and joins text parts", async () => {
       const handler = textHandler();
       const { sessionId } = await createSession(handler, [
-        { type: "text", text: "first" },
-        { type: "text", text: "second" },
+        { text: "first", type: "text" },
+        { text: "second", type: "text" },
       ]);
 
       const events = await streamEvents(handler, sessionId);
@@ -107,8 +108,8 @@ describe("createStaticEveHandler", () => {
       if (received?.type === "message.received") {
         assert.strictEqual(received.data.message, "first\n\nsecond");
         assert.deepEqual(received.data.parts, [
-          { type: "text", text: "first" },
-          { type: "text", text: "second" },
+          { text: "first", type: "text" },
+          { text: "second", type: "text" },
         ]);
       }
     });
@@ -123,7 +124,7 @@ describe("createStaticEveHandler", () => {
       assert.strictEqual(emptyMessage.status, 400);
 
       const badJson = await handler(
-        createRequest("/eve/v1/session", { method: "POST", body: "not json" }),
+        createRequest("/eve/v1/session", { body: "not json", method: "POST" }),
       );
       assert.strictEqual(badJson.status, 400);
     });
@@ -159,9 +160,10 @@ describe("createStaticEveHandler", () => {
           "turn.started",
           "message.received",
           "step.started",
-          "message.appended", // "Hello"
-          "message.appended", // " "
-          "message.appended", // "there"
+          // "Hello", " ", "there"
+          "message.appended",
+          "message.appended",
+          "message.appended",
           "message.completed",
           "step.completed",
           "turn.completed",
@@ -192,7 +194,7 @@ describe("createStaticEveHandler", () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         async *mockResponse() {
-          yield { type: "text", text: "Hello there" };
+          yield { text: "Hello there", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler);
@@ -245,11 +247,11 @@ describe("createStaticEveHandler", () => {
   describe("part translation", () => {
     test("translates reasoning parts before text in the same step", async () => {
       const handler = createStaticEveHandler({
-        autoChunkText: false,
         autoChunkReasoning: false,
+        autoChunkText: false,
         async *mockResponse() {
-          yield { type: "reasoning", text: "Thinking" };
-          yield { type: "text", text: "Answer" };
+          yield { text: "Thinking", type: "reasoning" };
+          yield { text: "Answer", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler);
@@ -282,13 +284,13 @@ describe("createStaticEveHandler", () => {
         autoChunkText: false,
         async *mockResponse() {
           yield {
-            type: "tool-weather",
-            toolCallId: "call_1",
-            state: "output-available",
             input: { location: "SF" },
             output: { tempF: 68 },
+            state: "output-available",
+            toolCallId: "call_1",
+            type: "tool-weather",
           };
-          yield { type: "text", text: "68F and sunny." };
+          yield { text: "68F and sunny.", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler, "weather in sf?");
@@ -322,15 +324,15 @@ describe("createStaticEveHandler", () => {
       const handler = createStaticEveHandler({
         autoChunkText: false,
         async *mockResponse() {
-          yield { type: "text", text: "Let me check." };
+          yield { text: "Let me check.", type: "text" };
           yield {
-            type: "tool-search",
-            toolCallId: "call_2",
-            state: "output-available",
             input: {},
             output: { hits: 3 },
+            state: "output-available",
+            toolCallId: "call_2",
+            type: "tool-search",
           };
-          yield { type: "text", text: "Found it." };
+          yield { text: "Found it.", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler);
@@ -349,13 +351,13 @@ describe("createStaticEveHandler", () => {
       const handler = createStaticEveHandler({
         async *mockResponse() {
           yield {
-            type: "tool-search",
-            toolCallId: "call_3",
-            state: "output-error",
-            input: {},
             errorText: "Search unavailable.",
+            input: {},
+            state: "output-error",
+            toolCallId: "call_3",
+            type: "tool-search",
           };
-          yield { type: "text", text: "Sorry." };
+          yield { text: "Sorry.", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler);
@@ -375,7 +377,7 @@ describe("createStaticEveHandler", () => {
     test("rejects parts with no eve representation via turn failure", async () => {
       const handler = createStaticEveHandler({
         async *mockResponse() {
-          yield { type: "data-chart", data: { rows: [] } };
+          yield { data: { rows: [] }, type: "data-chart" };
         },
       });
       const { sessionId } = await createSession(handler);
@@ -397,7 +399,7 @@ describe("createStaticEveHandler", () => {
         autoChunkText: false,
         async *mockResponse({ messages }) {
           seenHistories.push(messages.map((message) => `${message.role}:${message.id}`));
-          yield { type: "text", text: `Reply ${messages.length}` };
+          yield { text: `Reply ${messages.length}`, type: "text" };
         },
       });
 
@@ -412,7 +414,8 @@ describe("createStaticEveHandler", () => {
       assert.deepEqual(continueBody, { ok: true, sessionId });
 
       const secondTurn = await streamEvents(handler, sessionId, firstTurn.length);
-      assert.strictEqual(secondTurn[0]?.type, "turn.started"); // no session.started on turn 2
+      // no session.started on turn 2
+      assert.strictEqual(secondTurn[0]?.type, "turn.started");
       assert.strictEqual(secondTurn.at(-1)?.type, "session.waiting");
 
       assert.deepEqual(seenHistories, [
@@ -435,7 +438,7 @@ describe("createStaticEveHandler", () => {
       const sequences = events.flatMap((event) =>
         "sequence" in event.data ? [event.data.sequence] : [],
       );
-      const sorted = [...sequences].sort((a, b) => a - b);
+      const sorted = [...sequences].toSorted((a, b) => a - b);
       assert.deepEqual(sequences, sorted);
       assert.strictEqual(new Set(sequences).size, sequences.length);
     });
@@ -456,7 +459,7 @@ describe("createStaticEveHandler", () => {
 
       const hitlOnly = await handler(
         postJson(`/eve/v1/session/${sessionId}`, {
-          inputResponses: [{ requestId: "r1", optionId: "yes" }],
+          inputResponses: [{ optionId: "yes", requestId: "r1" }],
         }),
       );
       assert.strictEqual(hitlOnly.status, 400);
@@ -510,8 +513,8 @@ describe("createStaticEveHandler", () => {
       const handler = textHandler();
       const response = await handler(
         new Request(`${HOST}/api/mock/abc123/eve/v1/session`, {
-          method: "POST",
           body: JSON.stringify({ message: "hi" }),
+          method: "POST",
         }),
       );
       assert.strictEqual(response.status, 202);
@@ -548,7 +551,7 @@ describe("createStaticEveHandler", () => {
       const noCors = createStaticEveHandler({
         cors: false,
         async *mockResponse() {
-          yield { type: "text", text: "x" };
+          yield { text: "x", type: "text" };
         },
       });
       const response = await noCors(postJson("/eve/v1/session", { message: "hi" }));
@@ -557,7 +560,7 @@ describe("createStaticEveHandler", () => {
       const singleOrigin = createStaticEveHandler({
         cors: { origin: "https://demo.test" },
         async *mockResponse() {
-          yield { type: "text", text: "x" };
+          yield { text: "x", type: "text" };
         },
       });
       const scoped = await singleOrigin(postJson("/eve/v1/session", { message: "hi" }));
@@ -569,12 +572,12 @@ describe("createStaticEveHandler", () => {
     test("uses injected sessionStore, generateSessionId, and now", async () => {
       const store = createMemoryEveSessionStore();
       const handler = createStaticEveHandler({
-        sessionStore: store,
         generateSessionId: () => "fixed-session",
-        now: () => new Date("2026-07-09T00:00:00.000Z"),
         async *mockResponse() {
-          yield { type: "text", text: "x" };
+          yield { text: "x", type: "text" };
         },
+        now: () => new Date("2026-07-09T00:00:00.000Z"),
+        sessionStore: store,
       });
 
       const { sessionId } = await createSession(handler);
@@ -593,12 +596,12 @@ describe("createStaticEveHandler", () => {
       const handler = createStaticEveHandler({
         async *mockResponse({ requestMetadata }) {
           seen.push(requestMetadata);
-          yield { type: "text", text: "x" };
+          yield { text: "x", type: "text" };
         },
       });
 
       await handler(
-        postJson("/eve/v1/session", { message: "hi", clientContext: { page: "/pricing" } }),
+        postJson("/eve/v1/session", { clientContext: { page: "/pricing" }, message: "hi" }),
       );
       assert.deepEqual(seen, [{ page: "/pricing" }]);
     });
@@ -611,38 +614,37 @@ describe("createStaticEveHandler", () => {
           return 0;
         },
         async *mockResponse() {
-          yield { type: "text", text: "a b" };
+          yield { text: "a b", type: "text" };
         },
       });
       const { sessionId } = await createSession(handler);
       await streamEvents(handler, sessionId);
 
       assert.deepEqual(new Set(delayed), new Set(["message.appended"]));
-      assert.strictEqual(delayed.length, 3); // "a", " ", "b"
+      // "a", " ", "b"
+      assert.strictEqual(delayed.length, 3);
     });
   });
 });
+
+const importEveClient = () => import("eve/client");
+
+const stubFetchWith = (handler: (request: Request) => Promise<Response>) => {
+  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
+    handler(new Request(input, init));
+};
 
 describe("integration with the real eve client", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
   });
 
-  async function importEveClient() {
-    return import("eve/client");
-  }
-
-  function stubFetchWith(handler: (request: Request) => Promise<Response>) {
-    globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
-      handler(new Request(input, init));
-  }
-
   test("completes a two-turn conversation through eve's ClientSession", async () => {
     const { Client } = await importEveClient();
     const handler = createStaticEveHandler({
       autoChunkText: false,
       async *mockResponse({ messages }) {
-        yield { type: "text", text: `Turn ${Math.ceil(messages.length / 2)} reply` };
+        yield { text: `Turn ${Math.ceil(messages.length / 2)} reply`, type: "text" };
       },
     });
     stubFetchWith(handler);
@@ -690,13 +692,13 @@ describe("integration with the real eve client", () => {
       autoChunkText: false,
       async *mockResponse() {
         yield {
-          type: "tool-weather",
-          toolCallId: "call_1",
-          state: "output-available",
           input: { location: "SF" },
           output: { tempF: 68 },
+          state: "output-available",
+          toolCallId: "call_1",
+          type: "tool-weather",
         };
-        yield { type: "text", text: "68F and sunny." };
+        yield { text: "68F and sunny.", type: "text" };
       },
     });
     stubFetchWith(handler);
@@ -718,7 +720,7 @@ describe("integration with the real eve client", () => {
     const handler = createStaticEveHandler({
       autoChunkText: false,
       async *mockResponse() {
-        yield { type: "text", text: "Only reply" };
+        yield { text: "Only reply", type: "text" };
       },
     });
     stubFetchWith(handler);
@@ -736,13 +738,13 @@ describe("integration with the real eve client", () => {
   });
 });
 
+const sharedMockResponse = async function* sharedMockResponse() {
+  yield { text: "shared", type: "text" as const };
+};
+
 describe("type parity with StaticChatTransport", () => {
   test("accepts the same mockResponse function for both transports", async () => {
     const { StaticChatTransport } = await import("./index");
-
-    async function* sharedMockResponse() {
-      yield { type: "text" as const, text: "shared" };
-    }
 
     // Compile-time parity: the same generator function satisfies both APIs.
     const transport = new StaticChatTransport<UIMessage>({ mockResponse: sharedMockResponse });

@@ -51,6 +51,9 @@ const LETTERS_AND_SYMBOLS = [
 
 type AnimationVariant = "cursor-square" | "bg";
 
+const randomChar = () =>
+  LETTERS_AND_SYMBOLS[Math.floor(Math.random() * LETTERS_AND_SYMBOLS.length)];
+
 export class TextAnimator {
   private textElement: HTMLElement;
   private splitter: SplitType | null = null;
@@ -82,19 +85,17 @@ export class TextAnimator {
     }
   }
 
-  private getRandomChar() {
-    return LETTERS_AND_SYMBOLS[Math.floor(Math.random() * LETTERS_AND_SYMBOLS.length)];
-  }
-
   reset() {
-    if (!this.splitter) return;
+    if (!this.splitter) {
+      return;
+    }
     const chars = this.splitter.chars ?? [];
-    chars.forEach((char, index) => {
+    for (const [index, char] of chars.entries()) {
       gsap.killTweensOf(char);
       if (this.originalChars[index] !== undefined) {
         char.innerHTML = this.originalChars[index] ?? "";
       }
-    });
+    }
     if (this.variant === "bg") {
       gsap.killTweensOf(this.textElement);
       gsap.set(this.textElement, { "--anim": 0 });
@@ -102,13 +103,17 @@ export class TextAnimator {
   }
 
   animate() {
-    if (!this.splitter) return;
+    if (!this.splitter) {
+      return;
+    }
     this.reset();
     const chars = this.splitter.chars || [];
-    if (chars.length === 0) return;
+    if (chars.length === 0) {
+      return;
+    }
 
     if (this.variant === "cursor-square") {
-      chars.forEach((char, position) => {
+      for (const [position, char] of chars.entries()) {
         const initialHTML = this.originalChars[position] ?? char.innerHTML;
         let repeatCount = 0;
 
@@ -116,70 +121,58 @@ export class TextAnimator {
           char,
           { opacity: 0 },
           {
+            delay: (position + 1) * 0.07,
             duration: 0.03,
-            onStart: () => {
-              gsap.set(char, { "--opa": 1 });
-            },
+            innerHTML: randomChar,
             onComplete: () => {
-              gsap.set(char, { innerHTML: initialHTML, delay: 0.03 });
+              gsap.set(char, { delay: 0.03, innerHTML: initialHTML });
             },
-            repeat: 3,
             onRepeat: () => {
-              repeatCount++;
+              repeatCount += 1;
               if (repeatCount === 1) {
                 gsap.set(char, { "--opa": 0 });
               }
             },
-            repeatRefresh: true,
-            repeatDelay: 0.04,
-            delay: (position + 1) * 0.07,
-            innerHTML: () => this.getRandomChar(),
+            onStart: () => {
+              gsap.set(char, { "--opa": 1 });
+            },
             opacity: 1,
+            repeat: 3,
+            repeatDelay: 0.04,
+            repeatRefresh: true,
           },
         );
-      });
+      }
     } else {
-      chars.forEach((char, position) => {
+      for (const [position, char] of chars.entries()) {
         const initialHTML = this.originalChars[position] ?? char.innerHTML;
         gsap.fromTo(
           char,
           { opacity: 0 },
           {
-            duration: 0.03,
-            onComplete: () => {
-              gsap.set(char, { innerHTML: initialHTML, delay: 0.1 });
-            },
-            repeat: 2,
-            repeatRefresh: true,
-            repeatDelay: 0.05,
             delay: (position + 1) * 0.06,
-            innerHTML: () => this.getRandomChar(),
+            duration: 0.03,
+            innerHTML: randomChar,
+            onComplete: () => {
+              gsap.set(char, { delay: 0.1, innerHTML: initialHTML });
+            },
             opacity: 1,
+            repeat: 2,
+            repeatDelay: 0.05,
+            repeatRefresh: true,
           },
         );
-      });
-      gsap.fromTo(this.textElement, { "--anim": 0 }, { duration: 1, ease: "expo", "--anim": 1 });
+      }
+      gsap.fromTo(this.textElement, { "--anim": 0 }, { "--anim": 1, duration: 1, ease: "expo" });
     }
   }
 
   animateBack() {
     gsap.killTweensOf(this.textElement);
     gsap.to(this.textElement, {
+      "--anim": 0,
       duration: 0.6,
       ease: "power4",
-      "--anim": 0,
     });
-  }
-}
-
-declare module "split-type" {
-  class SplitType {
-    lines: HTMLElement[];
-    words: HTMLElement[];
-    chars: HTMLElement[];
-
-    constructor(element: HTMLElement | string, options?: SplitTypeOptions);
-    split(): void;
-    revert(): void;
   }
 }

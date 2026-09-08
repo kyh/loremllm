@@ -13,10 +13,12 @@
  *   pnpm db:seed
  */
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
+import { mockCollection } from "@repo/db/drizzle-schema";
+import { member, organization, user as userSchema } from "@repo/db/drizzle-schema-auth";
 
 import { createRouterClient } from "@orpc/server";
 
@@ -25,7 +27,7 @@ import { env } from "../src/env";
 import { appRouter } from "../src/root-router";
 
 // ESM compatibility: derive the script directory from import.meta.url
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptDir = import.meta.dirname;
 
 // A local-only account. `.local` is reserved for local use and never resolves,
 // so this address cannot collide with a real inbox. The password is documented
@@ -37,78 +39,76 @@ const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password";
 const COLLECTION_PUBLIC_ID = "demo";
 
 // Load interaction output from markdown files
-async function loadInteractionOutput(filename: string): Promise<string> {
-  const filePath = path.join(scriptDir, "interactions", filename);
-  return await fs.readFile(filePath, "utf-8");
-}
+const loadInteractionOutput = (filename: string): Promise<string> =>
+  fs.readFile(path.join(scriptDir, "interactions", filename), "utf-8");
 
 // Demo interactions for LoremLLM
 const DEMO_INTERACTION_CONFIGS = [
   {
-    title: "Generic Greeting",
     description: "A friendly greeting to welcome users",
     input: "Hello",
     outputFile: "greeting.md",
+    title: "Generic Greeting",
   },
   {
-    title: "What is LoremLLM",
     description: "Explains what LoremLLM is and its purpose",
     input: "What is LoremLLM?",
     outputFile: "what-is-loremllm.md",
+    title: "What is LoremLLM",
   },
   {
-    title: "Main Features",
     description: "Overview of LoremLLM's key features",
     input: "What are the main features?",
     outputFile: "main-features.md",
+    title: "Main Features",
   },
   {
-    title: "Pricing Information",
     description: "Details about LoremLLM pricing tiers",
     input: "How much does it cost?",
     outputFile: "pricing.md",
+    title: "Pricing Information",
   },
   {
-    title: "How to Get Started",
     description: "Guide for new users to start using LoremLLM",
     input: "How do I get started?",
     outputFile: "getting-started.md",
+    title: "How to Get Started",
   },
   {
-    title: "Common Use Cases",
     description: "Examples of how to use LoremLLM",
     input: "What can I use this for?",
     outputFile: "use-cases.md",
+    title: "Common Use Cases",
   },
   {
-    title: "API Integration",
     description: "How to integrate LoremLLM with your application",
     input: "How do I integrate this with my app?",
     outputFile: "api-integration.md",
+    title: "API Integration",
   },
   {
-    title: "Semantic Search Explanation",
     description: "How semantic search works in LoremLLM",
     input: "How does the smart matching work?",
     outputFile: "semantic-search.md",
+    title: "Semantic Search Explanation",
   },
   {
-    title: "Common Issues",
     description: "Troubleshooting common problems",
     input: "My endpoint isn't working",
     outputFile: "troubleshooting.md",
+    title: "Common Issues",
   },
   {
-    title: "vs Real LLMs",
     description: "When to use LoremLLM vs real LLM APIs",
     input: "Should I use this instead of OpenAI?",
     outputFile: "vs-real-llms.md",
+    title: "vs Real LLMs",
   },
   {
-    title: "Support Options",
     description: "How to get help and support",
     input: "How can I get help?",
     outputFile: "support.md",
+    title: "Support Options",
   },
 ];
 
@@ -119,9 +119,9 @@ const DEMO_INTERACTION_CONFIGS = [
  * `databaseHooks.user.create.after` hook runs and provisions the personal
  * organization exactly as it would in production.
  */
-async function ensureUser(): Promise<string> {
+const ensureUser = async (): Promise<string> => {
   const existingUser = await db.query.user.findFirst({
-    where: (users, { eq }) => eq(users.email, USER_EMAIL),
+    where: eq(userSchema.email, USER_EMAIL),
   });
 
   if (existingUser) {
@@ -142,15 +142,15 @@ async function ensureUser(): Promise<string> {
   console.log(`   ℹ️  Personal organization provisioned by the signup hook`);
 
   return user.id;
-}
+};
 
 /**
  * The organization the dashboard opens on: the first membership, which is what
  * `setActiveOrganization` puts on every new session.
  */
-async function resolveOrganizationId(userId: string): Promise<string> {
+const resolveOrganizationId = async (userId: string): Promise<string> => {
   const membership = await db.query.member.findFirst({
-    where: (member, { eq }) => eq(member.userId, userId),
+    where: eq(member.userId, userId),
   });
 
   if (!membership) {
@@ -160,9 +160,9 @@ async function resolveOrganizationId(userId: string): Promise<string> {
   }
 
   return membership.organizationId;
-}
+};
 
-async function main() {
+const main = async () => {
   console.log("🚀 Starting Demo Collection Seed\n");
   console.log(`👤 User Email: ${USER_EMAIL}`);
   console.log(`📝 Interactions to create: ${DEMO_INTERACTION_CONFIGS.length}\n`);
@@ -175,36 +175,36 @@ async function main() {
     // Step 2: Resolve the personal organization the seeded data belongs to
     const organizationId = await resolveOrganizationId(userId);
     const org = await db.query.organization.findFirst({
-      where: (organization, { eq }) => eq(organization.id, organizationId),
+      where: eq(organization.id, organizationId),
     });
     console.log(`\n🏢 Organization: ${org?.name ?? organizationId}`);
 
     // Step 3: Create a session context for API calls
-    const createCallerContext = async () => ({
+    const createCallerContext = () => ({
+      db,
       session: {
+        session: {
+          activeOrganizationId: organizationId,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+          id: randomUUID(),
+          ipAddress: null,
+          token: randomUUID(),
+          updatedAt: new Date(),
+          userAgent: null,
+          userId,
+        },
         user: {
-          id: userId,
-          name: USER_NAME,
-          email: USER_EMAIL,
-          emailVerified: true,
-          image: null,
           banned: null,
           createdAt: new Date(),
+          email: USER_EMAIL,
+          emailVerified: true,
+          id: userId,
+          image: null,
+          name: USER_NAME,
           updatedAt: new Date(),
-        },
-        session: {
-          id: randomUUID(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          userId,
-          activeOrganizationId: organizationId,
-          expiresAt: new Date(Date.now() + 1000 * 60 * 60), // 1 hour from now
-          token: randomUUID(),
-          ipAddress: null,
-          userAgent: null,
         },
       },
-      db,
     });
 
     const caller = createRouterClient(appRouter, { context: createCallerContext });
@@ -213,7 +213,7 @@ async function main() {
     // so look it up directly rather than through the org-scoped list.
     console.log(`\n📦 Creating/finding '${COLLECTION_PUBLIC_ID}' collection...`);
     const existingCollection = await db.query.mockCollection.findFirst({
-      where: (collection, { eq }) => eq(collection.publicId, COLLECTION_PUBLIC_ID),
+      where: eq(mockCollection.publicId, COLLECTION_PUBLIC_ID),
     });
 
     if (existingCollection && existingCollection.organizationId !== organizationId) {
@@ -238,16 +238,16 @@ async function main() {
       console.log(`   Existing interactions: ${existingInteractions.length}\n`);
     } else {
       collection = await caller.collection.create({
-        publicId: COLLECTION_PUBLIC_ID,
-        name: "Demo",
         description:
           "Demo collection showcasing LoremLLM capabilities with common questions and answers about the platform",
         isPublic: true,
         metadata: {
           category: "demo",
-          tags: ["faq", "getting-started", "pricing", "features"],
           createdBy: "seed script",
+          tags: ["faq", "getting-started", "pricing", "features"],
         },
+        name: "Demo",
+        publicId: COLLECTION_PUBLIC_ID,
       });
 
       console.log(`   ✅ Collection created successfully!`);
@@ -262,11 +262,7 @@ async function main() {
     // step needs a key and a network. Without one the login and the collection
     // above are still usable, which is enough to verify most flows — so warn
     // and stop rather than failing eleven times over.
-    if (!env.AI_GATEWAY_API_KEY) {
-      console.log("⚠️  AI_GATEWAY_API_KEY is not set — skipping interactions.");
-      console.log("   Creating an interaction embeds its input via the AI Gateway.");
-      console.log("   Set the key in .env and re-run `pnpm db:seed` to populate them.\n");
-    } else {
+    if (env.AI_GATEWAY_API_KEY) {
       console.log("💬 Creating/updating interactions...\n");
 
       const existingInteractionMap = new Map(
@@ -282,7 +278,7 @@ async function main() {
 
         try {
           if (existingInteractionMap.has(config.input)) {
-            skippedCount++;
+            skippedCount += 1;
             console.log(`   ⏭️  ${label} ${config.title} (already exists)`);
             continue;
           }
@@ -291,22 +287,22 @@ async function main() {
 
           const interaction = await caller.interaction.create({
             collectionId: collection.id,
-            title: config.title,
             description: config.description,
             input: config.input,
             output,
+            title: config.title,
           });
 
-          successCount++;
+          successCount += 1;
           console.log(`   ✅ ${label} ${interaction.title}`);
         } catch (error) {
-          errorCount++;
+          errorCount += 1;
           console.error(`   ❌ ${label} Failed to create: ${config.title}`);
           console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
-      console.log("\n" + "=".repeat(50));
+      console.log(`\n${"=".repeat(50)}`);
       console.log("📊 Summary");
       console.log("=".repeat(50));
       console.log(`✅ Successfully created: ${successCount} interactions`);
@@ -316,6 +312,10 @@ async function main() {
       if (errorCount > 0) {
         console.log(`❌ Failed: ${errorCount} interactions`);
       }
+    } else {
+      console.log("⚠️  AI_GATEWAY_API_KEY is not set — skipping interactions.");
+      console.log("   Creating an interaction embeds its input via the AI Gateway.");
+      console.log("   Set the key in .env and re-run `pnpm db:seed` to populate them.\n");
     }
 
     console.log(`\n👤 Login: ${USER_EMAIL} / ${USER_PASSWORD}`);
@@ -330,15 +330,13 @@ async function main() {
     }
     process.exit(1);
   }
-}
+};
 
-// Run the script
-main()
-  .then(() => {
-    console.log("\n✨ Script completed successfully");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("\n💥 Unhandled error:", error);
-    process.exit(1);
-  });
+try {
+  await main();
+  console.log("\n✨ Script completed successfully");
+  process.exit(0);
+} catch (error) {
+  console.error("\n💥 Unhandled error:", error);
+  process.exit(1);
+}

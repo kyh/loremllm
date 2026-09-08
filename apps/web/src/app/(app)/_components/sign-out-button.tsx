@@ -15,13 +15,13 @@ export const SignOutButton = () => {
     setSigningOut(true);
     await authClient.signOut({
       fetchOptions: {
-        onSuccess: () => {
-          router.replace("/auth/login");
-          router.refresh();
-        },
         onError: () => {
           toast.error("Failed to sign out");
           setSigningOut(false);
+        },
+        onSuccess: () => {
+          router.replace("/auth/login");
+          router.refresh();
         },
       },
     });

@@ -8,7 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
 
-type DraggablePanelProps = {
+interface DraggablePanelProps {
   title: React.ReactNode;
   icon?: React.ReactNode;
   children: React.ReactNode;
@@ -21,9 +21,11 @@ type DraggablePanelProps = {
   initialPosition?: { x: number; y: number };
   size?: { width: number; height: number };
   className?: string;
-};
+}
 
 const MOBILE_BREAKPOINT = 640;
+const defaultPosition = { x: 20, y: 20 };
+const defaultSize = { height: 200, width: 300 };
 
 export const DraggablePanel = ({
   title,
@@ -35,8 +37,8 @@ export const DraggablePanel = ({
   onNext,
   hasPrevious = false,
   hasNext = false,
-  initialPosition = { x: 20, y: 20 },
-  size = { width: 300, height: 200 },
+  initialPosition = defaultPosition,
+  size = defaultSize,
   className,
 }: DraggablePanelProps) => {
   const shouldReduceMotion = useReducedMotion();
@@ -61,7 +63,9 @@ export const DraggablePanel = ({
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" && hasPrevious && onPrevious) {
@@ -89,16 +93,20 @@ export const DraggablePanel = ({
       if (panelRef.current) {
         const rect = panelRef.current.getBoundingClientRect();
         dragStartRef.current = {
-          x: e.clientX,
-          y: e.clientY,
           left: rect.left,
           top: rect.top,
+          x: e.clientX,
+          y: e.clientY,
         };
       }
 
       const handleMove = (moveEvent: PointerEvent) => {
-        if (!dragStartRef.current) return;
-        if (moveEvent.pointerId !== e.pointerId) return;
+        if (!dragStartRef.current) {
+          return;
+        }
+        if (moveEvent.pointerId !== e.pointerId) {
+          return;
+        }
 
         const deltaX = moveEvent.clientX - dragStartRef.current.x;
         const deltaY = moveEvent.clientY - dragStartRef.current.y;
@@ -116,7 +124,9 @@ export const DraggablePanel = ({
       };
 
       const handleEnd = (endEvent?: PointerEvent) => {
-        if (endEvent && endEvent.pointerId !== e.pointerId) return;
+        if (endEvent && endEvent.pointerId !== e.pointerId) {
+          return;
+        }
 
         setIsDragging(false);
         dragStartRef.current = null;
@@ -133,7 +143,9 @@ export const DraggablePanel = ({
     [size],
   );
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const panel = (
     <LazyMotion features={domAnimation} strict>
@@ -151,10 +163,10 @@ export const DraggablePanel = ({
           isMobile
             ? undefined
             : {
+                height: size.height,
                 left: position.x,
                 top: position.y,
                 width: size.width,
-                height: size.height,
               }
         }
       >
@@ -229,7 +241,9 @@ export const DraggablePanel = ({
     </LazyMotion>
   );
 
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
 
   return createPortal(panel, document.body);
 };

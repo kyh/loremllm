@@ -91,14 +91,14 @@ export const MessageAction = ({
   return button;
 };
 
-type MessageBranchContextType = {
+interface MessageBranchContextType {
   currentBranch: number;
   totalBranches: number;
   goToPrevious: () => void;
   goToNext: () => void;
   branches: ReactElement[];
   setBranches: (branches: ReactElement[]) => void;
-};
+}
 
 const MessageBranchContext = createContext<MessageBranchContextType | null>(null);
 
@@ -146,12 +146,12 @@ export const MessageBranch = ({
 
   const contextValue = useMemo<MessageBranchContextType>(
     () => ({
-      currentBranch,
-      totalBranches: branches.length,
-      goToPrevious,
-      goToNext,
       branches,
+      currentBranch,
+      goToNext,
+      goToPrevious,
       setBranches,
+      totalBranches: branches.length,
     }),
     [branches, currentBranch, goToNext, goToPrevious],
   );
@@ -199,7 +199,7 @@ export type MessageBranchSelectorProps = HTMLAttributes<HTMLDivElement> & {
 
 export const MessageBranchSelector = ({
   className,
-  from,
+  from: _from,
   ...props
 }: MessageBranchSelectorProps) => {
   const { totalBranches } = useMessageBranch();
@@ -211,7 +211,10 @@ export const MessageBranchSelector = ({
 
   return (
     <ButtonGroup
-      className="[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md"
+      className={cn(
+        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
+        className,
+      )}
       orientation="horizontal"
       {...props}
     />
@@ -240,7 +243,7 @@ export const MessageBranchPrevious = ({ children, ...props }: MessageBranchPrevi
 
 export type MessageBranchNextProps = ComponentProps<typeof Button>;
 
-export const MessageBranchNext = ({ children, className, ...props }: MessageBranchNextProps) => {
+export const MessageBranchNext = ({ children, ...props }: MessageBranchNextProps) => {
   const { goToNext, totalBranches } = useMessageBranch();
 
   return (
@@ -275,13 +278,15 @@ export const MessageBranchPage = ({ className, ...props }: MessageBranchPageProp
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
+const MessageResponseComponent = ({ className, ...props }: MessageResponseProps) => (
+  <Streamdown
+    className={cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}
+    {...props}
+  />
+);
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}
-      {...props}
-    />
-  ),
+  MessageResponseComponent,
   (prevProps, nextProps) => prevProps.children === nextProps.children,
 );
 

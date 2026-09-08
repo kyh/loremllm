@@ -27,31 +27,31 @@ export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible className={cn("not-prose mb-4 w-full rounded-md border", className)} {...props} />
 );
 
-export type ToolHeaderProps = {
+export interface ToolHeaderProps {
   title?: string;
   type: ToolUIPart["type"];
   state: ToolUIPart["state"];
   className?: string;
-};
+}
 
 const TOOL_STATE_LABELS = {
-  "input-streaming": "Pending",
-  "input-available": "Running",
   "approval-requested": "Awaiting Approval",
   "approval-responded": "Responded",
+  "input-available": "Running",
+  "input-streaming": "Pending",
   "output-available": "Completed",
-  "output-error": "Error",
   "output-denied": "Denied",
+  "output-error": "Error",
 } satisfies Record<ToolUIPart["state"], string>;
 
 const TOOL_STATE_ICONS = {
-  "input-streaming": <CircleIcon className="size-4" />,
-  "input-available": <ClockIcon className="size-4 animate-pulse" />,
   "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,
   "approval-responded": <CheckCircleIcon className="size-4 text-blue-600" />,
+  "input-available": <ClockIcon className="size-4 animate-pulse" />,
+  "input-streaming": <CircleIcon className="size-4" />,
   "output-available": <CheckCircleIcon className="size-4 text-green-600" />,
-  "output-error": <XCircleIcon className="size-4 text-red-600" />,
   "output-denied": <XCircleIcon className="size-4 text-orange-600" />,
+  "output-error": <XCircleIcon className="size-4 text-red-600" />,
 } satisfies Record<ToolUIPart["state"], ReactNode>;
 
 const getStatusBadge = (status: ToolUIPart["state"]) => (

@@ -11,7 +11,7 @@ import { extractUserQuery } from "./utils";
 // indexing off the end of the map.
 const orpcErrorStatus: Record<string, number | undefined> = COMMON_ERROR_STATUS_MAP;
 
-function applyCors(response: Response, origin?: string) {
+const applyCors = (response: Response, origin?: string) => {
   const headers = new Headers(response.headers);
   // Add/override CORS headers
   headers.set("Access-Control-Allow-Origin", origin ?? "*");
@@ -22,23 +22,23 @@ function applyCors(response: Response, origin?: string) {
     headers.set("Access-Control-Allow-Credentials", "true");
   }
   return new Response(response.body, {
+    headers,
     status: response.status,
     statusText: response.statusText,
-    headers,
   });
-}
+};
 
-export function OPTIONS(request: Request) {
+export const OPTIONS = (request: Request) => {
   const origin = request.headers.get("origin") ?? undefined;
   return applyCors(new Response(null, { status: 200 }), origin);
-}
+};
 
-export function GET(request: Request) {
+export const GET = (request: Request) => {
   const origin = request.headers.get("origin") ?? undefined;
   return applyCors(new Response("Hello, world!", { status: 200 }), origin);
-}
+};
 
-export async function POST(request: Request) {
+export const POST = async (request: Request) => {
   const origin = request.headers.get("origin") ?? undefined;
   try {
     const payload = parseRequestPayload(await request.json());
@@ -75,12 +75,12 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error processing request:", error);
 
-    const status =
-      error instanceof PayloadError
-        ? 400
-        : error instanceof ORPCError
-          ? (orpcErrorStatus[error.code] ?? 500)
-          : 500;
+    let status = 500;
+    if (error instanceof PayloadError) {
+      status = 400;
+    } else if (error instanceof ORPCError) {
+      status = orpcErrorStatus[error.code] ?? 500;
+    }
 
     return applyCors(
       new Response(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, {
@@ -89,4 +89,4 @@ export async function POST(request: Request) {
       origin,
     );
   }
-}
+};

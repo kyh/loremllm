@@ -8,12 +8,13 @@ export const metadata: Metadata = {
   title: "Register",
 };
 
-type PageProps = {
+interface PageProps {
   searchParams: Promise<{ next?: string | string[] }>;
-};
+}
 
 const Page = async ({ searchParams }: PageProps) => {
-  const nextPath = safeNextPath((await searchParams).next);
+  const { next } = await searchParams;
+  const nextPath = safeNextPath(next);
 
   return (
     <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">

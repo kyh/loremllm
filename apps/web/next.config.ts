@@ -9,15 +9,16 @@ const getRemotePatterns = (): RemotePatterns => {
   const remotePatterns: RemotePatterns = [];
 
   if (!IS_PRODUCTION) {
-    remotePatterns.push({
-      protocol: "http",
-      hostname: "127.0.0.1",
-    });
-
-    remotePatterns.push({
-      protocol: "http",
-      hostname: "localhost",
-    });
+    remotePatterns.push(
+      {
+        hostname: "127.0.0.1",
+        protocol: "http",
+      },
+      {
+        hostname: "localhost",
+        protocol: "http",
+      },
+    );
   }
 
   return remotePatterns;
@@ -28,12 +29,12 @@ const transpilePackages = ["@loremllm/transport", "@repo/api", "@repo/db", "@rep
 const config: NextConfig = {
   // next dev rewrites AGENTS.md/CLAUDE.md when it detects an agent; we own those files
   agentRules: false,
-  reactStrictMode: true,
-  pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
-  transpilePackages,
   images: {
     remotePatterns: getRemotePatterns(),
   },
+  pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  reactStrictMode: true,
+  transpilePackages,
 };
 
 export default config;

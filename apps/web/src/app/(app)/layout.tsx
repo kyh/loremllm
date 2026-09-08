@@ -5,9 +5,9 @@ import { Logo } from "@repo/ui/components/logo";
 import { getSession } from "@/lib/auth-server";
 import { SignOutButton } from "./_components/sign-out-button";
 
-type LayoutProps = {
+interface LayoutProps {
   children: React.ReactNode;
-};
+}
 
 const Layout = async (props: LayoutProps) => {
   const session = await getSession();
