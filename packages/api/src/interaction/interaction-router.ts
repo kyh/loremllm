@@ -1,4 +1,4 @@
-import { and, eq, sql } from "@repo/db";
+import { eq, sql } from "@repo/db";
 import { mockCollection, mockInteraction } from "@repo/db/drizzle-schema";
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";
@@ -67,10 +67,7 @@ export const interactionRouter = {
     .input(createInteractionInput)
     .handler(async ({ context, input }) => {
       const collection = await context.db.query.mockCollection.findFirst({
-        where: and(
-          eq(mockCollection.id, input.collectionId),
-          eq(mockCollection.organizationId, context.organizationId),
-        ),
+        where: { id: input.collectionId, organizationId: context.organizationId },
       });
 
       if (!collection) {
@@ -123,7 +120,7 @@ export const interactionRouter = {
     .input(deleteInteractionInput)
     .handler(async ({ context, input }) => {
       const interaction = await context.db.query.mockInteraction.findFirst({
-        where: eq(mockInteraction.id, input.interactionId),
+        where: { id: input.interactionId },
         with: {
           collection: true,
         },
@@ -150,7 +147,7 @@ export const interactionRouter = {
   query: publicProcedure.input(queryInteractionInput).handler(async ({ context, input }) => {
     // Find the collection by publicId
     const collection = await context.db.query.mockCollection.findFirst({
-      where: eq(mockCollection.publicId, input.publicId),
+      where: { publicId: input.publicId },
     });
 
     if (!collection) {
@@ -229,7 +226,7 @@ export const interactionRouter = {
     .input(updateInteractionInput)
     .handler(async ({ context, input }) => {
       const interaction = await context.db.query.mockInteraction.findFirst({
-        where: eq(mockInteraction.id, input.interactionId),
+        where: { id: input.interactionId },
         with: {
           collection: true,
         },

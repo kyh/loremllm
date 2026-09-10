@@ -1,6 +1,5 @@
 import type { EveSessionStore } from "@loremllm/transport/eve";
 import { parseEveSessionRecord } from "@loremllm/transport/eve";
-import { and, eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
 import { mockEveSession } from "@repo/db/drizzle-schema";
 import { z } from "zod";
@@ -15,10 +14,7 @@ const jsonValue = z.json();
 export const createDbEveSessionStore = (collectionPublicId: string): EveSessionStore => ({
   async get(sessionId) {
     const row = await db.query.mockEveSession.findFirst({
-      where: and(
-        eq(mockEveSession.id, sessionId),
-        eq(mockEveSession.collectionPublicId, collectionPublicId),
-      ),
+      where: { collectionPublicId, id: sessionId },
     });
     if (!row) {
       return;
