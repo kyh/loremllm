@@ -1,11 +1,7 @@
 import type { User } from "better-auth";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import {
-  member as memberSchema,
-  organization as organizationSchema,
-  user as userSchema,
-} from "@repo/db/drizzle-schema-auth";
+import { user as userSchema } from "@repo/db/drizzle-schema-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
@@ -44,7 +40,7 @@ const emulatorUrl = env.NEXT_PUBLIC_GITHUB_EMULATOR_URL;
  */
 const generateAvailableSlug = async (slug: string, attempt = 0): Promise<string> => {
   const org = await db.query.organization.findFirst({
-    where: eq(organizationSchema.slug, slug),
+    where: { slug },
   });
   if (org) {
     return generateAvailableSlug(`${slug}-${attempt + 1}`, attempt + 1);
@@ -60,7 +56,7 @@ const generateAvailableSlug = async (slug: string, attempt = 0): Promise<string>
  */
 const setActiveOrganization = async (session: { userId: string }) => {
   const firstOrg = await db.query.member.findFirst({
-    where: eq(memberSchema.userId, session.userId),
+    where: { userId: session.userId },
   });
 
   return {

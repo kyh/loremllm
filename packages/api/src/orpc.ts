@@ -1,6 +1,6 @@
-import { and, eq } from "@repo/db";
+import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import { member as memberSchema, session as sessionSchema } from "@repo/db/drizzle-schema-auth";
+import { session as sessionSchema } from "@repo/db/drizzle-schema-auth";
 import { ORPCError, os } from "@orpc/server";
 
 import type { Session } from "./auth/auth";
@@ -85,11 +85,8 @@ export const organizationProcedure = protectedProcedure.use(async ({ context, ne
 
   const membership = await context.db.query.member.findFirst({
     where: activeOrganizationId
-      ? and(
-          eq(memberSchema.userId, context.session.user.id),
-          eq(memberSchema.organizationId, activeOrganizationId),
-        )
-      : eq(memberSchema.userId, context.session.user.id),
+      ? { organizationId: activeOrganizationId, userId: context.session.user.id }
+      : { userId: context.session.user.id },
   });
 
   if (!membership) {

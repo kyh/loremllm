@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "@repo/db";
+import { eq } from "@repo/db";
 import { mockCollection } from "@repo/db/drizzle-schema";
 import { ORPCError } from "@orpc/server";
 
@@ -14,15 +14,12 @@ import {
 export const collectionRouter = {
   byId: organizationProcedure.input(collectionByIdInput).handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
-      where: and(
-        eq(mockCollection.id, input.collectionId),
-        eq(mockCollection.organizationId, context.organizationId),
-      ),
+      where: { id: input.collectionId, organizationId: context.organizationId },
       with: {
         interactions: {
           // Exclude the embedding blob — libsql's JSON protocol can't carry it
           columns: { vector: false },
-          orderBy: (interaction, { desc }) => [desc(interaction.updatedAt)],
+          orderBy: { updatedAt: "desc" },
         },
       },
     });
@@ -92,10 +89,7 @@ export const collectionRouter = {
 
   delete: organizationProcedure.input(deleteCollectionInput).handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
-      where: and(
-        eq(mockCollection.id, input.collectionId),
-        eq(mockCollection.organizationId, context.organizationId),
-      ),
+      where: { id: input.collectionId, organizationId: context.organizationId },
     });
 
     if (!collection) {
@@ -111,8 +105,8 @@ export const collectionRouter = {
 
   list: organizationProcedure.handler(async ({ context }) => {
     const collections = await context.db.query.mockCollection.findMany({
-      orderBy: (collection, { desc }) => [desc(collection.updatedAt)],
-      where: eq(mockCollection.organizationId, context.organizationId),
+      orderBy: { updatedAt: "desc" },
+      where: { organizationId: context.organizationId },
       with: {
         interactions: {
           columns: { id: true },
@@ -136,10 +130,7 @@ export const collectionRouter = {
 
   update: organizationProcedure.input(updateCollectionInput).handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
-      where: and(
-        eq(mockCollection.id, input.collectionId),
-        eq(mockCollection.organizationId, context.organizationId),
-      ),
+      where: { id: input.collectionId, organizationId: context.organizationId },
     });
 
     if (!collection) {

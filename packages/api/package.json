@@ -27,7 +27,7 @@
     "@kyh/tsconfig": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "1.0.0-rc.4",
     "tsx": "^4.23.12",
     "typescript": "catalog:"
   }
