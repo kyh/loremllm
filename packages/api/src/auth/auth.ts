@@ -3,7 +3,8 @@ import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
 import { user as userSchema } from "@repo/db/drizzle-schema-auth";
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
+// Not `better-auth/adapters/drizzle`: that default entry reads `db._.fullSchema`, gone in drizzle 1.0; relations-v2 reads `db._.relations`.
+import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
 import { env } from "../env";

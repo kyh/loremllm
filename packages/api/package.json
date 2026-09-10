@@ -17,6 +17,7 @@
     "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "catalog:",
     "@orpc/server": "catalog:",
     "@repo/db": "workspace:^",
     "ai": "^7.0.84",
