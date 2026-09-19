@@ -1,7 +1,7 @@
 import type { User } from "better-auth";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import { user as userSchema } from "@repo/db/drizzle-schema-auth";
+import { session as sessionSchema, user as userSchema } from "@repo/db/drizzle-schema-auth";
 import { betterAuth } from "better-auth";
 // Not `better-auth/adapters/drizzle`: that default entry reads `db._.fullSchema`, gone in drizzle 1.0; relations-v2 reads `db._.relations`.
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
@@ -179,7 +179,7 @@ const createDefaultOrganization = async (user: User) => {
   const slug = await generateAvailableSlug(slugify(user.name) || FALLBACK_ORGANIZATION_SLUG);
 
   try {
-    await auth.api.createOrganization({
+    const defaultOrganization = await auth.api.createOrganization({
       body: {
         metadata: {
           personal: true,
@@ -189,6 +189,13 @@ const createDefaultOrganization = async (user: User) => {
         userId: user.id,
       },
     });
+    // better-auth defers `user.create.after` until the sign-up transaction
+    // commits, so the first session is already stored — and
+    // `setActiveOrganization` found no membership when it was created.
+    await db
+      .update(sessionSchema)
+      .set({ activeOrganizationId: defaultOrganization.id })
+      .where(eq(sessionSchema.userId, user.id));
   } catch (error) {
     // If organization creation fails, delete the user to maintain data consistency
     await db.delete(userSchema).where(eq(userSchema.id, user.id));
