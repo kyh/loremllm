@@ -13,7 +13,7 @@
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.87",
+    "@ai-sdk/react": "^4.0.109",
     "@loremllm/transport": "workspace:^",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
@@ -23,14 +23,14 @@
     "@repo/ui": "workspace:^",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "ai": "^7.0.84",
+    "ai": "^7.0.106",
     "better-auth": "catalog:",
     "cn": "catalog:",
     "geist": "^1.7.2",
     "gsap": "^3.15.0",
     "lorem-ipsum": "^3.0.0",
-    "lucide-react": "^1.35.0",
-    "motion": "^13.1.1",
+    "lucide-react": "^1.47.0",
+    "motion": "^13.4.0",
     "next": "catalog:",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.6.7",
@@ -38,20 +38,20 @@
     "react-dom": "catalog:",
     "server-only": "^0.0.1",
     "split-type": "^0.3.4",
-    "yaml": "^2.9.0",
+    "yaml": "^2.9.1",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "^4.0.8",
+    "@ai-sdk/provider": "^4.0.17",
     "@kyh/tsconfig": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/mdx": "^2.0.14",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "postcss": "^8.5.26",
+    "postcss": "^8.5.28",
     "tailwindcss": "catalog:",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.13",
     "typescript": "catalog:"
   }
 }

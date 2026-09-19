@@ -20,7 +20,7 @@
     "@better-auth/drizzle-adapter": "catalog:",
     "@orpc/server": "catalog:",
     "@repo/db": "workspace:^",
-    "ai": "^7.0.84",
+    "ai": "^7.0.106",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
@@ -29,7 +29,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "drizzle-orm": "1.0.0-rc.4",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.13",
     "typescript": "catalog:"
   }
 }
