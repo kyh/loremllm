@@ -1,8 +1,8 @@
 /**
  * Application schema
  */
-import { relations, sql } from "drizzle-orm";
-import { customType, sqliteTable } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { customType, snakeCase } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./drizzle-schema-auth";
 
@@ -38,7 +38,7 @@ const float32Array = customType<{
  * @example
  * name: "API Documentation Chatbot"
  */
-export const mockCollection = sqliteTable("mock_collection", (t) => ({
+export const mockCollection = snakeCase.table("mock_collection", (t) => ({
   createdAt: t
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -74,7 +74,7 @@ export const mockCollection = sqliteTable("mock_collection", (t) => ({
  * output: "The weather in San Francisco is sunny and 60 degrees."
  * responseSchema: "LanguageModelV2StreamPart"
  */
-export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
+export const mockInteraction = snakeCase.table("mock_interaction", (t) => ({
   // Nullable for demo interactions
   collectionId: t.text().references(() => mockCollection.id, { onDelete: "cascade" }),
   createdAt: t
@@ -100,17 +100,6 @@ export const mockInteraction = sqliteTable("mock_interaction", (t) => ({
   vector: float32Array("vector", { dimensions: 1536 }),
 }));
 
-export const mockCollectionRelations = relations(mockCollection, ({ many }) => ({
-  interactions: many(mockInteraction),
-}));
-
-export const mockInteractionRelations = relations(mockInteraction, ({ one }) => ({
-  collection: one(mockCollection, {
-    fields: [mockInteraction.collectionId],
-    references: [mockCollection.id],
-  }),
-}));
-
 /**
  * Mock Eve Session
  * Server-side session state for the hosted eve-protocol endpoints
@@ -119,7 +108,7 @@ export const mockInteractionRelations = relations(mockInteraction, ({ one }) => 
  * handler needs across requests — create/continue POSTs and stream GETs
  * can land on different serverless instances.
  */
-export const mockEveSession = sqliteTable("mock_eve_session", (t) => ({
+export const mockEveSession = snakeCase.table("mock_eve_session", (t) => ({
   collectionPublicId: t
     .text()
     .notNull()
@@ -138,7 +127,7 @@ export const mockEveSession = sqliteTable("mock_eve_session", (t) => ({
     .notNull(),
 }));
 
-export const waitlist = sqliteTable("waitlist", (t) => ({
+export const waitlist = snakeCase.table("waitlist", (t) => ({
   email: t.text(),
   id: t
     .text()
@@ -147,11 +136,4 @@ export const waitlist = sqliteTable("waitlist", (t) => ({
     .$defaultFn(() => crypto.randomUUID()),
   source: t.text(),
   userId: t.text().references(() => user.id),
-}));
-
-export const waitlistRelations = relations(waitlist, ({ one }) => ({
-  user: one(user, {
-    fields: [waitlist.userId],
-    references: [user.id],
-  }),
 }));

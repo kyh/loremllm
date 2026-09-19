@@ -410,8 +410,10 @@ describe("createStaticEveHandler", () => {
         postJson(`/eve/v1/session/${sessionId}`, { message: "two" }),
       );
       assert.strictEqual(continueResponse.status, 200);
-      const continueBody: unknown = await continueResponse.json();
-      assert.deepEqual(continueBody, { ok: true, sessionId });
+      const continueBody = z
+        .object({ deliveryId: z.string().min(1), ok: z.literal(true), sessionId: z.string() })
+        .parse(await continueResponse.json());
+      assert.strictEqual(continueBody.sessionId, sessionId);
 
       const secondTurn = await streamEvents(handler, sessionId, firstTurn.length);
       // no session.started on turn 2

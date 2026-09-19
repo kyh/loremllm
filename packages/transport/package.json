@@ -47,10 +47,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^4.0.87",
-    "ai": "^7.0.84",
-    "eve": "^0.47.3",
-    "tsx": "^4.23.12",
+    "@ai-sdk/react": "^4.0.109",
+    "ai": "^7.0.106",
+    "eve": "^0.61.0",
+    "tsx": "^4.23.13",
     "typescript": "catalog:"
   },
   "peerDependencies": {

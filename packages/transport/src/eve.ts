@@ -46,6 +46,7 @@ type AssistantStepFinishReason =
 
 interface EveEventMeta {
   at: string;
+  deliveryIds?: readonly string[];
 }
 
 interface EveToolCallAction {
@@ -791,8 +792,9 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     record: EveSessionRecord<UI_MESSAGE>,
     userMessage: ParsedUserMessage,
     clientContext: JsonValue | undefined,
-  ): Promise<void> => {
+  ): Promise<string> => {
     const turnId = `turn-${record.turnCount + 1}`;
+    const deliveryId = generateId("dlv");
     const isFirstTurn = record.turnCount === 0;
 
     // SAFETY: UI_MESSAGE is only constrained by UIMessage, so a concrete
@@ -845,7 +847,14 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       });
     }
 
-    record.events.push(...turn.events);
+    // eve's client drops every event until one carries the delivery id the
+    // message route returned, so the whole turn is tagged, as eve's server does.
+    record.events.push(
+      ...turn.events.map((event) => ({
+        ...event,
+        meta: { at: event.meta?.at ?? at(), deliveryIds: [deliveryId] },
+      })),
+    );
     record.nextSequence = turn.nextSequence;
     record.turnCount += 1;
     record.messages.push(userUiMessage);
@@ -859,6 +868,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       } as UI_MESSAGE);
     }
     await sessionStore.set(sessionId, record);
+    return deliveryId;
   };
 
   const streamResponse = (
@@ -950,11 +960,11 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       nextSequence: 0,
       turnCount: 0,
     };
-    await runTurn(sessionId, record, userMessage, body.clientContext);
+    const deliveryId = await runTurn(sessionId, record, userMessage, body.clientContext);
 
     return json(
       202,
-      { continuationToken: record.continuationToken, ok: true, sessionId },
+      { continuationToken: record.continuationToken, deliveryId, ok: true, sessionId },
       { [EVE_SESSION_ID_HEADER]: sessionId },
     );
   };
@@ -992,8 +1002,8 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       });
     }
 
-    await runTurn(sessionId, record, userMessage, body.clientContext);
-    return json(200, { ok: true, sessionId }, { [EVE_SESSION_ID_HEADER]: sessionId });
+    const deliveryId = await runTurn(sessionId, record, userMessage, body.clientContext);
+    return json(200, { deliveryId, ok: true, sessionId }, { [EVE_SESSION_ID_HEADER]: sessionId });
   };
 
   // GET /eve/v1/session/:id/stream

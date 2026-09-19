@@ -3,7 +3,7 @@ packages:
   - packages/*
 
 catalog:
-  "@base-ui/react": ^1.7.0
+  "@base-ui/react": ^1.8.0
   "@better-auth/cli": ^1.4.21
   "@kyh/tsconfig": ^1.2.0
   "@orpc/client": 2.0.0-beta.31
@@ -12,22 +12,31 @@ catalog:
   "@tailwindcss/postcss": ^4.3.3
   "@tailwindcss/vite": ^4.2.2
   "@tanstack/react-form": ^1.33.5
-  "@tanstack/react-query": ^5.102.8
-  "@types/node": ^26.4.0
-  "@types/react": ^19.2.18
-  "@types/react-dom": ^19.2.5
+  "@tanstack/react-query": ^5.103.1
+  "@types/node": ^26.6.1
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
   "@vitejs/plugin-react": ^5.2.0
-  better-auth: ^1.7.2
-  cn: ^0.2.5
-  next: ^16.3.3
-  react: ^19.2.8
-  react-dom: ^19.2.8
+  # better-auth 1.7.3+ stops writing account.issuer, which drizzle-schema-auth.ts
+  # declares NOT NULL + unique-indexed; every account insert would fail. Unpin
+  # together with the 1.7 upgrade-guide schema change.
+  "@better-auth/drizzle-adapter": 1.7.2
+  better-auth: 1.7.2
+  cn: ^0.3.0
+  next: ^16.3.5
+  react: ^19.3.0
+  react-dom: ^19.3.0
   tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vite: ^7.3.1
-  zod: ^4.5.2
+  zod: ^4.6.5
 
 linkWorkspacePackages: true
+
+# The drizzle adapter peers on @better-auth/core with a range, so without this
+# it resolves a newer core than the pinned better-auth and two cores load.
+overrides:
+  "@better-auth/core": 1.7.2
 
 allowBuilds:
   "@tailwindcss/oxide": true

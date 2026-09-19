@@ -17,9 +17,10 @@
     "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "catalog:",
     "@orpc/server": "catalog:",
     "@repo/db": "workspace:^",
-    "ai": "^7.0.84",
+    "ai": "^7.0.106",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
@@ -27,8 +28,8 @@
     "@kyh/tsconfig": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "drizzle-orm": "^0.45.2",
-    "tsx": "^4.23.12",
+    "drizzle-orm": "1.0.0-rc.4",
+    "tsx": "^4.23.13",
     "typescript": "catalog:"
   }
 }

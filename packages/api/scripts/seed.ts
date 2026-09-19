@@ -15,10 +15,7 @@
 import * as fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
-import { mockCollection } from "@repo/db/drizzle-schema";
-import { member, organization, user as userSchema } from "@repo/db/drizzle-schema-auth";
 
 import { createRouterClient } from "@orpc/server";
 
@@ -121,7 +118,7 @@ const DEMO_INTERACTION_CONFIGS = [
  */
 const ensureUser = async (): Promise<string> => {
   const existingUser = await db.query.user.findFirst({
-    where: eq(userSchema.email, USER_EMAIL),
+    where: { email: USER_EMAIL },
   });
 
   if (existingUser) {
@@ -150,7 +147,7 @@ const ensureUser = async (): Promise<string> => {
  */
 const resolveOrganizationId = async (userId: string): Promise<string> => {
   const membership = await db.query.member.findFirst({
-    where: eq(member.userId, userId),
+    where: { userId },
   });
 
   if (!membership) {
@@ -175,7 +172,7 @@ const main = async () => {
     // Step 2: Resolve the personal organization the seeded data belongs to
     const organizationId = await resolveOrganizationId(userId);
     const org = await db.query.organization.findFirst({
-      where: eq(organization.id, organizationId),
+      where: { id: organizationId },
     });
     console.log(`\n🏢 Organization: ${org?.name ?? organizationId}`);
 
@@ -213,7 +210,7 @@ const main = async () => {
     // so look it up directly rather than through the org-scoped list.
     console.log(`\n📦 Creating/finding '${COLLECTION_PUBLIC_ID}' collection...`);
     const existingCollection = await db.query.mockCollection.findFirst({
-      where: eq(mockCollection.publicId, COLLECTION_PUBLIC_ID),
+      where: { publicId: COLLECTION_PUBLIC_ID },
     });
 
     if (existingCollection && existingCollection.organizationId !== organizationId) {

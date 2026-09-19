@@ -9,7 +9,7 @@ export const organizationRouter = {
     const { slug } = input;
 
     const organization = await context.db.query.organization.findFirst({
-      where: (org, { eq }) => eq(org.slug, slug),
+      where: { slug },
     });
 
     if (!organization) {
@@ -21,7 +21,7 @@ export const organizationRouter = {
     // drizzle embeds the related user via `with`, so rows arrive pre-joined —
     // no second query and hand-built Map to reunite members with their users.
     const members = await context.db.query.member.findMany({
-      where: (member, { eq }) => eq(member.organizationId, organization.id),
+      where: { organizationId: organization.id },
       with: {
         // Allow-list only — full rows include admin-only fields (role, banned, banReason)
         user: { columns: { email: true, id: true, image: true, name: true } },
@@ -37,8 +37,7 @@ export const organizationRouter = {
 
     // Exclude canceled invitations in SQL rather than fetching then dropping them.
     const invitations = await context.db.query.invitation.findMany({
-      where: (invitation, { and, eq, ne }) =>
-        and(eq(invitation.organizationId, organization.id), ne(invitation.status, "canceled")),
+      where: { organizationId: organization.id, status: { ne: "canceled" } },
     });
 
     return {
