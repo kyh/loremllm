@@ -17,11 +17,8 @@ catalog:
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
   "@vitejs/plugin-react": ^5.2.0
-  # better-auth 1.7.3+ stops writing account.issuer, which drizzle-schema-auth.ts
-  # declares NOT NULL + unique-indexed; every account insert would fail. Unpin
-  # together with the 1.7 upgrade-guide schema change.
-  "@better-auth/drizzle-adapter": 1.7.2
-  better-auth: 1.7.2
+  "@better-auth/drizzle-adapter": ^1.7.5
+  better-auth: ^1.7.5
   cn: ^0.3.0
   next: ^16.3.5
   react: ^19.3.0
@@ -32,11 +29,6 @@ catalog:
   zod: ^4.6.5
 
 linkWorkspacePackages: true
-
-# The drizzle adapter peers on @better-auth/core with a range, so without this
-# it resolves a newer core than the pinned better-auth and two cores load.
-overrides:
-  "@better-auth/core": 1.7.2
 
 allowBuilds:
   "@tailwindcss/oxide": true
