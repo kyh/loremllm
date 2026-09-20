@@ -68,6 +68,22 @@ const setActiveOrganization = async (session: { userId: string }) => {
   };
 };
 
+const backfillActiveOrganization = async (userId: string, organizationId: string) => {
+  // better-auth defers `user.create.after` until the sign-up transaction
+  // commits, so the first session is already stored — and
+  // `setActiveOrganization` found no membership when it was created.
+  try {
+    await db
+      .update(sessionSchema)
+      .set({ activeOrganizationId: organizationId })
+      .where(eq(sessionSchema.userId, userId));
+  } catch (error) {
+    // Non-fatal: the organization exists, and `setActiveOrganization` picks it
+    // up on the next session. Throwing here would fail a sign-up that worked.
+    console.error("Failed to set active organization on sign-up session:", error);
+  }
+};
+
 export const auth = betterAuth({
   advanced: {
     defaultCookieAttributes: {
@@ -95,7 +111,8 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           // oxlint-disable-next-line no-use-before-define -- the hook creates the organization through the auth instance it is registered on
-          await createDefaultOrganization(user);
+          const defaultOrganization = await createDefaultOrganization(user);
+          await backfillActiveOrganization(user.id, defaultOrganization.id);
         },
       },
     },
@@ -179,7 +196,7 @@ const createDefaultOrganization = async (user: User) => {
   const slug = await generateAvailableSlug(slugify(user.name) || FALLBACK_ORGANIZATION_SLUG);
 
   try {
-    const defaultOrganization = await auth.api.createOrganization({
+    return await auth.api.createOrganization({
       body: {
         metadata: {
           personal: true,
@@ -189,13 +206,6 @@ const createDefaultOrganization = async (user: User) => {
         userId: user.id,
       },
     });
-    // better-auth defers `user.create.after` until the sign-up transaction
-    // commits, so the first session is already stored — and
-    // `setActiveOrganization` found no membership when it was created.
-    await db
-      .update(sessionSchema)
-      .set({ activeOrganizationId: defaultOrganization.id })
-      .where(eq(sessionSchema.userId, user.id));
   } catch (error) {
     // If organization creation fails, delete the user to maintain data consistency
     await db.delete(userSchema).where(eq(userSchema.id, user.id));
