@@ -209,6 +209,9 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
 };
 
 export const RequestPasswordResetForm = () => {
+  // Not `isSubmitSuccessful`: better-auth reports failures through onError
+  // without throwing, so the form would count a failed request as submitted.
+  const [sent, setSent] = useState(false);
   const form = useForm({
     defaultValues: {
       email: "",
@@ -221,9 +224,11 @@ export const RequestPasswordResetForm = () => {
             toast.error(ctx.error.message);
           },
           onSuccess: () => {
+            setSent(true);
             toast.success("Password reset email sent successfully!");
           },
         },
+        redirectTo: "/auth/password-update",
       });
     },
     validators: {
@@ -233,7 +238,7 @@ export const RequestPasswordResetForm = () => {
     },
   });
 
-  if (form.state.isSubmitSuccessful) {
+  if (sent) {
     return (
       <div className="space-y-4 text-center">
         <div className="rounded-md bg-green-50 p-4 dark:bg-green-900/20">
@@ -298,7 +303,9 @@ export const RequestPasswordResetForm = () => {
   );
 };
 
-export const UpdatePasswordForm = () => {
+// better-auth appends the reset token to the redirectTo URL; the page reads it
+// from searchParams server-side and passes it in.
+export const UpdatePasswordForm = ({ token }: { token?: string }) => {
   const router = useRouter();
 
   const form = useForm({
@@ -307,6 +314,10 @@ export const UpdatePasswordForm = () => {
       password: "",
     },
     onSubmit: async ({ value }) => {
+      if (!token) {
+        toast.error("Invalid or expired reset link. Request a new one.");
+        return;
+      }
       await authClient.resetPassword({
         fetchOptions: {
           onError: (ctx) => {
@@ -318,6 +329,7 @@ export const UpdatePasswordForm = () => {
           },
         },
         newPassword: value.password,
+        token,
       });
     },
     validators: {

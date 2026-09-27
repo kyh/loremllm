@@ -300,6 +300,11 @@ export const privacyPage: ProsePage = {
           text: "the database behind accounts, collections and vectors",
         },
         {
+          href: "https://resend.com/legal/privacy-policy",
+          label: "Resend",
+          text: "delivers password-reset emails to your address",
+        },
+        {
           href: "https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement",
           label: "GitHub",
           text: "sign-in, only if you choose it",

@@ -23,6 +23,11 @@ const envSchema = z.object({
    * check for it and report something legible instead of a gateway 401.
    */
   AI_GATEWAY_API_KEY: z.string().optional(),
+  /**
+   * Sender for transactional email. The domain must be verified in the Resend
+   * account behind `RESEND_API_KEY`, or Resend rejects every send.
+   */
+  EMAIL_FROM: z.string().default("LoremLLM <noreply@kyh.io>"),
   GITHUB_CLIENT_ID: z.string().default(""),
   GITHUB_CLIENT_SECRET: z.string().default(""),
   /**
@@ -31,6 +36,8 @@ const envSchema = z.object({
    * production, where the real GitHub provider is used.
    */
   NEXT_PUBLIC_GITHUB_EMULATOR_URL: z.string().optional(),
+  /** Resend API key. Unset, emails are logged to the server console instead. */
+  RESEND_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
