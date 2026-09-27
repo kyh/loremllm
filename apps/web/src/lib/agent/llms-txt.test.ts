@@ -24,7 +24,7 @@ describe("renderLlmsTxt", () => {
   });
 
   test("links the docs and the OpenAPI spec", () => {
-    assert.ok(body.includes("(https://loremllm.com/docs)") || body.includes("/docs)"));
+    assert.ok(body.includes("(https://www.loremllm.com/docs)") || body.includes("/docs)"));
     assert.ok(body.includes("/openapi.json)"));
   });
 

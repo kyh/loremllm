@@ -9,9 +9,9 @@ describe("buildSitemapEntries", () => {
   const urls = entries.map((entry) => entry.url);
 
   test("lists the home page first, then every prose page", () => {
-    assert.equal(urls[0], "https://loremllm.com/");
+    assert.equal(urls[0], "https://www.loremllm.com/");
     for (const path of ["/docs", "/about", "/contact", "/privacy"]) {
-      assert.ok(urls.includes(`https://loremllm.com${path}`), `missing ${path}`);
+      assert.ok(urls.includes(`https://www.loremllm.com${path}`), `missing ${path}`);
     }
   });
 

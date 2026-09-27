@@ -24,7 +24,7 @@ describe("buildOrganization", () => {
 
   test("has a contactPoint with email and type, and no invented address", () => {
     const [primary] = organization.contactPoint;
-    assert.equal(primary?.email, "im.kaiyu@gmail.com");
+    assert.equal(primary?.email, "kai@kyh.io");
     assert.ok(primary?.contactType);
     assert.equal("address" in organization, false);
   });

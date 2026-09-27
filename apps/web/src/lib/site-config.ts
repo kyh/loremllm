@@ -1,5 +1,5 @@
 const url =
-  process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://loremllm.com";
+  process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://www.loremllm.com";
 
 export const siteConfig = {
   author: {
@@ -7,7 +7,7 @@ export const siteConfig = {
     url: "https://kyh.io",
   },
   description: "Mock responses for LLMs",
-  email: "im.kaiyu@gmail.com",
+  email: "kai@kyh.io",
   name: "LoremLLM",
   npmPackage: "https://www.npmjs.com/package/@loremllm/transport",
   repository: "https://github.com/kyh/loremllm",

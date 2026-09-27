@@ -30,7 +30,7 @@ describe("prose pages", () => {
   });
 
   test("contact names the published email", () => {
-    assert.ok(proseText("/contact").includes("im.kaiyu@gmail.com"));
+    assert.ok(proseText("/contact").includes("kai@kyh.io"));
   });
 
   test("unknown paths have no page", () => {
@@ -43,7 +43,7 @@ describe("rendersOutsideRouter", () => {
     assert.equal(rendersOutsideRouter("/llms.txt"), true);
     assert.equal(rendersOutsideRouter("/openapi.json"), true);
     assert.equal(rendersOutsideRouter("https://github.com/kyh/loremllm"), true);
-    assert.equal(rendersOutsideRouter("mailto:im.kaiyu@gmail.com"), true);
+    assert.equal(rendersOutsideRouter("mailto:kai@kyh.io"), true);
   });
 
   test("pages stay on the client router", () => {
