@@ -19,6 +19,8 @@ import { MessageResponse } from "@repo/ui/components/ai-elements/message";
 import { getToolOrDynamicToolName, isToolUIPart } from "ai";
 import { z } from "zod";
 
+import { readProblemDetail } from "@/lib/problem";
+
 const roleLabel = {
   assistant: "Assistant",
   system: "System",
@@ -196,7 +198,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
       </div>
       {error ? (
         <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border p-3 text-xs">
-          {error.message}
+          {readProblemDetail(error.message)}
         </div>
       ) : null}
       <form className="flex items-center gap-2" onSubmit={handleSubmit}>
