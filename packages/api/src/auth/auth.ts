@@ -7,6 +7,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
+import { sendEmail } from "../email/send-email";
 import { env } from "../env";
 import { FALLBACK_ORGANIZATION_SLUG, slugify } from "./utils";
 
@@ -119,6 +120,13 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendEmail({
+        subject: "Reset your password",
+        text: `Click the link to reset your password: ${url}`,
+        to: user.email,
+      });
+    },
   },
   plugins: [
     // Proxies the OAuth callback through the production deployment so preview
