@@ -27,7 +27,7 @@ const Page = () => (
     </header>
     <HomeOutline />
     <DemoSections />
-    <SiteFooter />
+    <SiteFooter pageLinkDisplay="crawler-only" />
   </main>
 );
 

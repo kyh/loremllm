@@ -14,10 +14,14 @@ export const ProseLink = ({
   href,
   children,
   className,
+  tabIndex,
+  prefetch,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
+  tabIndex?: number;
+  prefetch?: boolean;
 }) => {
   if (rendersOutsideRouter(href)) {
     const offSite = isOffSite(href);
@@ -26,6 +30,7 @@ export const ProseLink = ({
         className={className}
         href={href}
         rel={offSite ? "noreferrer" : undefined}
+        tabIndex={tabIndex}
         target={offSite ? "_blank" : undefined}
       >
         {children}
@@ -33,7 +38,7 @@ export const ProseLink = ({
     );
   }
   return (
-    <Link className={className} href={href}>
+    <Link className={className} href={href} prefetch={prefetch} tabIndex={tabIndex}>
       {children}
     </Link>
   );

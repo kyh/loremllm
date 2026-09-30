@@ -19,7 +19,13 @@ const OutlineList = ({ items }: { items: ProseListItem[] }) => (
   <ul>
     {items.map((item) => (
       <li key={item.label}>
-        {item.href ? <ProseLink href={item.href}>{item.label}</ProseLink> : item.label}
+        {item.href ? (
+          <ProseLink href={item.href} prefetch={false} tabIndex={-1}>
+            {item.label}
+          </ProseLink>
+        ) : (
+          item.label
+        )}
         {item.text ? ` — ${item.text}` : null}
       </li>
     ))}
