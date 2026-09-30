@@ -101,6 +101,6 @@ export const ProsePageView = ({ page }: { page: ProsePage }) => (
         ))}
       </div>
     </main>
-    <SiteFooter />
+    <SiteFooter pageLinkDisplay="visible" />
   </div>
 );
