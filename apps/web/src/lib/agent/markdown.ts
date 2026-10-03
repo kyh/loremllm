@@ -80,7 +80,6 @@ export const pageLinks: ProseListItem[] = [
   { href: "/about", label: "About", text: "what this is and who builds it" },
   { href: "/contact", label: "Contact", text: "email and GitHub" },
   { href: "/privacy", label: "Privacy Policy", text: "what is collected and who processes it" },
-  { href: "/terms", label: "Terms of Use", text: "the terms for using the site and its API" },
 ];
 
 export const renderProsePageMarkdown = (page: ProsePage): string =>

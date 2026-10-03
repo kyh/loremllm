@@ -18,9 +18,8 @@ describe("renderHomeMarkdown", () => {
     assert.ok(body.includes("/docs"));
   });
 
-  test("lists the legal pages", () => {
+  test("lists the privacy policy", () => {
     assert.ok(body.includes("[Privacy Policy](https://www.loremllm.com/privacy)"));
-    assert.ok(body.includes("[Terms of Use](https://www.loremllm.com/terms)"));
   });
 });
 
@@ -57,7 +56,6 @@ describe("renderProsePageMarkdown", () => {
   test("keeps in-page anchors and makes on-site links absolute", () => {
     const privacy = renderProsePageMarkdown(privacyPage);
     assert.ok(privacy.includes("- [Tracking & Other Technologies](#tracking--other-technologies)"));
-    assert.ok(privacy.includes("[Terms of Use](https://www.loremllm.com/terms)"));
     assert.ok(privacy.includes("**Contact data**, such as your name and email address."));
 
     const terms = renderProsePageMarkdown(termsPage);
