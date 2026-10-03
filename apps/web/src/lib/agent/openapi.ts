@@ -104,6 +104,7 @@ export const buildOpenApiDocument = () => ({
       url: `${siteConfig.url}/contact`,
     },
     description: siteSummary,
+    termsOfService: `${siteConfig.url}/terms`,
     title: `${siteConfig.name} API`,
     version: "1.0.0",
   },

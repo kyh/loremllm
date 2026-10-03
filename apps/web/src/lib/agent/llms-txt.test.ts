@@ -28,6 +28,11 @@ describe("renderLlmsTxt", () => {
     assert.ok(body.includes("/openapi.json)"));
   });
 
+  test("lists the privacy policy and the terms of use among the pages", () => {
+    assert.ok(body.includes("[Privacy Policy](https://www.loremllm.com/privacy)"));
+    assert.ok(body.includes("[Terms of Use](https://www.loremllm.com/terms)"));
+  });
+
   test("H2 sections contain only link lists", () => {
     const sections = body.split("\n## ").slice(1);
     for (const section of sections) {
