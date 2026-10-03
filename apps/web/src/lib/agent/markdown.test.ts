@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { renderHomeMarkdown, renderNotFoundMarkdown, renderProsePageMarkdown } from "./markdown";
+import {
+  pageLinks,
+  renderHomeMarkdown,
+  renderNotFoundMarkdown,
+  renderProsePageMarkdown,
+} from "./markdown";
 import { docsPage, privacyPage, termsPage } from "./site-pages";
 
 describe("renderHomeMarkdown", () => {
@@ -18,8 +23,15 @@ describe("renderHomeMarkdown", () => {
     assert.ok(body.includes("/docs"));
   });
 
-  test("lists the privacy policy", () => {
+  test("lists the legal pages", () => {
     assert.ok(body.includes("[Privacy Policy](https://www.loremllm.com/privacy)"));
+    assert.ok(body.includes("[Terms of Use](https://www.loremllm.com/terms)"));
+  });
+});
+
+describe("pageLinks", () => {
+  test("leaves out the terms of use, since the site footer shows these links", () => {
+    assert.ok(pageLinks.every((page) => page.href !== "/terms"));
   });
 });
 

@@ -45,6 +45,10 @@ describe("buildOpenApiDocument", () => {
     );
   });
 
+  test("points at the terms that govern the API", () => {
+    assert.equal(document.info.termsOfService, "https://www.loremllm.com/terms");
+  });
+
   test("describes every error as a problem document", () => {
     const { responses } = document.paths["/api/chat"].post;
     for (const status of ["400", "403", "404", "500"] as const) {
