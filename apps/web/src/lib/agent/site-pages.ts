@@ -585,7 +585,7 @@ const privacySections: ProseBlock[] = [
     `**Exercising other state privacy rights.** You may submit requests to exercise any of the other state privacy rights listed above via email to ${emailLink}.`,
   ),
   paragraph(
-    "**Verification of Identity; Authorized agents.** We may need to verify your identity in order to process your information/know, access, appeal, correction, or deletion requests and reserve the right to confirm your residency. To verify your identity, we may require government identification, a declaration under penalty of perjury, or other information, where permitted by law.",
+    "**Verification of Identity; Authorized agents.** We may need to verify your identity in order to process your information, access, appeal, correction, or deletion requests and reserve the right to confirm your residency. To verify your identity, we may require government identification, a declaration under penalty of perjury, or other information, where permitted by law.",
   ),
   paragraph(
     "Under some State Privacy Laws, you may enable an authorized agent to make a request on your behalf. However, we may need to verify your authorized agent's identity and authority to act on your behalf. We may require a copy of a valid power of attorney given to your authorized agent pursuant to applicable law. If you have not provided your agent with such a power of attorney, we may ask you to take additional steps permitted by law to verify that your request is authorized, such as by providing your agent with written and signed permission to exercise your State Privacy Laws rights on your behalf, the information we request to verify your identity, and confirmation that you have given the authorized agent permission to submit the request.",
