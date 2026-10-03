@@ -10,7 +10,7 @@ describe("buildSitemapEntries", () => {
 
   test("lists the home page first, then every prose page", () => {
     assert.equal(urls[0], "https://www.loremllm.com/");
-    for (const path of ["/docs", "/about", "/contact", "/privacy"]) {
+    for (const path of ["/docs", "/about", "/contact", "/privacy", "/terms"]) {
       assert.ok(urls.includes(`https://www.loremllm.com${path}`), `missing ${path}`);
     }
   });

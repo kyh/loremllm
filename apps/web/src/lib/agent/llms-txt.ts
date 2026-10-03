@@ -1,6 +1,6 @@
 import { siteConfig } from "@/lib/site-config";
 
-import { pageLinks, renderList } from "./markdown";
+import { pageLinks, renderList, termsLink } from "./markdown";
 import {
   agentEndpoints,
   siteIntroParagraphs,
@@ -46,7 +46,11 @@ export const renderLlmsTxt = (): string => {
     "",
     "## Pages",
     "",
-    renderList([{ href: "/", label: "Home", text: "overview and live demos" }, ...pageLinks]),
+    renderList([
+      { href: "/", label: "Home", text: "overview and live demos" },
+      ...pageLinks,
+      termsLink,
+    ]),
     "",
     "## Machine-readable endpoints",
     "",
