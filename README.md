@@ -15,7 +15,7 @@ LoremLLM is a collection of tools that help developers mock LLM responses. aka w
 
 - [**`@loremllm/transport`**](./packages/transport/README.md) - Transport implementation for the [Vercel AI SDK UI layer](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport). Allows you to mock AI interactions directly in your frontend React components.
 
-- [**`@loremllm/web`**](./apps/web) - [loremllm.com](https://loremllm.com) application that provides:
+- [**`@loremllm/web`**](./apps/web) - [loremllm.com](https://www.loremllm.com) application that provides:
   - Web UI for managing collections of LLM interactions
   - REST API endpoints (`/api/chat`) for:
     - Chat queries with semantic search matching
@@ -35,7 +35,7 @@ LoremLLM is a collection of tools that help developers mock LLM responses. aka w
 
 ## API
 
-`POST https://loremllm.com/api/chat` with a JSON body. Set `type` explicitly — untyped bodies fall back to shape inference for backwards compatibility.
+`POST https://www.loremllm.com/api/chat` with a JSON body. Set `type` explicitly — untyped bodies fall back to shape inference for backwards compatibility.
 
 ```jsonc
 // Query a public collection (streams an AI SDK UI message response)
@@ -48,7 +48,7 @@ LoremLLM is a collection of tools that help developers mock LLM responses. aka w
 { "type": "lorem", "units": "sentences", "count": 3 }
 ```
 
-Responses stream in the [AI SDK UI message format](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport), so `useChat` works out of the box. Chat responses include the matched interaction's id, title, and similarity as message metadata. Errors are `application/problem+json` (RFC 9457) with meaningful status codes: `400` invalid payload, `403` private collection, `404` unknown collection or no match above the collection's similarity threshold. Full contract: [`/openapi.json`](https://loremllm.com/openapi.json) and [`/docs`](https://loremllm.com/docs).
+Responses stream in the [AI SDK UI message format](https://v6.ai-sdk.dev/docs/ai-sdk-ui/transport), so `useChat` works out of the box. Chat responses include the matched interaction's id, title, and similarity as message metadata. Errors are `application/problem+json` (RFC 9457) with meaningful status codes: `400` invalid payload, `403` private collection, `404` unknown collection or no match above the collection's similarity threshold. Full contract: [`/openapi.json`](https://www.loremllm.com/openapi.json) and [`/docs`](https://www.loremllm.com/docs).
 
 ## License
 
