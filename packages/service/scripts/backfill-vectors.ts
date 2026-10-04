@@ -7,7 +7,7 @@
  * Run after migrating from Transformers.js (384d) to OpenAI (1536d).
  *
  * Usage:
- *   pnpm -F api backfill-vectors
+ *   pnpm -F service backfill:vectors
  */
 import { setTimeout as sleep } from "node:timers/promises";
 import { eq } from "@repo/db";

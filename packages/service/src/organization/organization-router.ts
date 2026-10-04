@@ -1,11 +1,12 @@
 import { ORPCError } from "@orpc/server";
 
 import { authMetadataSchema } from "../auth/auth-schema";
-import { protectedProcedure } from "../orpc";
-import { getOrganizationInput } from "./organization-schema";
+import { os, requireSession } from "../orpc";
+
+const authed = os.organization.use(requireSession);
 
 export const organizationRouter = {
-  get: protectedProcedure.input(getOrganizationInput).handler(async ({ context, input }) => {
+  get: authed.get.handler(async ({ context, input }) => {
     const { slug } = input;
 
     const organization = await context.db.query.organization.findFirst({

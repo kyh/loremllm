@@ -8,7 +8,7 @@
     "clean:workspaces": "turbo run clean",
     "db:push": "pnpm -F db push",
     "db:push-remote": "pnpm -F db push:remote",
-    "db:seed": "pnpm -F @repo/api seed",
+    "db:seed": "pnpm -F @repo/service seed",
     "dev": "turbo watch db studio dev --continue",
     "dev:web": "turbo watch dev --filter=@loremllm/web --continue",
     "emulate": "npx emulate@0.9.0 --service github",

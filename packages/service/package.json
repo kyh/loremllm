@@ -1,11 +1,11 @@
 {
-  "name": "@repo/api",
+  "name": "@repo/service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    "./auth/auth": "./src/auth/auth.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
     "@orpc/server": "catalog:",
+    "@repo/contract": "workspace:^",
     "@repo/db": "workspace:^",
     "ai": "^7.0.106",
     "better-auth": "catalog:",

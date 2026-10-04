@@ -152,7 +152,7 @@ const resolveOrganizationId = async (userId: string): Promise<string> => {
 
   if (!membership) {
     throw new Error(
-      `No organization found for ${USER_EMAIL}. The signup hook that creates the personal organization did not run — check packages/api/src/auth/auth.ts.`,
+      `No organization found for ${USER_EMAIL}. The signup hook that creates the personal organization did not run — check packages/service/src/auth/auth.ts.`,
     );
   }
 

@@ -2,7 +2,7 @@
 
 **LoremLLM** mocks LLM responses: you store input/output pairs in a collection, and the hosted endpoints replay the best semantic match instead of calling a real model. This is the tool-agnostic guide for coding agents — it's meant to be run, not just read. Claude also reads `CLAUDE.md`; both point back here.
 
-One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/api` (oRPC + better-auth), `packages/db` (Drizzle + Turso/libSQL), `packages/ui` (shadcn/Base UI), and `packages/transport` — the published `@loremllm/transport` npm package.
+One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/contract` (the oRPC contract) and `packages/service` (its implementation + better-auth), `packages/db` (Drizzle + Turso/libSQL), `packages/ui` (shadcn/Base UI), and `packages/transport` — the published `@loremllm/transport` npm package.
 
 ## Quickstart (headless)
 
@@ -20,7 +20,7 @@ pnpm dev:web                    # http://localhost:3000
 `.env.example` copies cleanly as-is. Three notes on it:
 
 - **`BETTER_AUTH_SECRET`** — any random string. Auth misbehaves without one.
-- **`AI_GATEWAY_API_KEY`** — needed for any **embedding** through the Vercel AI Gateway (which needs the key _and_ a network): both **writing** an interaction (its input is embedded — `packages/api/src/interaction/embedding-service.ts`) and **semantically querying** one (`interaction.query` embeds the query text). So the `/api/chat` `type:"chat"` and `/api/eve` recipes below 500 without it. Without a key you can still sign in, browse, delete, make output-only edits, and use the `lorem`/`markdown` chat types — `pnpm db:seed` detects the missing key, seeds the account and an empty Demo collection, and tells you to re-run once you have one.
+- **`AI_GATEWAY_API_KEY`** — needed for any **embedding** through the Vercel AI Gateway (which needs the key _and_ a network): both **writing** an interaction (its input is embedded — `packages/service/src/interaction/embedding-service.ts`) and **semantically querying** one (`interaction.query` embeds the query text). So the `/api/chat` `type:"chat"` and `/api/eve` recipes below 500 without it. Without a key you can still sign in, browse, delete, make output-only edits, and use the `lorem`/`markdown` chat types — `pnpm db:seed` detects the missing key, seeds the account and an empty Demo collection, and tells you to re-run once you have one.
 - Leave **`TURSO_AUTH_TOKEN`** commented out locally. `drizzle-kit` rejects an empty-string token, so `TURSO_AUTH_TOKEN=""` breaks `pnpm db:push`.
 
 Resetting the database is manual, because the schema is pushed _through_ the running server: stop `pnpm -F db db`, `rm -f packages/db/local.db*`, start it again, then `pnpm db:push && pnpm db:seed`.
@@ -31,7 +31,7 @@ Resetting the database is manual, because the schema is pushed _through_ the run
 dev@loremllm.local / password
 ```
 
-Created by `pnpm db:seed` (`packages/api/scripts/seed.ts`) with a personal organization and a public `demo` collection of 11 interactions. It signs up through `auth.api.signUpEmail`, not a raw insert, so the organization is provisioned by the same hook production uses. Idempotent — re-run any time.
+Created by `pnpm db:seed` (`packages/service/scripts/seed.ts`) with a personal organization and a public `demo` collection of 11 interactions. It signs up through `auth.api.signUpEmail`, not a raw insert, so the organization is provisioned by the same hook production uses. Idempotent — re-run any time.
 
 Headless auth (no browser) — exchange the login for a session cookie and hand it to curl or agent-browser:
 
@@ -41,17 +41,17 @@ curl -s -i -X POST localhost:3000/api/auth/sign-in/email \
   -d '{"email":"dev@loremllm.local","password":"password"}' | grep -i set-cookie
 ```
 
-`/api/auth/*` is rate-limited (`packages/api/src/auth/auth.ts` sets `window: 60, max: 10`), but better-auth applies a stricter built-in rule to the sign-in paths: **3 requests per 10s per IP** on any `/sign-in*`, `/sign-up*`, `/change-password*` or `/change-email*`, which overrides the configured value. A loop that signs in repeatedly gets 429s almost immediately — sign in once and reuse the cookie.
+`/api/auth/*` is rate-limited (`packages/service/src/auth/auth.ts` sets `window: 60, max: 10`), but better-auth applies a stricter built-in rule to the sign-in paths: **3 requests per 10s per IP** on any `/sign-in*`, `/sign-up*`, `/change-password*` or `/change-email*`, which overrides the configured value. A loop that signs in repeatedly gets 429s almost immediately — sign in once and reuse the cookie.
 
 ## Verify a change end-to-end
 
-Static gate (mirrors `.github/workflows/ci.yml` — run before every commit):
+Static gate (mirrors `.github/workflows/ci.yml`, which also runs `pnpm build` — run before every commit):
 
 ```sh
 pnpm verify     # typecheck · lint · format · test
 ```
 
-`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, and a few `packages/api` guards (auth schema, session cookie, `sendEmail`'s no-key path) — nothing else has tests. A green `verify` says nothing about `apps/web` or the rest of `packages/api` behaviour; exercise those at runtime.
+`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s no-key path, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
 **Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. `no-await-in-loop` is the one deliberate override. Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
 
@@ -95,7 +95,7 @@ pnpm emulate     # GitHub emulator on :4000
 pnpm dev:web     # must be on :3000 — the registered redirect_uri is hardcoded there
 ```
 
-With the var set, the shipped "Continue with Github" button routes through a dev-only `genericOAuth` provider aimed at the emulator — same button, no diverging prod path (unset ⇒ the real provider; see `packages/api/src/auth/auth.ts`). Open `/auth/login`, click it, and the emulator's user picker (`octocat`) completes sign-in.
+With the var set, the shipped "Continue with Github" button routes through a dev-only `genericOAuth` provider aimed at the emulator — same button, no diverging prod path (unset ⇒ the real provider; see `packages/service/src/auth/auth.ts`). Open `/auth/login`, click it, and the emulator's user picker (`octocat`) completes sign-in.
 
 Pure HTTP: `POST /api/auth/sign-in/social {"provider":"github"}` returns the authorize URL directly — the same flow the button triggers.
 
@@ -106,7 +106,7 @@ If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next d
 | Surface                       | Command                            | Agent-verifiable at runtime?         |
 | ----------------------------- | ---------------------------------- | ------------------------------------ |
 | Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser |
-| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 84 node:test cases, no I/O |
+| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 86 node:test cases, no I/O |
 | Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed |
 
 There is no mobile, desktop, or extension target. Everything this repo ships can be checked headlessly.
@@ -116,16 +116,16 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - **Mutations go through oRPC or the better-auth client — never Next Server Actions.** There are none in `apps/web/src`; keep it that way.
 - **Every `useMutation` declares its own `onSuccess` invalidation.** There is no global `MutationCache` net (`apps/web/src/orpc/query-client.ts`), so a mutation added without one leaves stale UI. Invalidate the router key you affected (`orpc.collection.key()` — a partial-match prefix covering every `collection.*` query) unless you can name the single procedure that moved; an interaction write also bumps its collection's `updatedAt`, and the sidebar is ordered by it.
 - **No `any`, no non-null `!`, no `as` casts.** Kebab-case filenames. Make illegal states unrepresentable.
-- **Org scoping lives in `organizationProcedure`**, not in input schemas — don't re-declare it as procedure input.
-- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/api/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
+- **Org scoping lives in `requireActiveOrganization`** (the session's active organization), not in input schemas — don't re-declare it as procedure input.
+- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
 
 ## Map
 
-- `apps/web` · `packages/{api,db,transport,ui}`
+- `apps/web` · `packages/{contract,service,db,transport,ui}`
 - `CLAUDE.md` — conventions + command list (Claude-specific)
-- `packages/api/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is only `/api/orpc`'s cross-**site** defense
+- `packages/service/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is only `/api/orpc`'s cross-**site** defense
 - `apps/web/src/app/api/orpc/[[...rest]]/route.ts` — the other half: an `Origin` check, because `SameSite` keys on site, so a sibling subdomain's form POST rides the session cookie in
-- `packages/api/src/orpc.ts` — procedures, org resolution
+- `packages/contract/src` — the API contract: inputs, output types, procedure bases · `packages/service/src/orpc.ts` — its implementer, session and org-resolution middleware
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors) · `drizzle-relations.ts` — the `db.query` graph over the app and auth schemas
-- `packages/api/scripts/seed.ts` — the seed · `packages/api/scripts/interactions/` — its markdown fixtures
-- `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors
+- `packages/service/scripts/seed.ts` — the seed · `packages/service/scripts/interactions/` — its markdown fixtures
+- `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors, plus `pnpm build`

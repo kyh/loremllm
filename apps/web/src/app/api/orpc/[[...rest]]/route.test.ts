@@ -11,8 +11,8 @@ import { POST } from "./route";
  * session cookie's `SameSite=Lax` does not cover. Drive the real exported route
  * handler: a test that restates the predicate would pass with the guard gone.
  *
- * `organization.get` is a `protectedProcedure`, so an anonymous request stops
- * at its session check without reaching the database.
+ * `organization.get` is implemented under `requireSession`, so an anonymous
+ * request stops at its session check without reaching the database.
  */
 
 const url = "https://app.kyh.io/api/orpc/organization/get";

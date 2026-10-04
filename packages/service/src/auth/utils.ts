@@ -1,18 +1,16 @@
 import { z } from "zod";
 
-/**
- * Converts a string to a URL-friendly slug
- * Removes special characters, converts to lowercase, and replaces spaces with hyphens
- * @param str - The input string to convert to a slug
- * @returns string - A URL-friendly slug
- */
+/** NFKD preserves ASCII base letters. Names without one yield an empty slug; callers supply a fallback. */
 export const slugify = (str: string) =>
   str
+    .normalize("NFKD")
+    .replaceAll(/[\u0300-\u036F]/gu, "")
     .trim()
     .toLowerCase()
-    .replaceAll(/[^a-z0-9 -]/gu, "")
+    .replaceAll(/[^a-z0-9\s-]/gu, "")
     .replaceAll(/\s+/gu, "-")
-    .replaceAll(/-+/gu, "-");
+    .replaceAll(/-+/gu, "-")
+    .replaceAll(/^-|-$/gu, "");
 
 /** Base slug for organizations whose name slugifies to "" — see `slugify`. */
 export const FALLBACK_ORGANIZATION_SLUG = "workspace";

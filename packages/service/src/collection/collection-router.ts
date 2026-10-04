@@ -3,16 +3,12 @@ import { eq } from "@repo/db";
 import { mockCollection } from "@repo/db/drizzle-schema";
 import { ORPCError } from "@orpc/server";
 
-import { organizationProcedure } from "../orpc";
-import {
-  collectionByIdInput,
-  createCollectionInput,
-  deleteCollectionInput,
-  updateCollectionInput,
-} from "./collection-schema";
+import { os, requireActiveOrganization, requireSession } from "../orpc";
+
+const scoped = os.collection.use(requireSession).use(requireActiveOrganization);
 
 export const collectionRouter = {
-  byId: organizationProcedure.input(collectionByIdInput).handler(async ({ context, input }) => {
+  byId: scoped.byId.handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
       where: { id: input.collectionId, organizationId: context.organizationId },
       with: {
@@ -53,7 +49,7 @@ export const collectionRouter = {
     };
   }),
 
-  create: organizationProcedure.input(createCollectionInput).handler(async ({ context, input }) => {
+  create: scoped.create.handler(async ({ context, input }) => {
     const [collection] = await context.db
       .insert(mockCollection)
       .values({
@@ -87,7 +83,7 @@ export const collectionRouter = {
     };
   }),
 
-  delete: organizationProcedure.input(deleteCollectionInput).handler(async ({ context, input }) => {
+  delete: scoped.delete.handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
       where: { id: input.collectionId, organizationId: context.organizationId },
     });
@@ -103,7 +99,7 @@ export const collectionRouter = {
     return { success: true } as const;
   }),
 
-  list: organizationProcedure.handler(async ({ context }) => {
+  list: scoped.list.handler(async ({ context }) => {
     const collections = await context.db.query.mockCollection.findMany({
       orderBy: { updatedAt: "desc" },
       where: { organizationId: context.organizationId },
@@ -128,7 +124,7 @@ export const collectionRouter = {
     }));
   }),
 
-  update: organizationProcedure.input(updateCollectionInput).handler(async ({ context, input }) => {
+  update: scoped.update.handler(async ({ context, input }) => {
     const collection = await context.db.query.mockCollection.findFirst({
       where: { id: input.collectionId, organizationId: context.organizationId },
     });

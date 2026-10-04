@@ -35,7 +35,7 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { toast } from "@repo/ui/components/sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { RouterOutputs } from "@repo/api";
+import type { RouterOutputs } from "@repo/contract";
 import { orpc } from "@/orpc/react";
 
 type Interaction = RouterOutputs["collection"]["byId"]["interactions"][number];

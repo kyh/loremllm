@@ -8,7 +8,7 @@ import { createDbEveSessionStore } from "../../eve-session-store";
  * interaction:
  *
  * ```ts
- * useEveAgent({ host: "https://loremllm.dev/api/eve/<collectionId>" });
+ * useEveAgent({ host: "https://www.loremllm.com/api/eve/<collectionId>" });
  * ```
  *
  * The eve client appends its own route paths (`/eve/v1/session`, ...), which
