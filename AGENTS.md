@@ -45,7 +45,7 @@ curl -s -i -X POST localhost:3000/api/auth/sign-in/email \
 
 ## Verify a change end-to-end
 
-Static gate (mirrors `.github/workflows/ci.yml` — run before every commit):
+Static gate (mirrors `.github/workflows/ci.yml`, which also runs `pnpm build` — run before every commit):
 
 ```sh
 pnpm verify     # typecheck · lint · format · test
@@ -128,4 +128,4 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - `packages/contract/src` — the API contract: inputs, output types, procedure bases · `packages/service/src/orpc.ts` — its implementer, session and org-resolution middleware
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors) · `drizzle-relations.ts` — the `db.query` graph over the app and auth schemas
 - `packages/service/scripts/seed.ts` — the seed · `packages/service/scripts/interactions/` — its markdown fixtures
-- `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors
+- `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors, plus `pnpm build`

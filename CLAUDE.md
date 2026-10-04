@@ -38,7 +38,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ## Commands
 
 ```bash
-pnpm verify           # typecheck + lint + format + test — the gate CI runs
+pnpm verify           # typecheck + lint + format + test — the gate CI runs, then pnpm build
 pnpm dev              # Start all (db, studio, app)
 pnpm dev:web          # Web app only -> http://localhost:3000
 pnpm build            # Build all
