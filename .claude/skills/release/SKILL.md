@@ -11,7 +11,7 @@ Cut a new npm version of `@loremllm/transport`, the one publishable package in t
 ## Context
 
 - Repo root: `/Users/kyh/Documents/Projects/loremllm`
-- Only publishable package: `@loremllm/transport` at `packages/transport` (everything else — `@repo/api`, `@repo/db`, `@repo/ui`, `@loremllm/web` — is private).
+- Only publishable package: `@loremllm/transport` at `packages/transport` (everything else — `@repo/contract`, `@repo/db`, `@repo/service`, `@repo/ui`, `@loremllm/web` — is private).
 - Public (`publishConfig.access: "public"`). Built by `tsc` to `dist/`. Tag scheme: `@loremllm/transport@<version>`.
 - Change detection path: `packages/transport`.
 - Current branch: !`git -C /Users/kyh/Documents/Projects/loremllm rev-parse --abbrev-ref HEAD`

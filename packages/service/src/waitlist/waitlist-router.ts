@@ -1,10 +1,9 @@
 import { waitlist } from "@repo/db/drizzle-schema";
 
-import { publicProcedure } from "../orpc";
-import { joinWaitlistInput } from "./waitlist-schema";
+import { os } from "../orpc";
 
 export const waitlistRouter = {
-  join: publicProcedure.input(joinWaitlistInput).handler(async ({ context, input }) => {
+  join: os.waitlist.join.handler(async ({ context, input }) => {
     const [created] = await context.db
       .insert(waitlist)
       .values({

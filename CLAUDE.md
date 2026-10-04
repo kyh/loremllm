@@ -14,10 +14,15 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ### Structure
 
 - `apps/web` - Next.js app (main product)
-- `packages/api` - oRPC API with better-auth
+- `packages/contract` - oRPC contract: zod inputs and output types, shared by server and clients
+- `packages/service` - oRPC implementation of the contract + better-auth
 - `packages/db` - Drizzle ORM + Turso/libSQL
 - `packages/transport` - Published npm package (@loremllm/transport) for AI SDK chat transport
 - `packages/ui` - Shared React components (shadcn-based)
+
+### Contract-first API
+
+`@repo/contract` is the single source of truth: each feature has `<f>-schema.ts` (zod inputs) and `<f>-contract.ts` (built on `publicBase` / `protectedBase` / `organizationBase` from `base.ts`), registered in `src/index.ts`. Outputs are `type<T>()`: compile-time types (built from `@repo/db` row types where a handler returns rows), never validated at runtime. `@repo/service` implements it with `os = implement(contract)` — org-scoped: `const scoped = os.<f>.use(requireSession).use(requireActiveOrganization); export const <f>Router = { <proc>: scoped.<proc>.handler(...) }`; session-only: `os.<f>.use(requireSession)` (see `organization-router.ts`); public procedures implement `os.<f>.<proc>` directly (`interaction.query`, `waitlist.join`). Mount in `root-router.ts`; `os.router` fails to compile if a procedure is missing or mistyped. Implementer-level `.use` runs before input validation (anonymous → UNAUTHORIZED, no organization → FORBIDDEN); procedure-level `.use` runs after. `requireActiveOrganization` takes the organization from the session, never from input. Feature routers stay plain objects — `os.<f>.router()` re-applies implementer middleware, so it would run twice. Clients type against `ContractClient` / `RouterInputs` / `RouterOutputs` from `@repo/contract`; only server code (route handlers, RSC, scripts) imports `@repo/service`. Layout follows oRPC's Hybrid monorepo recipe.
 
 ### Tech Stack
 

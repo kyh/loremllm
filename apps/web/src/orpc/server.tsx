@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { headers } from "next/headers";
-import { appRouter, createORPCContext } from "@repo/api";
+import { appRouter, createORPCContext } from "@repo/service";
 import { createRouterClient } from "@orpc/server";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";

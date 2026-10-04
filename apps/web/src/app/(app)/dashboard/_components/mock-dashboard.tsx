@@ -27,7 +27,7 @@ import { toast } from "@repo/ui/components/sonner";
 import { cn } from "cn";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { RouterOutputs } from "@repo/api";
+import type { RouterOutputs } from "@repo/contract";
 import { orpc } from "@/orpc/react";
 import { CollectionSettings } from "./collection-settings";
 import { EndpointCard } from "./endpoint-card";

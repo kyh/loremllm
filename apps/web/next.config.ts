@@ -24,7 +24,13 @@ const getRemotePatterns = (): RemotePatterns => {
   return remotePatterns;
 };
 
-const transpilePackages = ["@loremllm/transport", "@repo/api", "@repo/db", "@repo/ui"];
+const transpilePackages = [
+  "@loremllm/transport",
+  "@repo/contract",
+  "@repo/db",
+  "@repo/service",
+  "@repo/ui",
+];
 
 const config: NextConfig = {
   // next dev rewrites AGENTS.md/CLAUDE.md when it detects an agent; we own those files
