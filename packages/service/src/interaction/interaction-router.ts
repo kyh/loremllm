@@ -149,9 +149,17 @@ export const interactionRouter = {
     }
 
     if (!collection.isPublic) {
-      const activeOrganizationId = context.session?.session.activeOrganizationId;
+      const { session } = context;
+      // The membership row is the authority, as in `requireActiveOrganization`: a
+      // member removed from the organization can still hold a session naming it.
+      const membership =
+        session?.session.activeOrganizationId === collection.organizationId
+          ? await context.db.query.member.findFirst({
+              where: { organizationId: collection.organizationId, userId: session.user.id },
+            })
+          : undefined;
 
-      if (activeOrganizationId !== collection.organizationId) {
+      if (!membership) {
         throw new ORPCError("FORBIDDEN", {
           message: "This collection is not public",
         });
