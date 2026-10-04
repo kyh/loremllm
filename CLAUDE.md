@@ -26,14 +26,14 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 
 ### Tech Stack
 
-- **Runtime**: Node >=24, pnpm 10.33.0
+- **Runtime**: Node 24.x, pnpm 12.3.4
 - **Framework**: Next.js, React
 - **API**: oRPC, Zod
 - **Auth**: better-auth
 - **DB**: Drizzle ORM, Turso/libSQL
 - **AI**: Vercel AI SDK (ai package)
 - **Styling**: Tailwind CSS v4
-- **Testing**: Vitest
+- **Testing**: node:test (`node --import tsx --test`)
 
 ## Commands
 
@@ -47,7 +47,7 @@ pnpm lint:fix         # oxlint --fix
 pnpm format           # oxfmt --check
 pnpm format:fix       # oxfmt --write
 pnpm typecheck        # TypeScript check
-pnpm test             # Run tests (packages/transport only)
+pnpm test             # Run tests (packages/transport, packages/service, apps/web)
 pnpm db:push          # Push DB schema locally
 pnpm db:seed          # Seed local DB -> dev@loremllm.local / password
 pnpm db:push-remote   # Push DB schema to production

@@ -51,7 +51,7 @@ Static gate (mirrors `.github/workflows/ci.yml` — run before every commit):
 pnpm verify     # typecheck · lint · format · test
 ```
 
-`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s no-key path, `slugify`, and which middleware runs before input validation) — nothing else has tests. A green `verify` says nothing about `apps/web` or the rest of `packages/service` behaviour; exercise those at runtime.
+`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s no-key path, `slugify`, which middleware runs before input validation, and the active-organization fallback) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
 **Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. `no-await-in-loop` is the one deliberate override. Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
 
@@ -106,7 +106,7 @@ If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next d
 | Surface                       | Command                            | Agent-verifiable at runtime?         |
 | ----------------------------- | ---------------------------------- | ------------------------------------ |
 | Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser |
-| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 84 node:test cases, no I/O |
+| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 86 node:test cases, no I/O |
 | Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed |
 
 There is no mobile, desktop, or extension target. Everything this repo ships can be checked headlessly.
