@@ -24,15 +24,15 @@ export type ContractClient = RouterContractClient<Contract>;
 /**
  * Inference helpers for input types
  * @example
- * type PostByIdInput = RouterInputs['post']['byId']
- *      ^? { id: number }
+ * type CollectionByIdInput = RouterInputs['collection']['byId']
+ *      ^? { collectionId: string }
  **/
 export type RouterInputs = InferContractRouterInputs<Contract>;
 
 /**
  * Inference helpers for output types
  * @example
- * type AllPostsOutput = RouterOutputs['post']['all']
- *      ^? Post[]
+ * type CollectionListOutput = RouterOutputs['collection']['list']
+ *      ^? CollectionSummary[]
  **/
 export type RouterOutputs = InferContractRouterOutputs<Contract>;

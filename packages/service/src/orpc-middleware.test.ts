@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { db } from "@repo/db/drizzle-client";
-import type { member } from "@repo/db/drizzle-schema-auth";
+import type { member, session as sessionTable } from "@repo/db/drizzle-schema-auth";
 import { createRouterClient } from "@orpc/server";
 
 import type { ORPCContext } from "./orpc";
@@ -76,6 +76,32 @@ describe("procedure middleware", () => {
 
     await assert.rejects(signedIn.collection.create({ name: "" }), { code: "FORBIDDEN" });
     assert.equal(findMember.mock.callCount(), 1);
+  });
+
+  test("falls back to the first membership and persists it as the active organization", async (t) => {
+    const findMember = t.mock.method(db.query.member, "findFirst", () =>
+      Promise.resolve(membership),
+    );
+    const persisted: Partial<typeof sessionTable.$inferInsert>[] = [];
+    const updateSession = t.mock.method(db, "update", () => ({
+      set: (values: Partial<typeof sessionTable.$inferInsert>) => {
+        persisted.push(values);
+        return { where: () => Promise.resolve() };
+      },
+    }));
+    const signedInWithoutOrganization = createRouterClient(appRouter, {
+      context: {
+        db,
+        session: { ...session, session: { ...session.session, activeOrganizationId: null } },
+      },
+    });
+
+    await assert.rejects(signedInWithoutOrganization.collection.create({ name: "" }), {
+      code: "BAD_REQUEST",
+    });
+    assert.deepEqual(findMember.mock.calls[0]?.arguments, [{ where: { userId: "user-1" } }]);
+    assert.equal(updateSession.mock.callCount(), 1);
+    assert.deepEqual(persisted, [{ activeOrganizationId: "org-1" }]);
   });
 
   test("rejects invalid input once the session and organization resolve", async (t) => {
