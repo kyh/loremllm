@@ -465,14 +465,15 @@ export class StaticChatTransport<
 
     const isAborted = () => aborted || abortSignal?.aborted === true;
 
+    const onAbort = () => {
+      aborted = true;
+    };
+
     const resolveDelay = (chunk: UIMessageChunk): Promise<number | undefined> =>
       resolveChunkDelay(this.chunkDelayMs, chunk);
 
     return new ReadableStream<UIMessageChunk>({
       start: async (controller) => {
-        const onAbort = () => {
-          aborted = true;
-        };
         if (abortSignal) {
           if (abortSignal.aborted) {
             aborted = true;

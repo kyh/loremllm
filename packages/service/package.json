@@ -21,7 +21,7 @@
     "@orpc/server": "catalog:",
     "@repo/contract": "workspace:^",
     "@repo/db": "workspace:^",
-    "ai": "^7.0.106",
+    "ai": "^7.0.127",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
@@ -30,7 +30,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "drizzle-orm": "1.0.0-rc.4",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "typescript": "catalog:"
   }
 }
