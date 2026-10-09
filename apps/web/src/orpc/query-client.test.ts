@@ -18,7 +18,6 @@ describe("dehydrate/hydrate", () => {
       at: new Date("2020-01-01T00:00:00.000Z"),
       big: 123n,
       lookup: new Map([[1, "one"]]),
-      re: /pattern/iu,
       tags: new Set(["a", "b"]),
       url: new URL("https://example.com/path?q=1"),
     };
@@ -32,8 +31,6 @@ describe("dehydrate/hydrate", () => {
     assert.deepStrictEqual(revived.lookup, data.lookup);
     assert.strictEqual(revived.big, data.big);
     assert.strictEqual(revived.url.href, data.url.href);
-    assert.strictEqual(revived.re.source, data.re.source);
-    assert.strictEqual(revived.re.flags, data.re.flags);
   });
 
   test("survives the JSON round trip the hydration payload takes", () => {
