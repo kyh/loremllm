@@ -2,7 +2,7 @@ import { RPCSerializer } from "@orpc/client";
 import { defaultShouldDehydrateQuery, QueryClient } from "@tanstack/react-query";
 
 // oRPC's own serializer, so dehydrated data round-trips every type the RPC
-// protocol supports (Date, Map, Set, BigInt, URL, RegExp) — plain JSON would
+// protocol supports (Date, Map, Set, BigInt, URL, NaN, Infinity) — plain JSON would
 // hand the client a string where the server had a Date.
 const serializer = new RPCSerializer();
 
