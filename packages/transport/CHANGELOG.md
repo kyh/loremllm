@@ -1,5 +1,12 @@
 # @loremllm/transport
 
+## 0.7.1 — 2026-10-10
+
+- fix(transport): realign static eve handler with eve 0.42 protocol
+- drop dead .d.ts builds; inline transport tsconfig
+- tests: vitest → node:test; lint: ultracite oxlint presets
+- dep updates
+
 ## 0.7.0 — 2026-07-09
 
 ### Minor Changes

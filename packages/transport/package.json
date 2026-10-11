@@ -1,6 +1,6 @@
 {
   "name": "@loremllm/transport",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "keywords": [
     "agent",
     "ai",
@@ -17,6 +17,12 @@
     "transport",
     "ui-message",
     "vercel-ai-sdk"
+  ],
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "exports": {
