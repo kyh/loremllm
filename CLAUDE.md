@@ -3,7 +3,7 @@
 ## Agent-driven development
 
 **Read [`AGENTS.md`](./AGENTS.md) first.** It is the runnable guide: provisioning from a
-fresh clone (no Docker), the seeded login and its headless cookie exchange, `pnpm verify`,
+fresh clone, the seeded login and its headless cookie exchange, `pnpm verify`,
 an agent-browser recipe, offline GitHub OAuth, and which surfaces can be verified
 headlessly. This file only adds Claude-specific conventions on top.
 
