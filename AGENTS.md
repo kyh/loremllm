@@ -15,7 +15,7 @@ pnpm db:seed                    # dev account + a Demo collection
 pnpm dev:web                    # http://localhost:3000
 ```
 
-**No Docker** — but you do need the `turso` CLI on PATH, and it is not a package dependency. Install it first (`brew install tursodatabase/tap/turso`, or `curl -sSfL https://get.tur.so/install.sh | bash`); without it step 2 fails with `command not found: turso`. Given that binary, `turso dev` just writes a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. There is no bootstrap script; the five commands above _are_ the provisioning.
+You need the `turso` CLI on PATH, and it is not a package dependency. Install it first (`brew install tursodatabase/tap/turso`, or `curl -sSfL https://get.tur.so/install.sh | bash`); without it step 2 fails with `command not found: turso`. Given that binary, `turso dev` just writes a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. There is no bootstrap script; the five commands above _are_ the provisioning.
 
 `.env.example` copies cleanly as-is. Three notes on it:
 
