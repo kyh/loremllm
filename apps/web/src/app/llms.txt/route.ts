@@ -1,8 +1,6 @@
 import { MARKDOWN_CONTENT_TYPE } from "@/lib/agent/accept";
 import { renderLlmsTxt } from "@/lib/agent/llms-txt";
 
-export const dynamic = "force-static";
-
 export const GET = () =>
   new Response(renderLlmsTxt(), {
     headers: {

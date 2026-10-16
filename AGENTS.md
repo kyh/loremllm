@@ -117,6 +117,7 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - **Every `useMutation` declares its own `onSuccess` invalidation.** There is no global `MutationCache` net (`apps/web/src/orpc/query-client.ts`), so a mutation added without one leaves stale UI. Invalidate the router key you affected (`orpc.collection.key()` — a partial-match prefix covering every `collection.*` query) unless you can name the single procedure that moved; an interaction write also bumps its collection's `updatedAt`, and the sidebar is ordered by it.
 - **No `any`, no non-null `!`, no `as` casts.** Kebab-case filenames. Make illegal states unrepresentable.
 - **Org scoping lives in `requireActiveOrganization`** (the session's active organization), not in input schemas — don't re-declare it as procedure input.
+- **`cacheComponents` and `partialPrefetching` are on** (`apps/web/next.config.ts`): a `<Link>` prefetches its route's static App Shell. Request data (the session, `searchParams`, `connection()`) is read only inside `<Suspense>` — `(app)/layout.tsx` checks the session there, so an anonymous `/dashboard` gets a streamed redirect (200 + client redirect to `/auth/login`), not a 307. No route segment config (`dynamic`, `revalidate`); cache static output with `"use cache"`.
 - Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
 
 ## Map
