@@ -29,9 +29,14 @@ const RequireSession = async (props: LayoutProps) => {
 const Account = async () => {
   const session = await getSession();
 
+  // RequireSession redirects in its own boundary; until then, no account chrome.
+  if (!session) {
+    return null;
+  }
+
   return (
     <>
-      <span className="text-muted-foreground hidden text-xs sm:inline">{session?.user.email}</span>
+      <span className="text-muted-foreground hidden text-xs sm:inline">{session.user.email}</span>
       <SignOutButton />
     </>
   );
