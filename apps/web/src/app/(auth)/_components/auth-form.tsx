@@ -26,9 +26,10 @@ type AuthFormProps = {
   type: "login" | "register";
   /**
    * Resolved server-side (see next-path.ts) and passed in, so the form has no
-   * `useSearchParams` hook and renders in a single pass — no Suspense boundary,
-   * and therefore no hydration gap where the Github button is missing from the
-   * server-rendered DOM.
+   * `useSearchParams` hook and renders in a single pass — no client-side
+   * Suspense boundary, and therefore no hydration gap where the Github button is
+   * missing from the server-rendered DOM. (The page's own Suspense around the
+   * searchParams read is filled in the same server response.)
    */
   nextPath: string;
 } & React.HTMLAttributes<HTMLDivElement>;

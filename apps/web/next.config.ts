@@ -35,10 +35,13 @@ const transpilePackages = [
 const config: NextConfig = {
   // next dev rewrites AGENTS.md/CLAUDE.md when it detects an agent; we own those files
   agentRules: false,
+  // Cache Components + Partial Prefetching: a <Link> prefetches the route's static App Shell only
+  cacheComponents: true,
   images: {
     remotePatterns: getRemotePatterns(),
   },
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  partialPrefetching: true,
   reactStrictMode: true,
   transpilePackages,
 };

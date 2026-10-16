@@ -15,8 +15,6 @@ import { createDbEveSessionStore } from "../../eve-session-store";
  * the catch-all segment receives and @loremllm/transport/eve serves.
  */
 
-export const dynamic = "force-dynamic";
-
 interface RouteContext {
   params: Promise<{ collectionId: string }>;
 }
