@@ -1,3 +1,4 @@
+import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse } from "next/server";
 
 import { negotiateMediaType, notAcceptableBody, withVaryAccept } from "@/lib/agent/accept";
@@ -41,8 +42,40 @@ const isFlightRequest = (request: NextRequest) =>
   (request.headers.get("accept") ?? "").toLowerCase().includes(RSC_MEDIA_TYPE) ||
   request.headers.has("next-action");
 
+/** Routes under `(app)/`, which the layout gates on a session. */
+const PROTECTED_PREFIX = "/dashboard";
+
+const isProtected = (pathname: string) =>
+  pathname === PROTECTED_PREFIX || pathname.startsWith(`${PROTECTED_PREFIX}/`);
+
+/**
+ * Optimistic: only checks a session cookie is present, so an anonymous visit
+ * gets a server-side 307 before the page streams. The layout's `getSession`
+ * stays the real gate (an expired or forged cookie passes here).
+ */
+const loginRedirect = (request: NextRequest) => {
+  const url = request.nextUrl.clone();
+  url.pathname = "/auth/login";
+  url.search = `?next=${encodeURIComponent(`${request.nextUrl.pathname}${request.nextUrl.search}`)}`;
+  return NextResponse.redirect(url);
+};
+
+const mentionsMarkdown = (request: NextRequest) =>
+  (request.headers.get("accept") ?? "").toLowerCase().includes("markdown");
+
 export const proxy = (request: NextRequest) => {
   const { pathname } = request.nextUrl;
+
+  if (isProtected(pathname)) {
+    if (!getSessionCookie(request)) {
+      return loginRedirect(request);
+    }
+    // Matched for the session check alone: skip negotiation unless the request
+    // would have reached the proxy anyway (an Accept naming markdown).
+    if (!mentionsMarkdown(request)) {
+      return NextResponse.next();
+    }
+  }
 
   if (isFlightRequest(request)) {
     return applyVary(NextResponse.next());
@@ -81,8 +114,8 @@ export const proxy = (request: NextRequest) => {
 
 /**
  * Only a request that can negotiate to Markdown invokes the proxy: a `.md` URL,
- * or an `Accept` that names markdown. Plain HTML views never pay for an
- * invocation; an `Accept` naming neither representation gets HTML, which
+ * or an `Accept` that names markdown — plus every request under `/dashboard`,
+ * for the session-cookie check. Other HTML views never pay for an invocation; an `Accept` naming neither representation gets HTML, which
  * RFC 9110 §12.5.1 allows.
  *
  * Next compiles a `has` value to an anchored, case-sensitive RegExp, and Vercel
@@ -91,6 +124,7 @@ export const proxy = (request: NextRequest) => {
  */
 export const config = {
   matcher: [
+    { source: "/dashboard/:path*" },
     { source: "/((?!api/|_next/|_vercel/|favicon/|profile/).*\\.md)" },
     {
       has: [{ key: "accept", type: "header", value: ".*[Mm][Aa][Rr][Kk][Dd][Oo][Ww][Nn].*" }],
