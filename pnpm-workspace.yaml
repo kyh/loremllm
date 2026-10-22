@@ -6,10 +6,10 @@ catalog:
   "@base-ui/react": ^1.8.0
   "@better-auth/cli": ^1.4.21
   "@kyh/tsconfig": ^1.2.0
-  "@orpc/client": 2.0.0-beta.42
-  "@orpc/contract": 2.0.0-beta.42
-  "@orpc/server": 2.0.0-beta.42
-  "@orpc/tanstack-query": 2.0.0-beta.42
+  "@orpc/client": 2.0.0-beta.45
+  "@orpc/contract": 2.0.0-beta.45
+  "@orpc/server": 2.0.0-beta.45
+  "@orpc/tanstack-query": 2.0.0-beta.45
   "@tailwindcss/postcss": ^4.3.3
   "@tailwindcss/vite": ^4.2.2
   "@tanstack/react-form": ^1.33.5
@@ -35,3 +35,12 @@ allowBuilds:
   "@tailwindcss/oxide": true
   esbuild: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - "@orpc/client@2.0.0-beta.45"
+  - "@orpc/contract@2.0.0-beta.45"
+  - "@orpc/json-schema@2.0.0-beta.45"
+  - "@orpc/openapi@2.0.0-beta.45"
+  - "@orpc/server@2.0.0-beta.45"
+  - "@orpc/shared@2.0.0-beta.45"
+  - "@orpc/tanstack-query@2.0.0-beta.45"
