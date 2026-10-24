@@ -60,7 +60,11 @@ const DemoItem = ({ demo, index, setHoverTextRef, createMouseHandlers }: DemoIte
       onOpenChange={(open, details) => {
         if (open) {
           openDemo(demo);
-        } else if (!isPressInsidePanel(details)) {
+        } else if (isPressInsidePanel(details)) {
+          // Not just skipping closeDemo: without cancel() Base UI still commits the close
+          // internally (its own open state, the dismiss and focus-return effects).
+          details.cancel();
+        } else {
           closeDemo();
         }
       }}
