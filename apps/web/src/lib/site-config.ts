@@ -30,17 +30,17 @@ export const ogImage = {
 };
 
 /**
- * The home page's og:video: a pared-down chat panel (`scripts/og-video/scene.html`,
- * not part of the app) where a prompt is typed, a reasoning part streams and
- * collapses and a mocked answer streams in, then the wordmark. Recorded frame by
- * frame by `scripts/og-video.ts` (`pnpm -F @loremllm/web og:video`); after a
- * re-record, update `uploadDate` (and `duration` if the scene's length changed).
+ * The home page's og:video: the ASCII wordmark scrambling into place, the tagline
+ * typing on, a hold, then a scramble back out (`scripts/og-video/scene.html`, not
+ * part of the app). Recorded frame by frame by `scripts/og-video.ts`
+ * (`pnpm -F @loremllm/web og:video`); after a re-record, update `uploadDate` (and
+ * `duration` if the scene's length changed).
  */
 export const ogVideo = {
-  description: `A prompt is typed into a ${siteConfig.name} chat, a reasoning part streams and collapses, and a mocked answer streams in token by token.`,
-  duration: "PT10S",
+  description: `The ${siteConfig.name} ASCII wordmark scrambles into place and the tagline "${siteConfig.description}" types on beneath it.`,
+  duration: "PT7S",
   height: 630,
-  name: `${siteConfig.name}: a mocked chat, streamed`,
+  name: `${siteConfig.name} wordmark`,
   poster: `${url}/og/og-poster.jpg`,
   type: "video/mp4",
   uploadDate: "2026-10-24",

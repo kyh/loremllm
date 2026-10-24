@@ -1,7 +1,7 @@
 /**
- * Records the og:video from `scripts/og-video/scene.html`: a pared-down LoremLLM
- * chat panel where a prompt is typed, a reasoning part streams and collapses and
- * a mocked answer streams in token by token, then the wordmark, looping.
+ * Records the og:video from `scripts/og-video/scene.html`: the LoremLLM ASCII
+ * wordmark scrambling into place behind a cursor, the tagline typing on, a hold,
+ * then everything scrambling back out to the empty frame, looping.
  *
  *   pnpm -F @loremllm/web og:video
  *
@@ -24,8 +24,8 @@ import { z } from "zod";
 const WIDTH = 1200;
 const HEIGHT = 630;
 const FPS = 30;
-/** The finished answer, before the wordmark: the poster frame. */
-const POSTER_SECONDS = 6.3;
+/** The wordmark and tagline in full, mid-hold: the poster frame. */
+const POSTER_SECONDS = 4;
 
 const scene = pathToFileURL(path.resolve(import.meta.dirname, "og-video/scene.html")).href;
 const outDir = path.resolve(import.meta.dirname, "../public/og");

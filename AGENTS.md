@@ -129,5 +129,5 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - `packages/contract/src` — the API contract: inputs, output types, procedure bases · `packages/service/src/orpc.ts` — its implementer, session and org-resolution middleware
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors) · `drizzle-relations.ts` — the `db.query` graph over the app and auth schemas
 - `packages/service/scripts/seed.ts` — the seed · `packages/service/scripts/interactions/` — its markdown fixtures
-- `apps/web/scripts/og-video.ts` — records the home page's og:video from `scripts/og-video/scene.html` (a built scene, not the running app) into `apps/web/public/og/`; run by hand with `pnpm -F @loremllm/web og:video`, never by `verify` or the build
+- `apps/web/scripts/og-video.ts` — records the home page's og:video from `scripts/og-video/scene.html` (the ASCII wordmark scrambling into place: a built scene, not the running app) into `apps/web/public/og/`; run by hand with `pnpm -F @loremllm/web og:video`, never by `verify` or the build
 - `docs/` — design notes · `.github/workflows/ci.yml` — the gate `pnpm verify` mirrors, plus `pnpm build`
