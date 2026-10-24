@@ -151,6 +151,7 @@ export const DraggablePanel = ({
     <LazyMotion features={domAnimation} strict>
       <m.div
         ref={panelRef}
+        data-draggable-panel=""
         initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         className={cn(

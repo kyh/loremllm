@@ -68,6 +68,8 @@ export interface ProsePage {
   description: string;
   /** `<priority>` in sitemap.xml. Omitted for pages the sitemap leaves out. */
   sitemapPriority?: number;
+  /** Set for reference docs, which are described as a `TechArticle` rather than a plain `WebPage`. */
+  structuredDataType?: "TechArticle";
   blocks: ProseBlock[];
 }
 
@@ -177,6 +179,7 @@ const { messages, sendMessage } = useChat({ transport });`,
   heading: `${siteConfig.name} developer docs`,
   path: "/docs",
   sitemapPriority: 0.9,
+  structuredDataType: "TechArticle",
   title: "Docs",
 };
 

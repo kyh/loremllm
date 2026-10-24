@@ -1,6 +1,7 @@
-import { siteConfig } from "@/lib/site-config";
+import { ogVideo, siteConfig } from "@/lib/site-config";
 
 import { absoluteUrl } from "./markdown";
+import { prosePageImagePath } from "./page-metadata";
 import { siteSummary } from "./site-overview";
 
 import type { ProsePage } from "./site-pages";
@@ -25,6 +26,8 @@ export interface JsonLdNode {
 const ORGANIZATION_ID = `${siteConfig.url}/#organization`;
 const WEBSITE_ID = `${siteConfig.url}/#website`;
 const APPLICATION_ID = `${siteConfig.url}/#application`;
+const VIDEO_ID = `${siteConfig.url}/#video`;
+const TRANSPORT_ID = `${siteConfig.url}/docs#transport`;
 
 /**
  * `Organization` is the identity every other node points back at. There is
@@ -110,10 +113,44 @@ export const buildSoftwareApplication = () =>
     url: siteConfig.url,
   }) satisfies JsonLdNode;
 
+/** The home page's og:video, a capture of the real chat demo (`scripts/og-video.ts`). */
+export const buildVideoObject = () =>
+  ({
+    "@id": VIDEO_ID,
+    "@type": "VideoObject",
+    contentUrl: ogVideo.url,
+    description: ogVideo.description,
+    duration: ogVideo.duration,
+    height: ogVideo.height,
+    name: ogVideo.name,
+    publisher: { "@id": ORGANIZATION_ID },
+    thumbnailUrl: ogVideo.poster,
+    uploadDate: ogVideo.uploadDate,
+    url: ogVideo.url,
+    width: ogVideo.width,
+  }) satisfies JsonLdNode;
+
 export const buildHomeGraph = () =>
   ({
     "@context": "https://schema.org",
-    "@graph": [buildOrganization(), buildWebSite(), buildSoftwareApplication()],
+    "@graph": [
+      buildOrganization(),
+      buildWebSite(),
+      { ...buildSoftwareApplication(), subjectOf: { "@id": VIDEO_ID } },
+      buildVideoObject(),
+    ],
+  }) satisfies JsonLdNode;
+
+const prosePageImageUrl = (page: ProsePage) => absoluteUrl(prosePageImagePath(page));
+
+export const buildBreadcrumbList = (page: ProsePage) =>
+  ({
+    "@id": `${absoluteUrl(page.path)}#breadcrumb`,
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", item: absoluteUrl("/"), name: siteConfig.name, position: 1 },
+      { "@type": "ListItem", item: absoluteUrl(page.path), name: page.title, position: 2 },
+    ],
   }) satisfies JsonLdNode;
 
 export const buildWebPage = (page: ProsePage) =>
@@ -121,18 +158,67 @@ export const buildWebPage = (page: ProsePage) =>
     "@id": `${absoluteUrl(page.path)}#webpage`,
     "@type": "WebPage",
     about: { "@id": APPLICATION_ID },
+    breadcrumb: { "@id": `${absoluteUrl(page.path)}#breadcrumb` },
     description: page.description,
     headline: page.heading,
     inLanguage: "en-US",
     isPartOf: { "@id": WEBSITE_ID },
     name: page.title,
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      height: 630,
+      url: prosePageImageUrl(page),
+      width: 1200,
+    },
+    url: absoluteUrl(page.path),
+  }) satisfies JsonLdNode;
+
+/** `@loremllm/transport`, the npm package the docs document. It has no page of its own. */
+export const buildTransportSourceCode = () =>
+  ({
+    "@id": TRANSPORT_ID,
+    "@type": "SoftwareSourceCode",
+    codeRepository: `${siteConfig.repository}/tree/main/packages/transport`,
+    description:
+      "A Vercel AI SDK chat transport that streams mocked responses in the browser, with no server.",
+    isPartOf: { "@id": APPLICATION_ID },
+    license: "https://opensource.org/licenses/MIT",
+    name: "@loremllm/transport",
+    programmingLanguage: "TypeScript",
+    publisher: { "@id": ORGANIZATION_ID },
+    runtimePlatform: "JavaScript",
+    url: siteConfig.npmPackage,
+  }) satisfies JsonLdNode;
+
+export const buildTechArticle = (page: ProsePage) =>
+  ({
+    "@id": `${absoluteUrl(page.path)}#article`,
+    "@type": "TechArticle",
+    about: [{ "@id": APPLICATION_ID }, { "@id": TRANSPORT_ID }],
+    author: { "@id": ORGANIZATION_ID },
+    description: page.description,
+    headline: page.heading,
+    image: prosePageImageUrl(page),
+    inLanguage: "en-US",
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntityOfPage: { "@id": `${absoluteUrl(page.path)}#webpage` },
+    name: page.title,
+    proficiencyLevel: "Beginner",
+    publisher: { "@id": ORGANIZATION_ID },
     url: absoluteUrl(page.path),
   }) satisfies JsonLdNode;
 
 export const buildProsePageGraph = (page: ProsePage) =>
   ({
     "@context": "https://schema.org",
-    "@graph": [buildOrganization(), buildWebPage(page)],
+    "@graph": [
+      buildOrganization(),
+      buildWebPage(page),
+      buildBreadcrumbList(page),
+      ...(page.structuredDataType === "TechArticle"
+        ? [buildTechArticle(page), buildTransportSourceCode()]
+        : []),
+    ],
   }) satisfies JsonLdNode;
 
 /**

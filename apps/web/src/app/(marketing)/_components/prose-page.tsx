@@ -5,7 +5,12 @@ import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { ProseLink } from "@/components/prose-link";
 import { parseInlineMarks } from "@/lib/agent/inline-marks";
-import { canonicalAlternates, pageOpenGraph, pageTwitter } from "@/lib/agent/page-metadata";
+import {
+  canonicalAlternates,
+  pageOpenGraph,
+  pageTwitter,
+  prosePageImage,
+} from "@/lib/agent/page-metadata";
 import { headingId } from "@/lib/agent/site-pages";
 import { buildProsePageGraph } from "@/lib/agent/structured-data";
 
@@ -24,9 +29,12 @@ import { SiteFooter } from "./site-footer";
 export const prosePageMetadata = (page: ProsePage): Metadata => ({
   alternates: canonicalAlternates(page.path),
   description: page.description,
-  openGraph: pageOpenGraph(page.path, page.title, page.description),
+  openGraph: {
+    ...pageOpenGraph(page.path, page.title, page.description, prosePageImage(page)),
+    type: page.structuredDataType === "TechArticle" ? "article" : "website",
+  },
   title: page.title,
-  twitter: pageTwitter(page.title, page.description),
+  twitter: pageTwitter(page.title, page.description, prosePageImage(page)),
 });
 
 const linkClassName = "underline underline-offset-4";
