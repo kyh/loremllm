@@ -21,6 +21,12 @@ describe("buildSitemapEntries", () => {
     }
   });
 
+  test("leaves out the noindex auth forms and dashboard", () => {
+    for (const url of urls) {
+      assert.ok(!url.includes("/auth/") && !url.includes("/dashboard"), url);
+    }
+  });
+
   test("has no duplicate URLs", () => {
     assert.equal(new Set(urls).size, urls.length);
   });
