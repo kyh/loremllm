@@ -30,15 +30,17 @@ export const ogImage = {
 };
 
 /**
- * The home page's og:video: the real chat demo streaming a reply, recorded by
- * `scripts/og-video.ts` (`pnpm -F @loremllm/web og:video`). Re-record after a
- * visible change to the demo, then update `uploadDate` and `duration`.
+ * The home page's og:video: a pared-down chat panel (`scripts/og-video/scene.html`,
+ * not part of the app) where a prompt is typed, a reasoning part streams and
+ * collapses and a mocked answer streams in, then the wordmark. Recorded frame by
+ * frame by `scripts/og-video.ts` (`pnpm -F @loremllm/web og:video`); after a
+ * re-record, update `uploadDate` (and `duration` if the scene's length changed).
  */
 export const ogVideo = {
-  description: `A reply streaming into the ${siteConfig.name} chat demo, token by token, from a mocked transport.`,
+  description: `A prompt is typed into a ${siteConfig.name} chat, a reasoning part streams and collapses, and a mocked answer streams in token by token.`,
   duration: "PT10S",
   height: 630,
-  name: `${siteConfig.name} chat demo`,
+  name: `${siteConfig.name}: a mocked chat, streamed`,
   poster: `${url}/og/og-poster.jpg`,
   type: "video/mp4",
   uploadDate: "2026-10-24",

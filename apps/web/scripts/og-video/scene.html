@@ -1,0 +1,355 @@
+<!doctype html>
+<!--
+  The og:video scene: a pared-down LoremLLM chat panel (the home page's
+  "Reasoning Stream" demo) in the dark theme. Not routed by the app; only
+  scripts/og-video.ts opens it, steps window.renderAt(t) one frame at a time
+  and screenshots each. Every frame is a pure function of t, so a recording
+  is deterministic, and t = 0 and t = DURATION draw the same frame (it loops).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LoremLLM og:video scene</title>
+    <style>
+      @font-face {
+        font-family: "Geist Mono";
+        font-weight: 400;
+        src: url("../../node_modules/geist/dist/fonts/geist-mono/GeistMono-Regular.woff2")
+          format("woff2");
+      }
+      @font-face {
+        font-family: "Geist Mono";
+        font-weight: 600;
+        src: url("../../node_modules/geist/dist/fonts/geist-mono/GeistMono-SemiBold.woff2")
+          format("woff2");
+      }
+
+      /* The dark theme's tokens (packages/ui and apps/web globals.css), as sRGB. */
+      :root {
+        --background: #09090b;
+        --foreground: #fafafa;
+        --muted: #27272a;
+        --muted-foreground: #a1a1aa;
+        --border: rgba(255, 255, 255, 0.1);
+        --heading: #5b6b85;
+        --popover: #18181b;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      html,
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: "Geist Mono", monospace;
+        height: 630px;
+        overflow: hidden;
+        width: 1200px;
+      }
+
+      /* The site's scanline pattern (body::after in apps/web globals.css). */
+      body::after {
+        background-image: repeating-linear-gradient(
+          transparent,
+          transparent 2px,
+          rgba(255, 255, 255, 0.05) 3px
+        );
+        content: "";
+        inset: 0;
+        pointer-events: none;
+        position: fixed;
+      }
+
+      .panel {
+        background: var(--popover);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        height: 530px;
+        left: 120px;
+        position: absolute;
+        top: 50px;
+        transform-origin: 50% 50%;
+        width: 960px;
+      }
+
+      .panel-header {
+        align-items: center;
+        background: rgba(39, 39, 42, 0.5);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        font-size: 20px;
+        font-weight: 600;
+        height: 56px;
+        justify-content: space-between;
+        padding: 0 24px;
+      }
+
+      .panel-header span:last-child {
+        color: var(--muted-foreground);
+        font-weight: 400;
+      }
+
+      .conversation {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 22px;
+        overflow: hidden;
+        padding: 30px 36px 0;
+      }
+
+      .user {
+        align-self: flex-end;
+        background: var(--muted);
+        font-size: 26px;
+        line-height: 1.35;
+        max-width: 640px;
+        padding: 16px 22px;
+        transform-origin: 100% 100%;
+      }
+
+      .reasoning {
+        color: var(--muted-foreground);
+        overflow: hidden;
+      }
+
+      .reasoning-trigger {
+        align-items: center;
+        display: flex;
+        font-size: 22px;
+        gap: 12px;
+        height: 32px;
+      }
+
+      .reasoning-trigger .chevron {
+        display: inline-block;
+        font-size: 18px;
+      }
+
+      .reasoning-content {
+        border-left: 2px solid var(--muted);
+        font-size: 21px;
+        line-height: 1.45;
+        margin-top: 12px;
+        padding-left: 18px;
+        white-space: pre-wrap;
+      }
+
+      .answer {
+        font-size: 28px;
+        line-height: 1.4;
+        min-height: 80px;
+      }
+
+      .caret {
+        background: var(--foreground);
+        display: inline-block;
+        height: 1.05em;
+        margin-left: 2px;
+        vertical-align: -0.15em;
+        width: 0.55em;
+      }
+
+      .prompt {
+        align-items: flex-start;
+        border-top: 1px solid var(--border);
+        display: flex;
+        font-size: 24px;
+        height: 96px;
+        justify-content: space-between;
+        padding: 28px 24px 0 28px;
+      }
+
+      .prompt .placeholder {
+        color: var(--muted-foreground);
+      }
+
+      .submit {
+        align-items: center;
+        background: var(--foreground);
+        color: var(--background);
+        display: flex;
+        font-size: 24px;
+        height: 44px;
+        justify-content: center;
+        margin-top: -6px;
+        width: 44px;
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: 34px;
+        inset: 0;
+        justify-content: center;
+        position: absolute;
+      }
+
+      .wordmark {
+        font-size: 28px;
+        line-height: 1.2;
+        white-space: pre;
+      }
+
+      .tagline {
+        color: var(--muted-foreground);
+        font-size: 30px;
+      }
+
+      .tagline b {
+        color: var(--heading);
+        font-weight: 400;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel" id="panel">
+      <div class="panel-header">
+        <span>[AI SDK Transport] Reasoning Stream</span>
+        <span>StaticChatTransport</span>
+      </div>
+      <div class="conversation">
+        <div class="user" id="user"></div>
+        <div class="reasoning" id="reasoning">
+          <div class="reasoning-trigger">
+            <span>◎</span><span id="reasoning-label"></span
+            ><span class="chevron" id="chevron">⌃</span>
+          </div>
+          <div class="reasoning-content" id="reasoning-content"></div>
+        </div>
+        <div class="answer" id="answer"></div>
+      </div>
+      <div class="prompt">
+        <span id="prompt"></span>
+        <span class="submit" id="submit">↵</span>
+      </div>
+    </div>
+
+    <div class="brand" id="brand">
+      <!-- The ASCII art of @repo/ui/components/logo, filled in by the script. -->
+      <div class="wordmark" id="wordmark"></div>
+      <div class="tagline">Mock responses for LLMs <b>· loremllm.com</b></div>
+    </div>
+
+    <script>
+      const DURATION = 10;
+      const PROMPT = "How do I mock a streaming LLM response?";
+      const REASONING = `Let me think about "${PROMPT}"...\n\nI need to provide a helpful response.`;
+      const ANSWER =
+        "Give useChat a StaticChatTransport and script the reply. It streams in token by token: no model, no API key.";
+      const WORDMARK = [
+        "    __                              __    __    __  ___",
+        "   / /   ____  ________  ____ ___  / /   / /   /  |/  /",
+        "  / /   / __ \\/ ___/ _ \\/ __ `__ \\/ /   / /   / /|_/ / ",
+        " / /___/ /_/ / /  /  __/ / / / / / /___/ /___/ /  / /  ",
+        "/_____/\\____/_/   \\___/_/ /_/ /_/_____/_____/_/  /_/",
+      ].join("\n");
+
+      // Beats, in seconds.
+      const TYPE_START = 0.35;
+      const TYPE_END = 1.75;
+      const SEND = 1.9;
+      const REASON_START = 2.3;
+      const REASON_END = 3.4;
+      const COLLAPSE = 3.55;
+      const ANSWER_START = 3.95;
+      const ANSWER_END = 5.9;
+      const BRAND_IN = 6.6;
+      const BRAND_OUT = 9.3;
+
+      const $ = (id) => document.getElementById(id);
+      const clamp = (value) => Math.min(1, Math.max(0, value));
+      const progress = (t, start, length) => clamp((t - start) / length);
+      /** A critically-underdamped spring from 0 to 1: a quick rise, a small overshoot, a hold. */
+      const spring = (p) => (p >= 1 ? 1 : 1 - Math.exp(-6.5 * p) * Math.cos(7.5 * p));
+      const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2);
+
+      /** Words keep their trailing space, so a token is what a stream chunk carries. */
+      const tokens = (text) => text.match(/\S+\s*|\s+/gu) ?? [];
+      const streamed = (text, t, start, end) => {
+        const all = tokens(text);
+        const count = Math.floor(all.length * progress(t, start, end - start));
+        return all.slice(0, count).join("");
+      };
+
+      const caret = '<span class="caret"></span>';
+      const escape = (text) =>
+        text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+      $("wordmark").textContent = WORDMARK;
+
+      window.DURATION = DURATION;
+      window.renderAt = (time) => {
+        const t = ((time % DURATION) + DURATION) % DURATION;
+
+        // The prompt: typed character by character, then cleared on send.
+        const typed = PROMPT.slice(
+          0,
+          Math.round(PROMPT.length * progress(t, TYPE_START, TYPE_END - TYPE_START)),
+        );
+        const blink = Math.floor(t * 2.2) % 2 === 0;
+        if (t < SEND) {
+          $("prompt").innerHTML = typed
+            ? `${escape(typed)}${caret}`
+            : `${blink ? caret : ""}<span class="placeholder">Type your message...</span>`;
+        } else {
+          $("prompt").innerHTML = '<span class="placeholder">Type your message...</span>';
+        }
+        $("submit").style.opacity = t < SEND && typed.length < PROMPT.length ? "0.35" : "1";
+
+        // The user's message springs up from the input.
+        const sent = spring(progress(t, SEND, 0.55));
+        $("user").textContent = PROMPT;
+        $("user").style.opacity = String(clamp(sent * 1.4));
+        $("user").style.transform = `translateY(${(1 - sent) * 40}px) scale(${0.94 + 0.06 * sent})`;
+
+        // The reasoning part streams, then collapses to its trigger.
+        const reasoningShown = progress(t, REASON_START - 0.15, 0.25);
+        const reasoningText = streamed(REASONING, t, REASON_START, REASON_END);
+        const thinking = t < COLLAPSE;
+        $("reasoning").style.opacity = String(reasoningShown);
+        $("reasoning-label").textContent = thinking ? "Thinking..." : "Thought for a few seconds";
+        $("reasoning-content").innerHTML =
+          `${escape(reasoningText)}${thinking && t >= REASON_START ? caret : ""}`;
+        const collapse = spring(progress(t, COLLAPSE, 0.5));
+        const content = $("reasoning-content");
+        content.style.height = `${(1 - collapse) * 108}px`;
+        content.style.marginTop = `${(1 - collapse) * 12}px`;
+        content.style.opacity = String(1 - clamp(collapse * 1.6));
+        $("chevron").style.transform = `rotate(${collapse * 180}deg)`;
+
+        // The answer streams in token by token.
+        const answerText = streamed(ANSWER, t, ANSWER_START, ANSWER_END);
+        const answering = t >= ANSWER_START && t < ANSWER_END + 0.4;
+        $("answer").innerHTML = `${escape(answerText)}${answering && blink ? caret : ""}`;
+
+        // Panel out, then wordmark in; later wordmark out, then the empty panel back in.
+        // One move at a time: neither fades in while the other is still on screen.
+        const panelOut = easeInOut(progress(t, BRAND_IN, 0.35));
+        const brandIn = progress(t, BRAND_IN + 0.3, 0.6);
+        const brandOut = easeInOut(progress(t, BRAND_OUT, 0.3));
+        const panelIn = progress(t, BRAND_OUT + 0.25, 0.45);
+        const panel = $("panel");
+        if (t < BRAND_OUT) {
+          panel.style.opacity = String(1 - panelOut);
+          panel.style.transform = `scale(${1 - 0.04 * panelOut})`;
+        } else {
+          // Reset to the first frame's state underneath, so the loop closes on it.
+          window.renderAt(0);
+          panel.style.opacity = String(easeInOut(panelIn));
+          panel.style.transform = `scale(${0.96 + 0.04 * spring(panelIn)})`;
+        }
+        const brandEl = $("brand");
+        brandEl.style.opacity = String(clamp(spring(brandIn) * 1.2) * (1 - brandOut));
+        brandEl.style.transform = `scale(${0.92 + 0.08 * spring(brandIn)}) translateY(${brandOut * -12}px)`;
+      };
+
+      window.renderAt(0);
+    </script>
+  </body>
+</html>
