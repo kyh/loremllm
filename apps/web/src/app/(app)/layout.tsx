@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@repo/ui/components/logo";
@@ -6,6 +7,12 @@ import { Spinner } from "@repo/ui/components/spinner";
 
 import { getSession } from "@/lib/auth-server";
 import { SignOutButton } from "./_components/sign-out-button";
+
+/** Signed-in app surfaces: never indexed. */
+export const metadata: Metadata = {
+  robots: { follow: false, index: false },
+  title: "Dashboard",
+};
 
 interface LayoutProps {
   children: React.ReactNode;

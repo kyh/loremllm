@@ -17,6 +17,20 @@ interface DemoListProps {
   className?: string;
 }
 
+type DialogChangeDetails = Parameters<
+  NonNullable<React.ComponentProps<typeof Dialog>["onOpenChange"]>
+>[1];
+
+/**
+ * The panel is portaled outside the Dialog's (absent) popup, so Base UI reads a
+ * press inside it — focusing the prompt, say — as an outside press and would
+ * close the demo the visitor is typing into.
+ */
+const isPressInsidePanel = (details: DialogChangeDetails) =>
+  details.reason === "outside-press" &&
+  details.event.target instanceof Element &&
+  details.event.target.closest("[data-draggable-panel]") !== null;
+
 const formatCounter = (index: number) => (index + 1).toString().padStart(2, "0");
 
 interface DemoItemProps {
@@ -41,7 +55,20 @@ const DemoItem = ({ demo, index, setHoverTextRef, createMouseHandlers }: DemoIte
   const isOpen = currentDemo?.id === demo.id;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => (open ? openDemo(demo) : closeDemo())}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open, details) => {
+        if (open) {
+          openDemo(demo);
+        } else if (isPressInsidePanel(details)) {
+          // Not just skipping closeDemo: without cancel() Base UI still commits the close
+          // internally (its own open state, the dismiss and focus-return effects).
+          details.cancel();
+        } else {
+          closeDemo();
+        }
+      }}
+    >
       <DialogTrigger
         nativeButton={false}
         render={

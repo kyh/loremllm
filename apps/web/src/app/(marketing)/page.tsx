@@ -1,7 +1,12 @@
 import { Logo } from "@repo/ui/components/logo";
 
 import { JsonLd } from "@/components/json-ld";
-import { canonicalAlternates, pageOpenGraph, pageTwitter } from "@/lib/agent/page-metadata";
+import {
+  canonicalAlternates,
+  homeOpenGraphVideos,
+  pageOpenGraph,
+  pageTwitter,
+} from "@/lib/agent/page-metadata";
 import { buildHomeGraph } from "@/lib/agent/structured-data";
 import { siteConfig } from "@/lib/site-config";
 
@@ -13,7 +18,7 @@ import { SiteFooter } from "./_components/site-footer";
 
 export const metadata: Metadata = {
   alternates: canonicalAlternates("/"),
-  openGraph: pageOpenGraph("/"),
+  openGraph: { ...pageOpenGraph("/"), videos: homeOpenGraphVideos },
   title: { absolute: `${siteConfig.name} — ${siteConfig.description}` },
   twitter: pageTwitter(),
 };

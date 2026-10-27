@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@repo/ui/components/logo";
 
+/** Forms, not content: kept out of search results (links on them are still followed). */
 export const metadata: Metadata = {
-  description: "Authentication forms built using the components.",
+  description: "Sign in to or create a LoremLLM account.",
+  robots: { follow: true, index: false },
   title: "Authentication",
 };
 
