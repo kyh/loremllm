@@ -62,7 +62,7 @@ export class TextAnimator {
 
   constructor(textElement: HTMLElement, variant: AnimationVariant = "cursor-square") {
     if (!(textElement instanceof HTMLElement)) {
-      throw new Error("Invalid text element provided.");
+      throw new TypeError("Invalid text element provided.");
     }
     this.textElement = textElement;
     this.variant = variant;

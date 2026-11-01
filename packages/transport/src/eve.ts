@@ -908,6 +908,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       },
     });
 
+    // oxlint-disable-next-line sort-keys -- protocol header constants are computed keys, followed by CORS headers
     const headers = new Headers({
       "cache-control": "no-store, no-transform",
       "content-type": EVE_MESSAGE_STREAM_CONTENT_TYPE,
