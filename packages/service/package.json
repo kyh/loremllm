@@ -21,7 +21,7 @@
     "@orpc/server": "catalog:",
     "@repo/contract": "workspace:^",
     "@repo/db": "workspace:^",
-    "ai": "^7.0.127",
+    "ai": "^7.0.159",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
