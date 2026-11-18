@@ -6,20 +6,13 @@ import { z } from "zod";
 import { os, requireActiveOrganization, requireSession } from "../orpc";
 import { generateEmbedding } from "./embedding-service";
 
-/**
- * The text embedded for semantic matching. Title and description provide
- * additional context beyond the raw input.
- */
 const buildEmbeddingText = (interaction: {
   title?: string | null;
   description?: string | null;
   input: string;
 }) => `${interaction.title ?? ""} ${interaction.description ?? ""} ${interaction.input}`;
 
-/**
- * Columns returned from interaction writes. The `vector` blob is excluded —
- * libsql cannot serialize BLOB values in RETURNING clauses.
- */
+// WARNING: never return `vector`: libsql cannot serialize a BLOB in RETURNING.
 const interactionReturning = {
   collectionId: mockInteraction.collectionId,
   createdAt: mockInteraction.createdAt,
@@ -32,7 +25,6 @@ const interactionReturning = {
   updatedAt: mockInteraction.updatedAt,
 };
 
-/** Shape of rows returned by the raw vector-similarity SQL query */
 const interactionQueryRow = z.object({
   description: z.string().nullable(),
   id: z.string(),
@@ -137,7 +129,6 @@ export const interactionRouter = {
    * queryable by members of the owning organization (for dashboard previews).
    */
   query: os.interaction.query.handler(async ({ context, input }) => {
-    // Find the collection by publicId
     const collection = await context.db.query.mockCollection.findFirst({
       where: { publicId: input.publicId },
     });
@@ -150,8 +141,7 @@ export const interactionRouter = {
 
     if (!collection.isPublic) {
       const { session } = context;
-      // The membership row is the authority, as in `requireActiveOrganization`: a
-      // member removed from the organization can still hold a session naming it.
+
       const membership =
         session?.session.activeOrganizationId === collection.organizationId
           ? await context.db.query.member.findFirst({
@@ -168,9 +158,6 @@ export const interactionRouter = {
 
     const queryEmbedding = await embedOrThrow(input.query, "query");
 
-    // Use Turso's vector_distance_cos function to find similar interactions.
-    // Cosine distance is lower-is-better, so order ascending and report
-    // similarity as 1 - distance.
     const resultSet = await context.db.run(sql`
         SELECT
           id,
@@ -239,9 +226,10 @@ export const interactionRouter = {
     }
 
     const title = input.title ?? interaction.title;
-    // An explicit empty string clears the description; undefined leaves it unchanged
+
     const description =
       input.description === undefined ? interaction.description : input.description.trim() || null;
+
     const matchInput = input.input ?? interaction.input;
     const output = input.output ?? interaction.output;
 

@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 type ImageConfig = NonNullable<NextConfig["images"]>;
+
 type RemotePatterns = NonNullable<ImageConfig["remotePatterns"]>;
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-const getRemotePatterns = (): RemotePatterns => {
+const getRemotePatterns = () => {
   const remotePatterns: RemotePatterns = [];
 
   if (!IS_PRODUCTION) {
@@ -33,9 +34,8 @@ const transpilePackages = [
 ];
 
 const config: NextConfig = {
-  // next dev rewrites AGENTS.md/CLAUDE.md when it detects an agent; we own those files
+  // WARNING: on, next dev rewrites AGENTS.md and CLAUDE.md when it detects an agent.
   agentRules: false,
-  // Cache Components + Partial Prefetching: a <Link> prefetches the route's static App Shell only
   cacheComponents: true,
   images: {
     remotePatterns: getRemotePatterns(),

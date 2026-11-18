@@ -7,6 +7,7 @@ const transformers = () => {
   const { dehydrate, hydrate } = createQueryClient().getDefaultOptions();
   assert.ok(dehydrate?.serializeData, "query client must configure dehydrate.serializeData");
   assert.ok(hydrate?.deserializeData, "query client must configure hydrate.deserializeData");
+
   return { deserialize: hydrate.deserializeData, serialize: dehydrate.serializeData };
 };
 
@@ -21,11 +22,9 @@ describe("dehydrate/hydrate", () => {
       tags: new Set(["a", "b"]),
       url: new URL("https://example.com/path?q=1"),
     };
+
     const revived: typeof data = deserialize(serialize(data));
 
-    // Field by field, not one deepStrictEqual on the whole object: the
-    // serializer revives a null-prototype container, which deepStrictEqual
-    // counts as a difference even when every value inside it matches.
     assert.deepStrictEqual(revived.at, data.at);
     assert.deepStrictEqual(revived.tags, data.tags);
     assert.deepStrictEqual(revived.lookup, data.lookup);
@@ -34,9 +33,6 @@ describe("dehydrate/hydrate", () => {
   });
 
   test("survives the JSON round trip the hydration payload takes", () => {
-    // Dehydrated state rides the RSC flight payload as JSON, so a serializer
-    // whose output only round-trips in-process would still hand the browser a
-    // string where the server had a Date.
     const { serialize, deserialize } = transformers();
 
     const data = { at: new Date("2020-01-01T00:00:00.000Z") };

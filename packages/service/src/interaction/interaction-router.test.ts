@@ -8,13 +8,6 @@ import { createRouterClient } from "@orpc/server";
 import type { ORPCContext } from "../orpc";
 import { appRouter } from "../root-router";
 
-/**
- * `interaction.query` is public, so no middleware proves membership for it: a
- * private collection is checked in the handler, against the membership row, as
- * `requireActiveOrganization` does. A member removed from the organization can
- * still hold a session naming it.
- */
-
 const session = {
   session: {
     activeOrganizationId: "org-1",
@@ -81,9 +74,11 @@ describe("interaction.query on a private collection", () => {
 
   test("refuses anonymous callers and other organizations without a lookup", async (t) => {
     t.mock.method(db.query.mockCollection, "findFirst", () => Promise.resolve(privateCollection));
+
     const findMember = t.mock.method(db.query.member, "findFirst", () =>
       Promise.resolve(membership),
     );
+
     const otherOrganization = {
       ...session,
       session: { ...session.session, activeOrganizationId: "org-2" },
@@ -97,6 +92,7 @@ describe("interaction.query on a private collection", () => {
         },
       );
     }
+
     assert.equal(findMember.mock.callCount(), 0);
   });
 
@@ -105,8 +101,6 @@ describe("interaction.query on a private collection", () => {
     t.mock.method(db.query.member, "findFirst", () => Promise.resolve(membership));
     t.mock.method(console, "error", () => {});
 
-    // A blank query passes validation and fails at the embedding, locally,
-    // which shows the access check let it through without a network call.
     await assert.rejects(
       clientFor(session).interaction.query({ publicId: "private-1", query: " " }),
       {

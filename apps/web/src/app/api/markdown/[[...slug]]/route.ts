@@ -10,14 +10,6 @@ interface MarkdownParams {
   params: Promise<{ slug?: string[] }>;
 }
 
-/**
- * The Markdown half of every page's content negotiation. `src/proxy.ts`
- * rewrites here when a client prefers `text/markdown` or asks for a `.md` URL;
- * nothing links to `/api/markdown/*` and it is not a public contract.
- *
- * A path with no Markdown representation answers 404 with a Markdown body that
- * points at the recovery surfaces.
- */
 const buildBody = (segments: string[]) => {
   if (segments.length === 0) {
     return { body: renderHomeMarkdown(), status: 200 };
@@ -25,6 +17,7 @@ const buildBody = (segments: string[]) => {
 
   const pathname = `/${segments.join("/")}`;
   const page = findPageByPath(pathname);
+
   if (page) {
     return { body: renderProsePageMarkdown(page), status: 200 };
   }

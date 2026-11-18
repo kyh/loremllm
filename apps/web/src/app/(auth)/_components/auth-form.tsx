@@ -12,11 +12,6 @@ import { z } from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
-/**
- * TanStack validators return either a raw string or a `{ message }` object.
- * FieldError reads `.message`, so normalize both to it. Parsed with a schema
- * rather than cast so a malformed error never slips through typed.
- */
 const fieldError = z.union([
   z.string().transform((message) => ({ message })),
   z.object({ message: z.string() }),
@@ -87,8 +82,6 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
   const handleAuthWithGithub = async () => {
     setSubmittingGithub(true);
     await authClient.signIn.social({
-      // OAuth is a full-page redirect; the server sends the user here after the
-      // callback, so a client-side onSuccess would never fire.
       callbackURL: nextPath,
       fetchOptions: {
         onError: (ctx) => {
@@ -210,9 +203,9 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
 };
 
 export const RequestPasswordResetForm = () => {
-  // Not `isSubmitSuccessful`: better-auth reports failures through onError
-  // without throwing, so the form would count a failed request as submitted.
+  // WARNING: not `isSubmitSuccessful`, which counts a better-auth failure (onError, no throw) as submitted.
   const [sent, setSent] = useState(false);
+
   const form = useForm({
     defaultValues: {
       email: "",
@@ -304,8 +297,6 @@ export const RequestPasswordResetForm = () => {
   );
 };
 
-// better-auth appends the reset token to the redirectTo URL; the page reads it
-// from searchParams server-side and passes it in.
 export const UpdatePasswordForm = ({ token }: { token?: string }) => {
   const router = useRouter();
 
@@ -317,8 +308,10 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
     onSubmit: async ({ value }) => {
       if (!token) {
         toast.error("Invalid or expired reset link. Request a new one.");
+
         return;
       }
+
       await authClient.resetPassword({
         fetchOptions: {
           onError: (ctx) => {
@@ -399,6 +392,7 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
               }
 
               const password = fieldApi.form.getFieldValue("password");
+
               if (password !== value) {
                 return "Passwords don't match";
               }
@@ -433,6 +427,7 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
                   <FieldError
                     errors={field.state.meta.errors.map((error) => {
                       const parsed = fieldError.safeParse(error);
+
                       return parsed.success ? parsed.data : {};
                     })}
                   />

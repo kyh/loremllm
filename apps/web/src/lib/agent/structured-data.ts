@@ -225,5 +225,5 @@ export const buildProsePageGraph = (page: ProsePage) =>
  * `JSON.stringify` output is dropped into a `<script>` body, so any `<` that
  * could start a `</script>` is escaped. `<` parses back to `<`.
  */
-export const serializeJsonLd = (node: JsonLdNode): string =>
+export const serializeJsonLd = (node: JsonLdNode) =>
   JSON.stringify(node).replaceAll("<", "\\u003c");

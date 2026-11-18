@@ -11,16 +11,9 @@ import type { FetchQueryOptions, QueryKey } from "@tanstack/react-query";
 import { getSession } from "@/lib/auth-server";
 import { createQueryClient } from "./query-client";
 
-/**
- * Wraps the `createORPCContext` helper and provides the required context when
- * a React Server Component calls a procedure.
- */
 const createContext = cache(async () =>
   createORPCContext({
     headers: new Headers(await headers()),
-    // Dashboard pages call getSession() to gate the route before they prefetch.
-    // Reuse that cached result — resolving it again here would be a second
-    // session lookup per render.
     session: await getSession(),
   }),
 );
@@ -38,6 +31,7 @@ export const orpc = createTanstackQueryUtils(caller);
 
 export const HydrateClient = (props: { children: React.ReactNode }) => {
   const queryClient = getQueryClient();
+
   return <HydrationBoundary state={dehydrate(queryClient)}>{props.children}</HydrationBoundary>;
 };
 

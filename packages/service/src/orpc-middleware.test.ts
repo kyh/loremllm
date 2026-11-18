@@ -7,15 +7,6 @@ import { createRouterClient } from "@orpc/server";
 import type { ORPCContext } from "./orpc";
 import { appRouter } from "./root-router";
 
-/**
- * Where middleware runs relative to input validation is invisible to
- * typecheck. `requireSession` and `requireActiveOrganization` are applied on
- * the implementers, so both run before validation: an anonymous caller gets
- * UNAUTHORIZED and a caller without an organization gets FORBIDDEN, whatever
- * input they send. Drive the real router; the membership lookup is the only
- * query that can run before a rejection, so the tests stub it.
- */
-
 const session = {
   session: {
     activeOrganizationId: "org-1",
@@ -82,13 +73,17 @@ describe("procedure middleware", () => {
     const findMember = t.mock.method(db.query.member, "findFirst", () =>
       Promise.resolve(membership),
     );
+
     const persisted: Partial<typeof sessionTable.$inferInsert>[] = [];
+
     const updateSession = t.mock.method(db, "update", () => ({
       set: (values: Partial<typeof sessionTable.$inferInsert>) => {
         persisted.push(values);
+
         return { where: () => Promise.resolve() };
       },
     }));
+
     const signedInWithoutOrganization = createRouterClient(appRouter, {
       context: {
         db,

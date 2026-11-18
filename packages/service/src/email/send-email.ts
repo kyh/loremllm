@@ -6,7 +6,6 @@ interface SendEmailInput {
   text: string;
 }
 
-// Plain fetch rather than the `resend` SDK: one endpoint, no dependency.
 export const sendEmail = async ({ to, subject, text }: SendEmailInput) => {
   const apiKey = env.RESEND_API_KEY;
 
@@ -14,6 +13,7 @@ export const sendEmail = async ({ to, subject, text }: SendEmailInput) => {
     console.info(
       `[email] RESEND_API_KEY not set — logging instead of sending\nto: ${to}\nsubject: ${subject}\n${text}`,
     );
+
     return;
   }
 

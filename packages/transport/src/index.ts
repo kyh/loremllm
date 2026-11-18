@@ -93,7 +93,7 @@ export interface StaticChatTransportInit<UI_MESSAGE extends UIMessage> {
   autoChunkReasoning?: boolean | RegExp;
 }
 
-const generateMessageId = (): string =>
+const generateMessageId = () =>
   `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 interface ToolLikePart {
@@ -119,10 +119,9 @@ const pushToolChunks = (
   chunks: UIMessageChunk[],
   toolPart: ToolLikePart,
   toolPartStateMap: Map<string, ToolPartState>,
-): void => {
-  // Skip state-based processing for special tool parts that don't follow the standard pattern
-  // (e.g., tool-approval-request, which has approvalId instead of state)
+) => {
   const hasStandardState = "state" in toolPart && toolPart.state !== undefined;
+
   if (!hasStandardState) {
     return;
   }
@@ -130,7 +129,6 @@ const pushToolChunks = (
   const toolState = toolPartStateMap.get(toolPart.toolCallId);
   const currentState = toolPart.state;
 
-  // Emit tool-input-available only on first occurrence
   if (!toolState?.hasEmittedInput) {
     chunks.push({
       input: toolPart.input ?? {},
@@ -141,8 +139,6 @@ const pushToolChunks = (
     });
   }
 
-  // Emit output chunks only when state changes from a non-output state to an output state
-  // or when transitioning between output states (e.g., error to success)
   if (
     currentState === "output-error" &&
     toolState?.lastState !== "output-error" &&
@@ -163,7 +159,6 @@ const pushToolChunks = (
     });
   }
 
-  // Update state tracking
   toolPartStateMap.set(toolPart.toolCallId, {
     hasEmittedInput: true,
     lastErrorText: toolPart.errorText,
@@ -179,7 +174,7 @@ const createTextLikeChunks = (
   id: string,
   part: { text: string; providerMetadata?: ProviderMetadata },
   autoChunk: boolean | RegExp,
-): void => {
+) => {
   const { providerMetadata } = part;
 
   chunks.push(
@@ -192,7 +187,6 @@ const createTextLikeChunks = (
     return;
   }
 
-  // Helper to push a delta chunk
   const pushDelta = (delta: string) => {
     if (delta.length > 0) {
       chunks.push(
@@ -214,9 +208,7 @@ const createTextLikeChunks = (
   );
 };
 
-const createDataChunks = (chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>): void => {
-  // SAFETY: mock authors may attach the chunk-level `transient` flag to a data
-  // part; DataUIPart's type omits it, and the transport forwards it verbatim.
+const createDataChunks = (chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>) => {
   const { transient } = part as DataUIPart<UIDataTypes> & { transient?: boolean };
   chunks.push({
     data: part.data,
@@ -230,7 +222,7 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
   message: UI_MESSAGE,
   autoChunkText: boolean | RegExp,
   autoChunkReasoning: boolean | RegExp,
-): UIMessageChunk[] => {
+) => {
   const chunks: UIMessageChunk[] = [];
   chunks.push({
     messageId: message.id,
@@ -238,8 +230,6 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
     type: "start",
   });
 
-  // Step management: steps group related content (text/reasoning) together
-  // Steps are opened automatically for text/reasoning parts and must be closed explicitly
   let isStepOpen = false;
   let nextTextId = 0;
   let nextReasoningId = 0;
@@ -258,8 +248,6 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
     }
   };
 
-  // Track tool parts to emit progressive states
-  // We need to process parts in order to preserve progressive loading states
   const toolPartStateMap = new Map<string, ToolPartState>();
 
   for (const part of message.parts) {
@@ -270,18 +258,21 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
         createTextLikeChunks(chunks, "text", textId, part, autoChunkText);
         break;
       }
+
       case "reasoning": {
         openStepIfNeeded();
         const reasoningId = `reasoning-${(nextReasoningId += 1)}`;
         createTextLikeChunks(chunks, "reasoning", reasoningId, part, autoChunkReasoning);
         break;
       }
+
       case "step-start": {
         closeStepIfNeeded();
         chunks.push({ type: "start-step" });
         isStepOpen = true;
         break;
       }
+
       case "file": {
         chunks.push({
           mediaType: part.mediaType,
@@ -291,6 +282,7 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
         });
         break;
       }
+
       case "source-url": {
         chunks.push({
           providerMetadata: part.providerMetadata,
@@ -301,6 +293,7 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
         });
         break;
       }
+
       case "source-document": {
         chunks.push({
           filename: part.filename,
@@ -312,19 +305,18 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
         });
         break;
       }
+
       default: {
         if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-          // SAFETY: at runtime this array also carries SpecialToolPart values
-          // and ToolPart extras (toolName, providerMetadata) that the static
-          // part union cannot express; ToolLikePart names exactly the fields
-          // the state machine reads.
           pushToolChunks(chunks, part as ToolLikePart, toolPartStateMap);
           break;
         }
+
         if (isDataUIPart(part)) {
           createDataChunks(chunks, part);
           break;
         }
+
         throw new Error(
           `StaticChatTransport does not yet support streaming parts of type "${part.type}".`,
         );
@@ -332,7 +324,6 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
     }
   }
 
-  // Ensure any open step is closed before finishing
   closeStepIfNeeded();
 
   chunks.push({
@@ -369,9 +360,7 @@ export class StaticChatTransport<
     this.autoChunkReasoning = options.autoChunkReasoning ?? true;
   }
 
-  async sendMessages(
-    options: SendMessagesOptions<UI_MESSAGE>,
-  ): Promise<ReadableStream<UIMessageChunk>> {
+  async sendMessages(options: SendMessagesOptions<UI_MESSAGE>) {
     const { abortSignal, chatId, metadata } = options;
 
     const context: StaticTransportContext<UI_MESSAGE> = {
@@ -383,41 +372,37 @@ export class StaticChatTransport<
     };
 
     const assistantMessage = await this.resolveMessages(context);
+
     const chunks = createChunksFromMessage(
       assistantMessage,
       this.autoChunkText,
       this.autoChunkReasoning,
     );
+
     const stream = this.createStreamFromChunks(chunks, abortSignal);
 
-    // Cache for reconnectToStream
     this.lastResponses.set(chatId, assistantMessage);
+
     return stream;
   }
 
-  reconnectToStream({
-    chatId,
-  }: {
-    chatId: string;
-  }): Promise<ReadableStream<UIMessageChunk> | null> {
+  reconnectToStream({ chatId }: { chatId: string }) {
     const lastMessage = this.lastResponses.get(chatId);
-    if (!lastMessage) {
-      return Promise.resolve(null);
-    }
 
-    const chunks = createChunksFromMessage(
-      lastMessage,
-      this.autoChunkText,
-      this.autoChunkReasoning,
-    );
-    return Promise.resolve(this.createStreamFromChunks(chunks));
+    const stream: ReadableStream<UIMessageChunk> | null = lastMessage
+      ? this.createStreamFromChunks(
+          createChunksFromMessage(lastMessage, this.autoChunkText, this.autoChunkReasoning),
+        )
+      : null;
+
+    return Promise.resolve(stream);
   }
 
   /**
    * Clears the cached responses used for reconnectToStream.
    * @param chatId - If provided, clears only the cache for that chat. Otherwise clears all caches.
    */
-  clearCache(chatId?: string): void {
+  clearCache(chatId?: string) {
     if (chatId) {
       this.lastResponses.delete(chatId);
     } else {
@@ -425,17 +410,11 @@ export class StaticChatTransport<
     }
   }
 
-  protected async resolveMessages(
-    context: StaticTransportContext<UI_MESSAGE>,
-  ): Promise<UI_MESSAGE> {
+  protected async resolveMessages(context: StaticTransportContext<UI_MESSAGE>) {
     const parts: UI_MESSAGE["parts"] = [];
     const generator = this.mockResponseOption(context);
 
     for await (const part of generator) {
-      // SAFETY: special tool parts (like tool-approval-request) are deliberately
-      // carried in the parts array even though the message part union cannot
-      // express them; chunk processing detects them by their missing `state`
-      // and skips standard tool handling.
       parts.push(part as UI_MESSAGE["parts"][number]);
     }
 
@@ -445,9 +424,6 @@ export class StaticChatTransport<
 
     const messageId = context.messageId ?? generateMessageId();
 
-    // SAFETY: UI_MESSAGE is only constrained by UIMessage, so a concrete
-    // instance cannot be constructed generically; this minimal assistant
-    // message carries every field the chunk stream reads.
     const assistantMessage: UI_MESSAGE = {
       id: messageId,
       parts,
@@ -457,10 +433,7 @@ export class StaticChatTransport<
     return assistantMessage;
   }
 
-  private createStreamFromChunks(
-    chunks: UIMessageChunk[],
-    abortSignal?: AbortSignal,
-  ): ReadableStream<UIMessageChunk> {
+  private createStreamFromChunks(chunks: UIMessageChunk[], abortSignal?: AbortSignal) {
     let aborted = false;
 
     const isAborted = () => aborted || abortSignal?.aborted === true;
@@ -469,8 +442,7 @@ export class StaticChatTransport<
       aborted = true;
     };
 
-    const resolveDelay = (chunk: UIMessageChunk): Promise<number | undefined> =>
-      resolveChunkDelay(this.chunkDelayMs, chunk);
+    const resolveDelay = (chunk: UIMessageChunk) => resolveChunkDelay(this.chunkDelayMs, chunk);
 
     return new ReadableStream<UIMessageChunk>({
       start: async (controller) => {
@@ -478,6 +450,7 @@ export class StaticChatTransport<
           if (abortSignal.aborted) {
             aborted = true;
           }
+
           abortSignal.addEventListener("abort", onAbort, { once: true });
         }
 
@@ -488,19 +461,20 @@ export class StaticChatTransport<
             }
 
             const isDeltaChunk = chunk.type === "text-delta" || chunk.type === "reasoning-delta";
+
             const isToolChunk =
               chunk.type === "tool-input-available" ||
               chunk.type === "tool-output-available" ||
               chunk.type === "tool-output-error";
+
             const isDataChunk = chunk.type.startsWith("data-");
 
-            // Delay on delta chunks (actual content chunks), tool chunks, and data chunks
-            // Control chunks (start, end, text-start, etc.) are sent immediately
-            // Delay happens BEFORE enqueueing the chunk
             if (isDeltaChunk || isToolChunk || isDataChunk) {
               const delay = await resolveDelay(chunk);
+
               if (delay && delay > 0) {
                 await sleep(delay);
+
                 if (isAborted()) {
                   throw new AbortTransportError();
                 }
@@ -509,9 +483,11 @@ export class StaticChatTransport<
 
             controller.enqueue(chunk);
           }
+
           if (isAborted()) {
             throw new AbortTransportError();
           }
+
           controller.close();
         } catch (error) {
           controller.error(error);

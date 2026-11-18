@@ -15,24 +15,16 @@ export const slugify = (str: string) =>
 /** Base slug for organizations whose name slugifies to "" — see `slugify`. */
 export const FALLBACK_ORGANIZATION_SLUG = "workspace";
 
-/**
- * Parses a JSON string, then validates the result is JSON-shaped. Pipe it into
- * a concrete schema to get a typed value:
- *
- * ```ts
- * const authMetadataSchema = zJsonString.pipe(z.object({ personal: z.boolean() }));
- * authMetadataSchema.parse('{"personal": true}'); // { personal: true }
- * ```
- */
 const jsonValue = z.json();
 
 export const zJsonString = z
   .string()
-  .transform((str, ctx): z.infer<typeof jsonValue> => {
+  .transform((str, ctx) => {
     try {
       return JSON.parse(str);
     } catch {
       ctx.addIssue({ code: "custom", message: "Invalid JSON" });
+
       return z.NEVER;
     }
   })

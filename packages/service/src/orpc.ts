@@ -68,7 +68,6 @@ export const requireSession = base.middleware(({ context, next }) => {
 
   return next({
     context: {
-      // infers the `session` as non-nullable
       session: { ...session, user: session.user },
     },
   });

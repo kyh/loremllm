@@ -11,69 +11,71 @@ import {
 
 import type { ProseBlock, ProseListItem, ProsePage } from "./site-pages";
 
-/**
- * Markdown representations of the site, served from the same URLs as the HTML
- * via `Accept: text/markdown` (see `src/proxy.ts`). Pure string building.
- */
-
 /** Off-site URLs, `mailto:` and in-page `#anchors` pass through; site paths gain the origin. */
-export const absoluteUrl = (path: string): string =>
+export const absoluteUrl = (path: string) =>
   path.startsWith("http") || path.startsWith("mailto:") || path.startsWith("#")
     ? path
     : `${siteConfig.url}${path}`;
 
-/** Copy as Markdown: its inline marks unchanged, its on-site links made absolute. */
-const renderInline = (text: string): string => inlineMarksToMarkdown(text, absoluteUrl);
+const renderInline = (text: string) => inlineMarksToMarkdown(text, absoluteUrl);
 
-const renderListItem = (item: ProseListItem): string => {
+const renderListItem = (item: ProseListItem) => {
   const label = item.href ? `[${item.label}](${absoluteUrl(item.href)})` : `**${item.label}**`;
+
   return item.text ? `- ${label}: ${renderInline(item.text)}` : `- ${label}`;
 };
 
-export const renderList = (items: ProseListItem[]): string => items.map(renderListItem).join("\n");
+export const renderList = (items: ProseListItem[]) => items.map(renderListItem).join("\n");
 
-/** A GFM table row; a pipe inside a cell is escaped so it cannot split the cell. */
-const renderTableRow = (cells: string[]): string =>
+const renderTableRow = (cells: string[]) =>
   `| ${cells.map((cell) => renderInline(cell).replaceAll("|", "\\|")).join(" | ")} |`;
 
-const renderTable = (columns: string[], rows: string[][]): string =>
+const renderTable = (columns: string[], rows: string[][]) =>
   [
     renderTableRow(columns),
     `|${columns.map(() => " --- |").join("")}`,
     ...rows.map(renderTableRow),
   ].join("\n");
 
-const renderBlock = (block: ProseBlock): string => {
+const renderBlock = (block: ProseBlock) => {
   switch (block.kind) {
     case "heading": {
       return `## ${block.text}`;
     }
+
     case "subheading": {
       return `### ${block.text}`;
     }
+
     case "list": {
       return renderList(block.items);
     }
+
     case "bullets": {
       return block.items.map((item) => `- ${renderInline(item)}`).join("\n");
     }
+
     case "table": {
       return renderTable(block.columns, block.rows);
     }
+
     case "code": {
       return `\`\`\`${block.language}\n${block.text}\n\`\`\``;
     }
+
     case "paragraph": {
       return renderInline(block.text);
     }
+
     default: {
       const exhaustive: never = block;
+
       return exhaustive;
     }
   }
 };
 
-const withTrailingNewline = (body: string): string => `${body.trimEnd()}\n`;
+const withTrailingNewline = (body: string) => `${body.trimEnd()}\n`;
 
 export const pageLinks: ProseListItem[] = [
   { href: "/docs", label: "Docs", text: "the API and the npm transport, with examples" },
@@ -89,7 +91,7 @@ export const termsLink: ProseListItem = {
   text: "the terms for using the site and its API",
 };
 
-export const renderProsePageMarkdown = (page: ProsePage): string =>
+export const renderProsePageMarkdown = (page: ProsePage) =>
   withTrailingNewline(
     [
       `# ${page.heading}`,
@@ -103,7 +105,7 @@ export const renderProsePageMarkdown = (page: ProsePage): string =>
     ].join("\n"),
   );
 
-export const renderHomeMarkdown = (): string =>
+export const renderHomeMarkdown = () =>
   withTrailingNewline(
     [
       `# ${siteConfig.name} — ${siteConfig.description}`,
@@ -142,7 +144,7 @@ export const notFoundRecoveryLinks: ProseListItem[] = [
   { href: "/contact", label: "Contact", text: "how to reach a human" },
 ];
 
-export const renderNotFoundMarkdown = (pathname: string): string =>
+export const renderNotFoundMarkdown = (pathname: string) =>
   withTrailingNewline(
     [
       "# 404 — Page not found",

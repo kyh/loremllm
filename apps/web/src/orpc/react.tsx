@@ -10,12 +10,12 @@ import type { ContractClient } from "@repo/contract";
 import { createQueryClient } from "./query-client";
 
 let clientQueryClientSingleton: QueryClient | undefined;
+
 const getQueryClient = () => {
   if (typeof window === "undefined") {
-    // Server: always make a new query client
     return createQueryClient();
   }
-  // Browser: use singleton pattern to keep the same query client
+
   return (clientQueryClientSingleton ??= createQueryClient());
 };
 
@@ -23,9 +23,11 @@ const getBaseUrl = () => {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
+
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
+
   return `http://localhost:${process.env.PORT ?? 3000}`;
 };
 
@@ -39,8 +41,6 @@ const link = new RPCLink({
       }
     }),
   ],
-  // Resolved per call, not at module load: this module is evaluated during SSR
-  // too, where `window` is absent and the deploy URL comes from the environment.
   origin: () => getBaseUrl(),
   url: "/api/orpc",
 });

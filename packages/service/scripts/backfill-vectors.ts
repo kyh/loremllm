@@ -1,14 +1,5 @@
 #!/usr/bin/env tsx
 
-/**
- * Backfill Vectors Script
- *
- * Regenerates embeddings for all interactions using OpenAI text-embedding-3-small.
- * Run after migrating from Transformers.js (384d) to OpenAI (1536d).
- *
- * Usage:
- *   pnpm -F service backfill:vectors
- */
 import { setTimeout as sleep } from "node:timers/promises";
 import { eq } from "@repo/db";
 import { db } from "@repo/db/drizzle-client";
@@ -22,7 +13,6 @@ const DELAY_MS = 500;
 const main = async () => {
   console.log("Starting vector backfill...\n");
 
-  // Fetch all interactions
   const interactions = await db.select().from(mockInteraction);
   console.log(`Found ${interactions.length} interactions to process\n`);
 
@@ -54,7 +44,6 @@ const main = async () => {
       }
     }
 
-    // Rate limit delay between batches
     if (i + BATCH_SIZE < interactions.length) {
       await sleep(DELAY_MS);
     }

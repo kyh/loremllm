@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { JsonLd } from "@/components/json-ld";
@@ -26,21 +25,21 @@ import { SiteFooter } from "./site-footer";
  * drift apart.
  */
 
-export const prosePageMetadata = (page: ProsePage): Metadata => ({
-  alternates: canonicalAlternates(page.path),
-  description: page.description,
-  openGraph: {
-    ...pageOpenGraph(page.path, page.title, page.description, prosePageImage(page)),
-    type: page.structuredDataType === "TechArticle" ? "article" : "website",
-  },
-  title: page.title,
-  twitter: pageTwitter(page.title, page.description, prosePageImage(page)),
-});
+export const prosePageMetadata = (page: ProsePage) =>
+  ({
+    alternates: canonicalAlternates(page.path),
+    description: page.description,
+    openGraph: {
+      ...pageOpenGraph(page.path, page.title, page.description, prosePageImage(page)),
+      type: page.structuredDataType === "TechArticle" ? "article" : "website",
+    },
+    title: page.title,
+    twitter: pageTwitter(page.title, page.description, prosePageImage(page)),
+  }) satisfies Metadata;
 
 const linkClassName = "underline underline-offset-4";
 
-/** Renders the copy's inline marks (`inline-marks.ts`): code, strong and links. */
-const withInlineMarks = (text: string): ReactNode =>
+const withInlineMarks = (text: string) =>
   parseInlineMarks(text).map((mark, index) => {
     switch (mark.kind) {
       case "code": {
@@ -50,6 +49,7 @@ const withInlineMarks = (text: string): ReactNode =>
           </code>
         );
       }
+
       case "strong": {
         return (
           <strong key={index} className="font-semibold">
@@ -57,6 +57,7 @@ const withInlineMarks = (text: string): ReactNode =>
           </strong>
         );
       }
+
       case "link": {
         return (
           <ProseLink key={index} className={linkClassName} href={mark.href}>
@@ -64,11 +65,14 @@ const withInlineMarks = (text: string): ReactNode =>
           </ProseLink>
         );
       }
+
       case "text": {
         return <Fragment key={index}>{mark.text}</Fragment>;
       }
+
       default: {
         const exhaustive: never = mark;
+
         return exhaustive;
       }
     }
@@ -96,9 +100,11 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
         </h2>
       );
     }
+
     case "subheading": {
       return <h3 className="text-heading mt-2 text-xs">{block.text}</h3>;
     }
+
     case "list": {
       return (
         <ul className="flex list-disc flex-col gap-2 pl-5">
@@ -108,6 +114,7 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
         </ul>
       );
     }
+
     case "bullets": {
       return (
         <ul className="flex list-disc flex-col gap-2 pl-5">
@@ -117,6 +124,7 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
         </ul>
       );
     }
+
     case "table": {
       return (
         <div className="overflow-x-auto">
@@ -145,6 +153,7 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
         </div>
       );
     }
+
     case "code": {
       return (
         <pre className="bg-muted overflow-x-auto rounded p-4 text-xs">
@@ -152,11 +161,14 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
         </pre>
       );
     }
+
     case "paragraph": {
       return <p>{withInlineMarks(block.text)}</p>;
     }
+
     default: {
       const exhaustive: never = block;
+
       return exhaustive;
     }
   }

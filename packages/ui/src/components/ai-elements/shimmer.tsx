@@ -28,6 +28,7 @@ const ShimmerComponent = ({
   const MotionComponent = useMemo(() => m.create(Component), [Component]);
 
   const dynamicSpread = useMemo(() => (children?.length ?? 0) * spread, [children, spread]);
+
   const style: ShimmerStyle = {
     "--spread": `${dynamicSpread}px`,
     backgroundImage:

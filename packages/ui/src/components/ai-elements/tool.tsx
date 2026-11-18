@@ -108,11 +108,13 @@ export type ToolOutputProps = ComponentProps<"div"> & {
 };
 
 const textOutput = z.string();
+
 const structuredOutput = z.union([
   z.null(),
   z.array(z.unknown()),
   z.record(z.string(), z.unknown()),
 ]);
+
 const renderablePrimitive = z.union([z.number(), z.boolean(), z.null(), z.undefined()]);
 
 export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutputProps) => {
@@ -124,6 +126,7 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
   const text = textOutput.safeParse(output);
 
   let Output: ReactNode;
+
   if (structured.success && !isValidElement(output)) {
     Output = <CodeBlock code={JSON.stringify(structured.data, null, 2)} language="json" />;
   } else if (text.success) {

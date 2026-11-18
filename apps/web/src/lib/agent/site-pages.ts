@@ -20,11 +20,13 @@ export interface ProseListItem {
  * the client router would otherwise fetch an RSC payload for. A trailing file
  * extension is exactly what separates this site's route handlers from its pages.
  */
-export const rendersOutsideRouter = (href: string): boolean => {
+export const rendersOutsideRouter = (href: string) => {
   if (!href.startsWith("/")) {
     return true;
   }
+
   const lastSegment = href.split(/[?#]/u)[0]?.split("/").pop() ?? "";
+
   return lastSegment.includes(".");
 };
 
@@ -35,14 +37,10 @@ export const rendersOutsideRouter = (href: string): boolean => {
  */
 export type ProseBlock =
   | { kind: "paragraph"; text: string }
-  /** A top-level section: `<h2>` with an `id` from `headingId`, `##` in Markdown. */
   | { kind: "heading"; text: string }
-  /** A section within one: `<h3>`, `###` in Markdown. */
   | { kind: "subheading"; text: string }
   | { kind: "list"; items: ProseListItem[] }
-  /** Bullets of plain copy, where a list item's label/text split does not fit. */
   | { kind: "bullets"; items: string[] }
-  /** Every row holds one cell per column. */
   | { kind: "table"; columns: string[]; rows: string[][] }
   | { kind: "code"; language: string; text: string };
 
@@ -51,7 +49,7 @@ export type ProseBlock =
  * punctuation dropped, each space a hyphen), so a `#…` link resolves on the
  * HTML page and wherever the Markdown twin is rendered.
  */
-export const headingId = (text: string): string =>
+export const headingId = (text: string) =>
   text
     .toLowerCase()
     .replaceAll(/[^\p{L}\p{M}\p{N} _-]/gu, "")
@@ -270,28 +268,25 @@ export const contactPage: ProsePage = {
   title: "Contact",
 };
 
-// The legal pages follow General Legal's templates (the GDPR-enhanced privacy
-// policy and the website terms of use, JAMS arbitration), with each clause
-// resolved to what this product actually does. A product fact in them is a
-// claim about the code: change the code, change the copy.
+const paragraph = (text: string) => ({ kind: "paragraph", text }) satisfies ProseBlock;
+const heading = (text: string) => ({ kind: "heading", text }) satisfies ProseBlock;
+const subheading = (text: string) => ({ kind: "subheading", text }) satisfies ProseBlock;
+const bullets = (...items: string[]) => ({ items, kind: "bullets" }) satisfies ProseBlock;
 
-const paragraph = (text: string): ProseBlock => ({ kind: "paragraph", text });
-const heading = (text: string): ProseBlock => ({ kind: "heading", text });
-const subheading = (text: string): ProseBlock => ({ kind: "subheading", text });
-const bullets = (...items: string[]): ProseBlock => ({ items, kind: "bullets" });
-const table = (columns: string[], rows: string[][]): ProseBlock => ({
-  columns,
-  kind: "table",
-  rows,
-});
+const table = (columns: string[], rows: string[][]) =>
+  ({
+    columns,
+    kind: "table",
+    rows,
+  }) satisfies ProseBlock;
 
-/** Links to each top-level section of `blocks`, in order: a legal page's Index. */
-const sectionIndex = (blocks: ProseBlock[]): ProseBlock => ({
-  items: blocks.flatMap((block) =>
-    block.kind === "heading" ? [{ href: `#${headingId(block.text)}`, label: block.text }] : [],
-  ),
-  kind: "list",
-});
+const sectionIndex = (blocks: ProseBlock[]) =>
+  ({
+    items: blocks.flatMap((block) =>
+      block.kind === "heading" ? [{ href: `#${headingId(block.text)}`, label: block.text }] : [],
+    ),
+    kind: "list",
+  }) satisfies ProseBlock;
 
 const legalDate = "October 3, 2026";
 const operator = siteConfig.author.name;
@@ -300,13 +295,13 @@ const productCaps = product.toUpperCase();
 const siteHost = new URL(siteConfig.url).host;
 const emailLink = `[${siteConfig.email}](mailto:${siteConfig.email})`;
 
-/** General Legal's credit, verbatim, as the last paragraph of each legal page. */
 const generalLegalCredit = paragraph(
   'This template was prepared and made publicly available by General Legal, PC ("General Legal"). It is provided for general reference purposes only and does not constitute, and should not be construed as, legal advice, or an endorsement or review of any particular transaction in which it is used. Use of this template does not create an attorney-client relationship with General Legal. General Legal has not reviewed, and takes no position on, any modifications made to this document or the deal terms it is used to document.',
 );
 
 const disclosurePurposes =
   "Service delivery and operations; Compliance and protection; Data sharing in the context of corporate events; To create aggregated, de-identified and/or anonymized data";
+
 const disclosureRecipients =
   "Service providers; Professional advisors; Authorities and others; Business transferees";
 
@@ -1092,5 +1087,5 @@ export const utilityPages: ProsePage[] = [
   },
 ];
 
-export const findPageByPath = (pathname: string): ProsePage | null =>
+export const findPageByPath = (pathname: string) =>
   [...prosePages, ...utilityPages].find((page) => page.path === pathname) ?? null;

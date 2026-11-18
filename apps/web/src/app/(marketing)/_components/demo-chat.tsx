@@ -56,7 +56,6 @@ interface MessagePartsProps {
 }
 
 const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
-  // Group sources together
   const { otherParts, sourceParts } = useMemo(() => {
     const sources: (
       | { type: "source-url"; url: string; title?: string; sourceId?: string }
@@ -68,6 +67,7 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
           sourceId?: string;
         }
     )[] = [];
+
     const others: UIMessage["parts"] = [];
 
     for (const part of parts) {
@@ -105,12 +105,12 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
           }
 
           default: {
-            // Handle tool parts (tool-* and dynamic-tool)
             if (isToolUIPart(part)) {
               const toolName = getToolOrDynamicToolName(part);
-              // ToolHeader expects tool-* format, so convert dynamic-tool
+
               const toolType: `tool-${string}` =
                 part.type === "dynamic-tool" ? "tool-dynamic" : part.type;
+
               return (
                 <Tool key={key}>
                   <ToolHeader title={toolName} type={toolType} state={part.state} />
@@ -122,7 +122,6 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
               );
             }
 
-            // Handle data-* parts (custom data parts)
             if (part.type.startsWith("data-")) {
               return (
                 <div
@@ -142,17 +141,17 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
         }
       })}
 
-      {/* Render sources together if any exist */}
       {sourceParts.length > 0 && (
         <Sources>
           <SourcesTrigger count={sourceParts.length} />
           <SourcesContent>
             {sourceParts.map((source, i) => {
               const key = `${messageId}-source-${i}`;
+
               if (source.type === "source-url") {
                 return <Source key={key} href={source.url} title={source.title ?? source.url} />;
               }
-              // source-document
+
               return (
                 <Source
                   key={key}
@@ -170,12 +169,14 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
 
 export const DemoChat = ({ demo }: { demo: Demo }) => {
   const [input, setInput] = useState(() => demo.preset ?? "");
+
   const { messages, sendMessage, status } = useChat({
     transport: demo.transport,
   });
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim();
+
     if (!text) {
       return;
     }

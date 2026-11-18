@@ -51,7 +51,7 @@ interface EditFormState {
   output: string;
 }
 
-const toFormState = (interaction: Interaction): EditFormState => ({
+const toFormState = (interaction: Interaction) => ({
   description: interaction.description ?? "",
   input: interaction.input,
   output: interaction.output,
@@ -79,6 +79,7 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
     if (nextOpen) {
       setForm(toFormState(interaction));
     }
+
     setOpen(nextOpen);
   };
 
@@ -91,6 +92,7 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
 
     if (!title.length || !input.length || !output.length) {
       toast.error("Title, input, and output are required");
+
       return;
     }
 

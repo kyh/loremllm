@@ -1,6 +1,3 @@
-// None of the bases declares errors or metadata, so each is plain `oc`. The
-// name says which middleware @repo/service applies to implement a procedure.
-
 /** Public (unauthed): no session required, so implementations add no middleware. */
 export { oc as publicBase } from "@orpc/contract";
 

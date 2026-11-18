@@ -12,17 +12,20 @@ import {
 
 import type { ProseBlock, ProsePage } from "./site-pages";
 
-const blockText = (block: ProseBlock): string => {
+const blockText = (block: ProseBlock) => {
   switch (block.kind) {
     case "list": {
       return block.items.map((item) => `${item.label} ${item.text ?? ""}`).join(" ");
     }
+
     case "bullets": {
       return block.items.join(" ");
     }
+
     case "table": {
       return [...block.columns, ...block.rows.flat()].join(" ");
     }
+
     default: {
       return block.text;
     }
@@ -32,6 +35,7 @@ const blockText = (block: ProseBlock): string => {
 const proseText = (path: string) => {
   const page = findPageByPath(path);
   assert.ok(page, `${path} should exist`);
+
   return page.blocks.map(blockText).join(" ");
 };
 
@@ -109,6 +113,7 @@ describe("legal pages", () => {
   test("leave no template placeholder or drafting note behind", () => {
     for (const page of legalPages) {
       const text = proseText(page.path);
+
       for (const residue of ["<mark>", "[INSERT", "[ADD]", "{{", "[Company", "DecisionLayer"]) {
         assert.equal(text.includes(residue), false, `${page.path} still has ${residue}`);
       }

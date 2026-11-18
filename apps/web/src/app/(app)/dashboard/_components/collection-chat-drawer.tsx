@@ -27,33 +27,29 @@ const roleLabel = {
   user: "You",
 } satisfies Record<UIMessage["role"], string>;
 
-// Each field falls back to null when absent or mistyped; the match banner
-// renders whatever subset the server managed to attach.
 const matchMetadata = z.object({
-  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   interactionId: z.string().nullable().catch(null),
-  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   similarity: z.number().nullable().catch(null),
-  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   title: z.string().nullable().catch(null),
 });
-
-type MatchMetadata = z.infer<typeof matchMetadata>;
 
 const MessageText = ({ role, text }: { role: UIMessage["role"]; text: string }) => {
   if (role === "assistant") {
     return <MessageResponse className="text-sm">{text}</MessageResponse>;
   }
+
   return <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
 };
 
-const parseMatchMetadata = (metadata: UIMessage["metadata"]): MatchMetadata | null => {
+const parseMatchMetadata = (metadata: UIMessage["metadata"]) => {
   const parsed = matchMetadata.safeParse(metadata);
+
   if (!parsed.success) {
     return null;
   }
 
   const { interactionId, title, similarity } = parsed.data;
+
   if (interactionId === null && title === null && similarity === null) {
     return null;
   }
@@ -72,6 +68,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
 
   const latestMatch = useMemo(() => {
     const latestAssistant = messages.toReversed().find((message) => message.role === "assistant");
+
     return parseMatchMetadata(latestAssistant?.metadata);
   }, [messages]);
 
@@ -142,6 +139,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
                 .map((part) => part.text)
                 .join("")
                 .trim();
+
               const toolParts = message.parts.filter(isToolUIPart);
 
               return (
@@ -252,7 +250,6 @@ export const CollectionChatDrawer = (props: CollectionChatDrawerProps) => {
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-4 pb-6">
-          {/* Keyed by collection so switching collections starts a fresh conversation */}
           <ChatPanel
             key={collectionId}
             collectionId={collectionId}

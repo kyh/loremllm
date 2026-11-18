@@ -35,8 +35,10 @@ describe("renderLlmsTxt", () => {
 
   test("H2 sections contain only link lists", () => {
     const sections = body.split("\n## ").slice(1);
+
     for (const section of sections) {
       const entries = section.split("\n").slice(1).filter(Boolean);
+
       for (const entry of entries) {
         assert.ok(entry.startsWith("- "), `unexpected line in H2 section: ${entry}`);
       }

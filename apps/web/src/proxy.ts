@@ -5,58 +5,37 @@ import { negotiateMediaType, notAcceptableBody, withVaryAccept } from "@/lib/age
 
 import type { NextRequest } from "next/server";
 
-/**
- * Markdown content negotiation, to the acceptmarkdown.com contract: one URL,
- * two representations, `Vary: Accept` on both.
- * <https://acceptmarkdown.com/recipes/nextjs>
- *
- * Server Components render HTML unconditionally, so the proxy is the only place
- * this can happen — it rewrites Markdown-preferring requests to
- * `/api/markdown/*` before the page renders.
- */
-
 const MARKDOWN_ROUTE_PREFIX = "/api/markdown";
 
-/** `RSC_CONTENT_TYPE_HEADER` in `next/dist/client/components/app-router-headers`. */
 const RSC_MEDIA_TYPE = "text/x-component";
 
 const markdownRewrite = (request: NextRequest, pathname: string) => {
   const url = request.nextUrl.clone();
   url.pathname = `${MARKDOWN_ROUTE_PREFIX}${pathname}`;
+
   return NextResponse.rewrite(url);
 };
 
-/** `Vary: Accept` has to survive alongside Next's RSC vary tokens, not replace them. */
-const applyVary = (response: NextResponse): NextResponse => {
+const applyVary = (response: NextResponse) => {
   response.headers.set("Vary", withVaryAccept(response.headers.get("Vary")));
+
   return response;
 };
 
-/**
- * React's own transport, not a representation of the page: negotiating a
- * flight request would answer it `406`. Next strips the `RSC` header before the
- * proxy runs, so `Accept` is the load-bearing test; `Next-Action` survives and
- * is kept as a second signal.
- */
 const isFlightRequest = (request: NextRequest) =>
   (request.headers.get("accept") ?? "").toLowerCase().includes(RSC_MEDIA_TYPE) ||
   request.headers.has("next-action");
 
-/** Routes under `(app)/`, which the layout gates on a session. */
 const PROTECTED_PREFIX = "/dashboard";
 
 const isProtected = (pathname: string) =>
   pathname === PROTECTED_PREFIX || pathname.startsWith(`${PROTECTED_PREFIX}/`);
 
-/**
- * Optimistic: only checks a session cookie is present, so an anonymous visit
- * gets a server-side 307 before the page streams. The layout's `getSession`
- * stays the real gate (an expired or forged cookie passes here).
- */
 const loginRedirect = (request: NextRequest) => {
   const url = request.nextUrl.clone();
   url.pathname = "/auth/login";
   url.search = `?next=${encodeURIComponent(`${request.nextUrl.pathname}${request.nextUrl.search}`)}`;
+
   return NextResponse.redirect(url);
 };
 
@@ -70,8 +49,7 @@ export const proxy = (request: NextRequest) => {
     if (!getSessionCookie(request)) {
       return loginRedirect(request);
     }
-    // Matched for the session check alone: skip negotiation unless the request
-    // would have reached the proxy anyway (an Accept naming markdown).
+
     if (!mentionsMarkdown(request)) {
       return NextResponse.next();
     }
@@ -81,11 +59,9 @@ export const proxy = (request: NextRequest) => {
     return applyVary(NextResponse.next());
   }
 
-  // An explicit `.md` URL is Markdown regardless of Accept: it is what each
-  // page's `<link rel="alternate">` points at, and a crawler following that
-  // link may send no Accept header at all.
   if (pathname.endsWith(".md")) {
     const stripped = pathname.slice(0, -".md".length);
+
     return applyVary(markdownRewrite(request, stripped === "/index" ? "" : stripped));
   }
 
@@ -96,8 +72,6 @@ export const proxy = (request: NextRequest) => {
     return applyVary(markdownRewrite(request, pathname === "/" ? "" : pathname));
   }
 
-  // Nothing this site produces is acceptable to the client — the only case
-  // RFC 9110 wants a 406 for.
   if (chosen === null) {
     return new Response(notAcceptableBody(accept), {
       headers: {

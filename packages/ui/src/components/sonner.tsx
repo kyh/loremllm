@@ -28,7 +28,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
         warning: <TriangleAlertIcon className="size-4" />,
       }}
       style={
-        // SAFETY: only `--*` custom properties, which the DOM style API accepts but the CSSProperties index type omits
         {
           "--border-radius": "var(--radius)",
           "--normal-bg": "var(--popover)",

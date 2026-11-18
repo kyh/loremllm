@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** Any JSON value — the shape `request.json()` guarantees at the HTTP boundary. */
 const jsonValue = z.json();
 
 export type JsonBody = z.infer<typeof jsonValue>;
@@ -37,8 +36,11 @@ export const LoremRequestSchema = LoremParamsSchema.merge(
 );
 
 export type LoremParams = z.infer<typeof LoremParamsSchema>;
+
 export type MarkdownRequest = z.infer<typeof MarkdownRequestSchema>;
+
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+
 export type LoremRequest = z.infer<typeof LoremRequestSchema>;
 
 export type ParsedRequestPayload =
@@ -46,7 +48,6 @@ export type ParsedRequestPayload =
   | { type: "chat"; data: ChatRequest }
   | { type: "lorem"; data: LoremRequest };
 
-/** Invalid request body — mapped to a 400 response by the route handler */
 export class PayloadError extends Error {
   constructor(message: string) {
     super(message);
@@ -54,7 +55,7 @@ export class PayloadError extends Error {
   }
 }
 
-const parseOrThrow = <T>(schema: z.ZodType<T>, body: JsonBody, label: string): T => {
+const parseOrThrow = <T>(schema: z.ZodType<T>, body: JsonBody, label: string) => {
   const result = schema.safeParse(body);
 
   if (!result.success) {
@@ -68,31 +69,35 @@ const parseOrThrow = <T>(schema: z.ZodType<T>, body: JsonBody, label: string): T
   return result.data;
 };
 
-/**
- * Parse the request body into a typed payload.
- *
- * Prefer an explicit `type` field ("chat" | "markdown" | "lorem") — a typo'd
- * body then fails loudly instead of silently falling through to another
- * handler. Bodies without `type` fall back to shape inference for backwards
- * compatibility.
- */
 const explicitlyTypedBody = z.object({ type: z.string() });
 
-export const parseRequestPayload = (body: JsonBody): ParsedRequestPayload => {
+export const parseRequestPayload = (body: JsonBody) => {
   const explicitBody = explicitlyTypedBody.safeParse(body);
   const explicitType = explicitBody.success ? explicitBody.data.type : null;
 
   if (explicitType !== null) {
     switch (explicitType) {
       case "markdown": {
-        return { data: parseOrThrow(MarkdownRequestSchema, body, "markdown"), type: "markdown" };
+        return {
+          data: parseOrThrow(MarkdownRequestSchema, body, "markdown"),
+          type: "markdown",
+        } satisfies ParsedRequestPayload;
       }
+
       case "chat": {
-        return { data: parseOrThrow(ChatRequestSchema, body, "chat"), type: "chat" };
+        return {
+          data: parseOrThrow(ChatRequestSchema, body, "chat"),
+          type: "chat",
+        } satisfies ParsedRequestPayload;
       }
+
       case "lorem": {
-        return { data: parseOrThrow(LoremRequestSchema, body, "lorem"), type: "lorem" };
+        return {
+          data: parseOrThrow(LoremRequestSchema, body, "lorem"),
+          type: "lorem",
+        } satisfies ParsedRequestPayload;
       }
+
       default: {
         throw new PayloadError(
           `Unknown request type "${explicitType}". Expected "chat", "markdown", or "lorem".`,
@@ -102,18 +107,21 @@ export const parseRequestPayload = (body: JsonBody): ParsedRequestPayload => {
   }
 
   const markdownResult = MarkdownRequestSchema.safeParse(body);
+
   if (markdownResult.success) {
-    return { data: markdownResult.data, type: "markdown" };
+    return { data: markdownResult.data, type: "markdown" } satisfies ParsedRequestPayload;
   }
 
   const chatResult = ChatRequestSchema.safeParse(body);
+
   if (chatResult.success) {
-    return { data: chatResult.data, type: "chat" };
+    return { data: chatResult.data, type: "chat" } satisfies ParsedRequestPayload;
   }
 
   const loremResult = LoremRequestSchema.safeParse(body);
+
   if (loremResult.success) {
-    return { data: loremResult.data, type: "lorem" };
+    return { data: loremResult.data, type: "lorem" } satisfies ParsedRequestPayload;
   }
 
   throw new PayloadError("Invalid request payload");

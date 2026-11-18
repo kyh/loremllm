@@ -63,6 +63,7 @@ const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
 
     if (!name.length) {
       toast.error("Collection name is required");
+
       return;
     }
 
@@ -132,9 +133,6 @@ export const MockDashboard = () => {
   const collections = collectionListQuery.data ?? emptyCollectionList;
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
-  // The stored id is a preference, not the source of truth — a not-yet-loaded
-  // list or a deleted collection leaves it dangling. Resolving it against the
-  // current list during render avoids a pass where the dashboard shows nothing.
   const activeCollectionId = collections.some((item) => item.id === selectedCollectionId)
     ? selectedCollectionId
     : (collections[0]?.id ?? null);
@@ -144,6 +142,7 @@ export const MockDashboard = () => {
       input: activeCollectionId ? { collectionId: activeCollectionId } : skipToken,
     }),
   );
+
   const collection = selectedCollectionQuery.data;
 
   if (collectionListQuery.isPending) {

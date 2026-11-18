@@ -24,9 +24,11 @@ const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 
 export const useReasoning = () => {
   const context = useContext(ReasoningContext);
+
   if (!context) {
     throw new Error("Reasoning components must be used within Reasoning");
   }
+
   return context;
 };
 
@@ -56,21 +58,20 @@ const ReasoningComponent = ({
     onChange: onOpenChange,
     prop: open,
   });
+
   const [duration, setDuration] = useControllableState({
     defaultProp: undefined,
     prop: durationProp,
   });
 
   const [hasAutoClosed, setHasAutoClosed] = useState(false);
-  // A ref, not state: the start instant is only read when streaming ends, so
-  // storing it in state would re-run this effect just to record the clock.
   const startTimeRef = useRef<number | null>(null);
+
   const contextValue = useMemo(
     () => ({ duration, isOpen, isStreaming, setIsOpen }),
     [duration, isOpen, isStreaming, setIsOpen],
   );
 
-  // Track duration when streaming starts and ends
   useEffect(() => {
     if (isStreaming) {
       if (startTimeRef.current === null) {
@@ -82,10 +83,8 @@ const ReasoningComponent = ({
     }
   }, [isStreaming, setDuration]);
 
-  // Auto-open when streaming starts, auto-close when streaming ends (once only)
   useEffect(() => {
     if (defaultOpen && !isStreaming && isOpen && !hasAutoClosed) {
-      // Add a small delay before closing to allow user to see the content
       const timer = setTimeout(() => {
         setIsOpen(false);
         setHasAutoClosed(true);
@@ -123,9 +122,11 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return <Shimmer duration={1}>Thinking...</Shimmer>;
   }
+
   if (duration === undefined) {
     return <p>Thought for a few seconds</p>;
   }
+
   return <p>Thought for {duration} seconds</p>;
 };
 
@@ -180,5 +181,7 @@ const ReasoningContentComponent = ({ className, children, ...props }: ReasoningC
 export const ReasoningContent = memo(ReasoningContentComponent);
 
 Reasoning.displayName = "Reasoning";
+
 ReasoningTrigger.displayName = "ReasoningTrigger";
+
 ReasoningContent.displayName = "ReasoningContent";

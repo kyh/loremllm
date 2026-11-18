@@ -7,9 +7,7 @@ interface GlobalErrorProps {
   reset: () => void;
 }
 
-// Catches errors thrown by the root layout itself, so it replaces the layout
-// entirely and must render its own <html>/<body>. Kept dependency-free — the
-// providers and fonts the app usually supplies may be exactly what failed.
+// WARNING: keep dependency-free; the root layout's providers and fonts may be what failed.
 const GlobalError = ({ error, reset }: GlobalErrorProps) => {
   useEffect(() => {
     console.error(error);
