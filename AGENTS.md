@@ -53,7 +53,13 @@ pnpm verify     # typecheck · lint · format · test
 
 `pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s no-key path, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
-**Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. `no-await-in-loop` is the one deliberate override. Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
+**Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, `landmines`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. Landmines means:
+
+- **No prose comments.** What survives is directives (`oxlint-disable…`), a single-line `// WARNING:` on a dangerous recurring footgun, and TSDoc on exported API (the published `@loremllm/transport` keeps its own). Rationale goes in the commit, or here when it is a decision.
+- **No explicit return types.** Pin a contract with `satisfies` or a typed const (`const handler: StaticEveHandler = …; return handler;`). In `packages/transport`, check that `pnpm -F @loremllm/transport build` emits the same `dist/*.d.ts` signatures: an inferred type can silently change the published API.
+- **Tests use real implementations**: no module mocks, `mock.fn(impl)`, stubbed globals or fake responses; spies only observe (`mock.method(console, "info")`, `mock.fn()`). No fixed sleeps: await the operation. Test files are `<subject>.test.ts` beside their subject, and a package declares explicit `exports`, never a `./*` → `./src/*` wildcard.
+
+Two rules are off on purpose: `no-await-in-loop` (sequential awaits are deliberate: rate-limited source reads, ordered writes) and `anti-slop/require-safety-comment-for-type-assertion` (it demands the comment `no-comments` forbids). Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
 
 Runtime — drive the real web UI with [agent-browser](https://github.com/vercel-labs/agent-browser):
 
@@ -103,11 +109,11 @@ If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next d
 
 ## Platform matrix
 
-| Surface                       | Command                            | Agent-verifiable at runtime?         |
-| ----------------------------- | ---------------------------------- | ------------------------------------ |
-| Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser |
-| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 86 node:test cases, no I/O |
-| Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed |
+| Surface                       | Command                            | Agent-verifiable at runtime?                                            |
+| ----------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser                                    |
+| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 88 node:test cases; the eve client one uses a loopback server |
+| Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed                                    |
 
 There is no mobile, desktop, or extension target. Everything this repo ships can be checked headlessly.
 
@@ -118,13 +124,14 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - **No `any`, no non-null `!`, no `as` casts.** Kebab-case filenames. Make illegal states unrepresentable.
 - **Org scoping lives in `requireActiveOrganization`** (the session's active organization), not in input schemas — don't re-declare it as procedure input.
 - **`cacheComponents` and `partialPrefetching` are on** (`apps/web/next.config.ts`): a `<Link>` prefetches its route's static App Shell. Request data (the session, `searchParams`, `connection()`) is read only inside `<Suspense>` — `(app)/layout.tsx` checks the session there (the real gate); `src/proxy.ts` first 307s a `/dashboard` request with no session cookie to `/auth/login?next=…` (optimistic, cookie presence only). No route segment config (`dynamic`, `revalidate`); cache static output with `"use cache"`.
+- **The legal pages are claims about the code.** `/privacy` and `/terms` (`apps/web/src/lib/agent/site-pages.ts`) follow General Legal's templates (GDPR-enhanced privacy policy, website terms of use, JAMS arbitration) with each clause resolved to what this product does: a change to what the code collects, stores or sends changes the copy in the same commit.
 - Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
 
 ## Map
 
 - `apps/web` · `packages/{contract,service,db,transport,ui}`
 - `CLAUDE.md` — conventions + command list (Claude-specific)
-- `packages/service/src/auth/auth.ts` — auth config, org provisioning hook, rate limit; the session cookie's `SameSite=Lax` is only `/api/orpc`'s cross-**site** defense
+- `packages/service/src/auth/auth.ts` — auth config, org provisioning hook, rate limit (stored in the database, `rate_limit`, because in-memory counters multiply across serverless instances and reset on deploy); the session cookie's `SameSite=Lax` is only `/api/orpc`'s cross-**site** defense
 - `apps/web/src/app/api/orpc/[[...rest]]/route.ts` — the other half: an `Origin` check, because `SameSite` keys on site, so a sibling subdomain's form POST rides the session cookie in
 - `packages/contract/src` — the API contract: inputs, output types, procedure bases · `packages/service/src/orpc.ts` — its implementer, session and org-resolution middleware
 - `packages/db/src/drizzle-schema.ts` — app tables (collections, interactions, vectors) · `drizzle-relations.ts` — the `db.query` graph over the app and auth schemas
