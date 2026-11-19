@@ -5,29 +5,22 @@ import { z } from "zod";
 
 import type { JsonBody } from "./schema";
 
-// Lenient by design: a malformed message or part degrades to empty/ignored
-// instead of failing the whole request, mirroring how unmatched shapes were
-// previously skipped.
 const inboundTextPart = z
   .object({ text: z.string(), type: z.literal("text") })
   .nullable()
-  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   .catch(null);
 
 const inboundMessage = z
   .object({
-    // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
     parts: z.array(inboundTextPart).catch([]),
-    // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
     role: z.string().catch(""),
   })
-  // oxlint-disable-next-line promise/prefer-await-to-then -- zod's .catch(), not a promise's
   .catch({ parts: [], role: "" });
 
 /**
  * Extract the user query from the messages array
  */
-export const extractUserQuery = (messages: readonly JsonBody[]): string => {
+export const extractUserQuery = (messages: readonly JsonBody[]) => {
   const inboundMessages = messages.map((message) => inboundMessage.parse(message));
   const lastUserMessage = inboundMessages.toReversed().find((message) => message.role === "user");
 
@@ -62,7 +55,7 @@ export type MarkdownChunk = TextChunk | ToolCallChunk;
 
 const TOOL_FENCE_REGEX = /```tool[^\n]*\n[\s\S]*?```/giu;
 
-const stripSurroundingQuotes = (value: string): string => {
+const stripSurroundingQuotes = (value: string) => {
   if (
     (value.startsWith('"') && value.endsWith('"')) ||
     (value.startsWith("'") && value.endsWith("'"))
@@ -73,12 +66,7 @@ const stripSurroundingQuotes = (value: string): string => {
   return value;
 };
 
-interface ToolFenceHeader {
-  headerToolName?: string;
-  headerToolCallId?: string;
-}
-
-const parseToolFenceInfo = (infoString: string): ToolFenceHeader => {
+const parseToolFenceInfo = (infoString: string) => {
   const tokens = infoString.trim().split(/\s+/u).filter(Boolean);
 
   if (!tokens.length) {
@@ -130,19 +118,19 @@ const toolInvocationState = z.enum([
   "output-denied",
 ]);
 
-const parseToolState = (value: JSONValue | undefined): ToolInvocationState | undefined => {
+const parseToolState = (value: JSONValue | undefined) => {
   const result = toolInvocationState.safeParse(value);
+
   return result.success ? result.data : undefined;
 };
 
 const stringValue = z.string();
 
-// YAML tool-fence bodies only carry JSON-shaped values under the default schema.
 const toolFenceData = z.record(z.string(), z.json());
 
 type ToolFenceData = z.infer<typeof toolFenceData>;
 
-const getStringField = (data: ToolFenceData, keys: string[]): string | undefined => {
+const getStringField = (data: ToolFenceData, keys: string[]) => {
   for (const key of keys) {
     const value = stringValue.safeParse(data[key]);
 
@@ -150,11 +138,9 @@ const getStringField = (data: ToolFenceData, keys: string[]): string | undefined
       return value.data;
     }
   }
-
-  return undefined;
 };
 
-const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChunk | null => {
+const parseToolCallChunk = (rawContent: string, fallbackId: string) => {
   const lines = rawContent.split("\n");
 
   if (lines.length === 0) {
@@ -188,10 +174,12 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
 
   if (bodyContent.length) {
     let parsedYaml;
+
     try {
       parsedYaml = parseYaml(bodyContent);
     } catch (error) {
       console.error("Failed to parse tool call fence:", error);
+
       return null;
     }
 
@@ -208,8 +196,10 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
     headerToolCallId ??
     getStringField(data, ["toolCallId", "tool_call_id", "callId", "id", "toolCall"]) ??
     fallbackId;
+
   const toolName =
     headerToolName ?? getStringField(data, ["toolName", "tool_name", "name", "tool"]) ?? "tool";
+
   const state = parseToolState(data.state);
   const errorText = getStringField(data, ["errorText", "error_text", "error"]) ?? undefined;
 
@@ -232,7 +222,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string): ToolCallChu
   return chunk;
 };
 
-const splitIntoTextChunks = (segment: string): TextChunk[] => {
+const splitIntoTextChunks = (segment: string) => {
   if (!segment.length) {
     return [];
   }
@@ -244,7 +234,7 @@ const splitIntoTextChunks = (segment: string): TextChunk[] => {
     .map((token) => ({ type: "text" as const, value: token }));
 };
 
-export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
+export const parseMarkdownIntoChunks = (markdown: string) => {
   const chunks: MarkdownChunk[] = [];
   let lastIndex = 0;
   let toolIndex = 1;
@@ -277,10 +267,7 @@ export const parseMarkdownIntoChunks = (markdown: string): MarkdownChunk[] => {
   return chunks;
 };
 
-/**
- * Create streaming chunks for the AI SDK
- */
-const stringifyToolInput = (input: JSONValue | undefined): string => {
+const stringifyToolInput = (input: JSONValue | undefined) => {
   const text = stringValue.safeParse(input);
 
   if (text.success) {
@@ -291,78 +278,76 @@ const stringifyToolInput = (input: JSONValue | undefined): string => {
     return JSON.stringify(input ?? {});
   } catch (error) {
     console.error("Failed to serialize tool input:", error);
+
     return "{}";
   }
 };
 
-const normalizeToolResult = (output: JSONValue | undefined): NonNullable<JSONValue> => output ?? {};
+const normalizeToolResult = (output: JSONValue | undefined) => output ?? {};
 
-export const createStreamChunks = (
-  chunks: MarkdownChunk[],
-  userQuery: string,
-  output: string,
-): LanguageModelV3StreamPart[] => [
-  { id: "text-1", type: "text-start" },
-  ...chunks.flatMap<LanguageModelV3StreamPart>((chunk) => {
-    if (chunk.type === "text") {
-      return [
+export const createStreamChunks = (chunks: MarkdownChunk[], userQuery: string, output: string) =>
+  [
+    { id: "text-1", type: "text-start" },
+    ...chunks.flatMap<LanguageModelV3StreamPart>((chunk) => {
+      if (chunk.type === "text") {
+        return [
+          {
+            delta: chunk.value,
+            id: "text-1",
+            type: "text-delta",
+          },
+        ];
+      }
+
+      const events: LanguageModelV3StreamPart[] = [
         {
-          delta: chunk.value,
-          id: "text-1",
-          type: "text-delta",
+          input: stringifyToolInput(chunk.input),
+          toolCallId: chunk.toolCallId,
+          toolName: chunk.toolName,
+          type: "tool-call",
         },
       ];
-    }
 
-    const events: LanguageModelV3StreamPart[] = [
-      {
-        input: stringifyToolInput(chunk.input),
-        toolCallId: chunk.toolCallId,
-        toolName: chunk.toolName,
-        type: "tool-call",
+      const finalState = chunk.state;
+
+      if (finalState === "output-error" || finalState === "output-denied" || chunk.errorText) {
+        events.push({
+          isError: true,
+          result: chunk.errorText ?? "An unknown tool error occurred.",
+          toolCallId: chunk.toolCallId,
+          toolName: chunk.toolName,
+          type: "tool-result",
+        });
+      } else if (finalState === "output-available" || chunk.output !== undefined) {
+        events.push({
+          result: normalizeToolResult(chunk.output),
+          toolCallId: chunk.toolCallId,
+          toolName: chunk.toolName,
+          type: "tool-result",
+        });
+      }
+
+      return events;
+    }),
+    { id: "text-1", type: "text-end" },
+    {
+      finishReason: {
+        raw: "stop",
+        unified: "stop",
       },
-    ];
-
-    const finalState = chunk.state;
-
-    if (finalState === "output-error" || finalState === "output-denied" || chunk.errorText) {
-      events.push({
-        isError: true,
-        result: chunk.errorText ?? "An unknown tool error occurred.",
-        toolCallId: chunk.toolCallId,
-        toolName: chunk.toolName,
-        type: "tool-result",
-      });
-    } else if (finalState === "output-available" || chunk.output !== undefined) {
-      events.push({
-        result: normalizeToolResult(chunk.output),
-        toolCallId: chunk.toolCallId,
-        toolName: chunk.toolName,
-        type: "tool-result",
-      });
-    }
-
-    return events;
-  }),
-  { id: "text-1", type: "text-end" },
-  {
-    finishReason: {
-      raw: "stop",
-      unified: "stop",
-    },
-    type: "finish",
-    usage: {
-      inputTokens: {
-        cacheRead: undefined,
-        cacheWrite: undefined,
-        noCache: undefined,
-        total: userQuery.length,
-      },
-      outputTokens: {
-        reasoning: undefined,
-        text: output.length,
-        total: output.length,
+      type: "finish",
+      usage: {
+        inputTokens: {
+          cacheRead: undefined,
+          cacheWrite: undefined,
+          noCache: undefined,
+          total: userQuery.length,
+        },
+        outputTokens: {
+          reasoning: undefined,
+          text: output.length,
+          total: output.length,
+        },
       },
     },
-  },
-];
+  ] satisfies LanguageModelV3StreamPart[];

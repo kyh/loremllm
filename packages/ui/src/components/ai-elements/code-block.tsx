@@ -78,11 +78,13 @@ export const CodeBlock = ({
 
     const highlight = async () => {
       const [light, dark] = await highlightCode(code, language, showLineNumbers);
+
       if (!cancelled) {
         setHtml(light);
         setDarkHtml(dark);
       }
     };
+
     void highlight();
 
     return () => {
@@ -139,6 +141,7 @@ export const CodeBlockCopyButton = ({
   const copyToClipboard = async () => {
     if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
       onError?.(new Error("Clipboard API not available"));
+
       return;
     }
 

@@ -1,12 +1,10 @@
-/**
- * Application schema
- */
 import { sql } from "drizzle-orm";
 import { customType, snakeCase } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./drizzle-schema-auth";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 interface JsonObject {
   [key: string]: JsonValue;
 }
@@ -50,7 +48,6 @@ export const mockCollection = snakeCase.table("mock_collection", (t) => ({
     .$defaultFn(() => crypto.randomUUID()),
   isPublic: t.integer({ mode: "boolean" }).notNull().default(false),
   metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}),
-  // Minimum cosine similarity (0-1) a query must reach to match; 0 disables the threshold
   minSimilarity: t.real().notNull().default(0),
   name: t.text(),
   organizationId: t
@@ -75,7 +72,6 @@ export const mockCollection = snakeCase.table("mock_collection", (t) => ({
  * responseSchema: "LanguageModelV2StreamPart"
  */
 export const mockInteraction = snakeCase.table("mock_interaction", (t) => ({
-  // Nullable for demo interactions
   collectionId: t.text().references(() => mockCollection.id, { onDelete: "cascade" }),
   createdAt: t
     .integer({ mode: "timestamp" })
@@ -86,10 +82,8 @@ export const mockInteraction = snakeCase.table("mock_interaction", (t) => ({
     .text()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  // Matched against the user input
   input: t.text().notNull(),
   metadata: t.text({ mode: "json" }).$type<JsonObject>().default({}).notNull(),
-  // Markdown response string
   output: t.text().notNull(),
   responseSchema: t.text().notNull().default("LanguageModelV2StreamPart"),
   title: t.text().notNull(),
@@ -117,9 +111,7 @@ export const mockEveSession = snakeCase.table("mock_eve_session", (t) => ({
     .integer({ mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-  // sessionId minted by the eve handler
   id: t.text().primaryKey(),
-  // EveSessionRecord, validated on read
   record: t.text({ mode: "json" }).notNull(),
   updatedAt: t
     .integer({ mode: "timestamp" })

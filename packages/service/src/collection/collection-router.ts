@@ -13,7 +13,7 @@ export const collectionRouter = {
       where: { id: input.collectionId, organizationId: context.organizationId },
       with: {
         interactions: {
-          // Exclude the embedding blob — libsql's JSON protocol can't carry it
+          // WARNING: libsql's JSON protocol cannot carry the embedding blob.
           columns: { vector: false },
           orderBy: { updatedAt: "desc" },
         },
@@ -138,7 +138,6 @@ export const collectionRouter = {
     const [updatedCollection] = await context.db
       .update(mockCollection)
       .set({
-        // An explicit empty string clears the description; undefined leaves it unchanged
         description:
           input.description === undefined
             ? collection.description

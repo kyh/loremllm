@@ -1,6 +1,4 @@
 const DEFAULT_AUTH_PATH = "/dashboard";
-// Any absolute origin works here — it exists only so a relative path can be
-// parsed, and so anything that escapes to a different origin can be detected.
 const AUTH_REDIRECT_ORIGIN = "https://loremllm.invalid";
 
 /**
@@ -15,7 +13,7 @@ const AUTH_REDIRECT_ORIGIN = "https://loremllm.invalid";
  * form needs no `useSearchParams` and therefore no Suspense boundary.
  * Next yields an array for a repeated key; only the first value is considered.
  */
-export const safeNextPath = (nextPath?: string | string[]): string => {
+export const safeNextPath = (nextPath?: string | string[]) => {
   const value = Array.isArray(nextPath) ? nextPath[0] : nextPath;
 
   if (!value?.startsWith("/") || value.startsWith("//")) {
@@ -24,6 +22,7 @@ export const safeNextPath = (nextPath?: string | string[]): string => {
 
   try {
     const url = new URL(value, AUTH_REDIRECT_ORIGIN);
+
     if (url.origin !== AUTH_REDIRECT_ORIGIN) {
       return DEFAULT_AUTH_PATH;
     }

@@ -51,6 +51,7 @@ describe("buildOpenApiDocument", () => {
 
   test("describes every error as a problem document", () => {
     const { responses } = document.paths["/api/chat"].post;
+
     for (const status of ["400", "403", "404", "500"] as const) {
       assert.ok(responses[status].content["application/problem+json"]);
     }

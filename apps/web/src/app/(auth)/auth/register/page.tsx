@@ -13,9 +13,9 @@ interface PageProps {
   searchParams: Promise<{ next?: string | string[] }>;
 }
 
-// searchParams is per-request, so only the form waits on it; the rest is in the static shell.
 const Form = async ({ searchParams }: PageProps) => {
   const { next } = await searchParams;
+
   return <AuthForm type="register" nextPath={safeNextPath(next)} />;
 };
 

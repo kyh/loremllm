@@ -19,7 +19,6 @@ export interface LoremParams {
  * Handle lorem ipsum generation
  */
 export const handleLoremGeneration = (params: LoremParams) => {
-  // Generate lorem ipsum with validated parameters and defaults
   const loremParams = {
     count: params.count ?? 1,
     paragraphLowerBound: params.paragraphLowerBound ?? 3,

@@ -1,17 +1,5 @@
 #!/usr/bin/env tsx
 
-/**
- * Seed Demo Collection Script
- *
- * Creates the local dev account and a public "Demo" collection populated with
- * interactions about LoremLLM, so an agent or a fresh clone has a known login
- * and real data to verify against instead of an empty schema.
- *
- * Idempotent — safe to re-run.
- *
- * Usage:
- *   pnpm db:seed
- */
 import * as fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -23,23 +11,17 @@ import { auth } from "../src/auth/auth";
 import { env } from "../src/env";
 import { appRouter } from "../src/root-router";
 
-// ESM compatibility: derive the script directory from import.meta.url
 const scriptDir = import.meta.dirname;
 
-// A local-only account. `.local` is reserved for local use and never resolves,
-// so this address cannot collide with a real inbox. The password is documented
-// in AGENTS.md; override it for `seed:remote`.
 const USER_EMAIL = "dev@loremllm.local";
 const USER_NAME = "Dev";
 const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password";
 
 const COLLECTION_PUBLIC_ID = "demo";
 
-// Load interaction output from markdown files
-const loadInteractionOutput = (filename: string): Promise<string> =>
+const loadInteractionOutput = (filename: string) =>
   fs.readFile(path.join(scriptDir, "interactions", filename), "utf-8");
 
-// Demo interactions for LoremLLM
 const DEMO_INTERACTION_CONFIGS = [
   {
     description: "A friendly greeting to welcome users",
@@ -109,20 +91,14 @@ const DEMO_INTERACTION_CONFIGS = [
   },
 ];
 
-/**
- * Returns the dev user's id, creating the account if it does not exist.
- *
- * Signup goes through `auth.api.signUpEmail` rather than a raw insert so the
- * `databaseHooks.user.create.after` hook runs and provisions the personal
- * organization exactly as it would in production.
- */
-const ensureUser = async (): Promise<string> => {
+const ensureUser = async () => {
   const existingUser = await db.query.user.findFirst({
     where: { email: USER_EMAIL },
   });
 
   if (existingUser) {
     console.log(`   ✅ User already exists: ${existingUser.email}`);
+
     return existingUser.id;
   }
 
@@ -141,11 +117,7 @@ const ensureUser = async (): Promise<string> => {
   return user.id;
 };
 
-/**
- * The organization the dashboard opens on: the first membership, which is what
- * `setActiveOrganization` puts on every new session.
- */
-const resolveOrganizationId = async (userId: string): Promise<string> => {
+const resolveOrganizationId = async (userId: string) => {
   const membership = await db.query.member.findFirst({
     where: { userId },
   });
@@ -165,18 +137,17 @@ const main = async () => {
   console.log(`📝 Interactions to create: ${DEMO_INTERACTION_CONFIGS.length}\n`);
 
   try {
-    // Step 1: Create or find the dev user
     console.log("👤 Creating/finding user...");
     const userId = await ensureUser();
 
-    // Step 2: Resolve the personal organization the seeded data belongs to
     const organizationId = await resolveOrganizationId(userId);
+
     const org = await db.query.organization.findFirst({
       where: { id: organizationId },
     });
+
     console.log(`\n🏢 Organization: ${org?.name ?? organizationId}`);
 
-    // Step 3: Create a session context for API calls
     const createCallerContext = () => ({
       db,
       session: {
@@ -206,9 +177,8 @@ const main = async () => {
 
     const caller = createRouterClient(appRouter, { context: createCallerContext });
 
-    // Step 4: Create or find the Demo collection. publicId is globally unique,
-    // so look it up directly rather than through the org-scoped list.
     console.log(`\n📦 Creating/finding '${COLLECTION_PUBLIC_ID}' collection...`);
+
     const existingCollection = await db.query.mockCollection.findFirst({
       where: { publicId: COLLECTION_PUBLIC_ID },
     });
@@ -226,6 +196,7 @@ const main = async () => {
       const fullCollection = await caller.collection.byId({
         collectionId: existingCollection.id,
       });
+
       collection = fullCollection;
       existingInteractions = fullCollection.interactions;
 
@@ -253,12 +224,6 @@ const main = async () => {
       console.log(`   Name: ${collection.name}\n`);
     }
 
-    // Step 5: Load and create interactions (idempotent).
-    //
-    // Every interaction is embedded through the AI Gateway on write, so this
-    // step needs a key and a network. Without one the login and the collection
-    // above are still usable, which is enough to verify most flows — so warn
-    // and stop rather than failing eleven times over.
     if (env.AI_GATEWAY_API_KEY) {
       console.log("💬 Creating/updating interactions...\n");
 
@@ -303,9 +268,11 @@ const main = async () => {
       console.log("📊 Summary");
       console.log("=".repeat(50));
       console.log(`✅ Successfully created: ${successCount} interactions`);
+
       if (skippedCount > 0) {
         console.log(`⏭️  Skipped (already exist): ${skippedCount} interactions`);
       }
+
       if (errorCount > 0) {
         console.log(`❌ Failed: ${errorCount} interactions`);
       }
@@ -321,10 +288,12 @@ const main = async () => {
     console.log("\n🎉 Demo collection seed complete!");
   } catch (error) {
     console.error("\n❌ Fatal Error:", error);
+
     if (error instanceof Error) {
       console.error("Message:", error.message);
       console.error("Stack:", error.stack);
     }
+
     process.exit(1);
   }
 };

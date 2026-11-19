@@ -21,11 +21,6 @@ type DialogChangeDetails = Parameters<
   NonNullable<React.ComponentProps<typeof Dialog>["onOpenChange"]>
 >[1];
 
-/**
- * The panel is portaled outside the Dialog's (absent) popup, so Base UI reads a
- * press inside it — focusing the prompt, say — as an outside press and would
- * close the demo the visitor is typing into.
- */
 const isPressInsidePanel = (details: DialogChangeDetails) =>
   details.reason === "outside-press" &&
   details.event.target instanceof Element &&
@@ -61,8 +56,7 @@ const DemoItem = ({ demo, index, setHoverTextRef, createMouseHandlers }: DemoIte
         if (open) {
           openDemo(demo);
         } else if (isPressInsidePanel(details)) {
-          // Not just skipping closeDemo: without cancel() Base UI still commits the close
-          // internally (its own open state, the dismiss and focus-return effects).
+          // WARNING: without cancel() Base UI still commits the close internally.
           details.cancel();
         } else {
           closeDemo();
@@ -125,7 +119,9 @@ export const DemoList = ({ demos, className }: DemoListProps) => {
         if (!hoverTextRefs.current.has(itemIndex)) {
           hoverTextRefs.current.set(itemIndex, []);
         }
+
         const refs = hoverTextRefs.current.get(itemIndex);
+
         if (refs) {
           refs[colIndex] = handle;
         }
@@ -138,6 +134,7 @@ export const DemoList = ({ demos, className }: DemoListProps) => {
     (index: number) => ({
       onMouseEnter: () => {
         const handles = hoverTextRefs.current.get(index);
+
         if (handles) {
           for (const handle of handles) {
             handle.animate();
@@ -146,6 +143,7 @@ export const DemoList = ({ demos, className }: DemoListProps) => {
       },
       onMouseLeave: () => {
         const handles = hoverTextRefs.current.get(index);
+
         if (handles) {
           for (const handle of handles) {
             handle.animateBack();

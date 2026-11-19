@@ -4,17 +4,6 @@ import { NextRequest } from "next/server";
 
 import { POST } from "./route";
 
-/**
- * The transport's cross-origin defense is a thing typecheck cannot see, and the
- * case it exists for — a same-site *cross-origin* POST, from a sibling
- * `*.kyh.io` subdomain or another port on localhost — is exactly the one the
- * session cookie's `SameSite=Lax` does not cover. Drive the real exported route
- * handler: a test that restates the predicate would pass with the guard gone.
- *
- * `organization.get` is implemented under `requireSession`, so an anonymous
- * request stops at its session check without reaching the database.
- */
-
 const url = "https://app.kyh.io/api/orpc/organization/get";
 
 const post = (headers: Record<string, string>) =>

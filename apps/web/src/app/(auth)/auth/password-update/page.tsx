@@ -11,9 +11,9 @@ interface PageProps {
   searchParams: Promise<{ token?: string }>;
 }
 
-// searchParams is per-request, so only the form waits on it; the rest is in the static shell.
 const Form = async ({ searchParams }: PageProps) => {
   const { token } = await searchParams;
+
   return <UpdatePasswordForm token={token} />;
 };
 

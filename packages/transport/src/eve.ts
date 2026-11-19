@@ -5,23 +5,6 @@ import type { SpecialToolPart, StaticChatTransportInit, StaticTransportContext }
 import type { DelayResolver } from "./shared.ts";
 import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
-/**
- * Static mock server for the eve agent framework (https://eve.dev).
- *
- * Implements the three HTTP routes `useEveAgent` / `eve/client` talk to —
- * create session, send to a session id, and the NDJSON event stream — and
- * answers every turn from the same `mockResponse` generator API used by
- * `StaticChatTransport`. Point `useEveAgent({ host })` at wherever the handler
- * is mounted and the UI renders scripted responses with zero backend and zero
- * model fees.
- *
- * Wire format targets eve stream protocol version 23 (eve 0.42.x).
- */
-
-// ---------------------------------------------------------------------------
-// eve wire protocol (stream version 23)
-// ---------------------------------------------------------------------------
-
 const EVE_ROUTE_PREFIX = "/eve/v1/";
 const EVE_SESSION_ID_HEADER = "x-eve-session-id";
 const EVE_STREAM_FORMAT_HEADER = "x-eve-stream-format";
@@ -32,6 +15,7 @@ const EVE_MESSAGE_STREAM_FORMAT = "ndjson";
 const EVE_MESSAGE_STREAM_VERSION = "23";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 interface JsonObject {
   [key: string]: JsonValue;
 }
@@ -152,10 +136,6 @@ export type EveStreamEvent = (
   | { type: "session.failed"; data: { code: string; message: string; sessionId: string } }
 ) & { meta?: EveEventMeta };
 
-// ---------------------------------------------------------------------------
-// Session store
-// ---------------------------------------------------------------------------
-
 /**
  * Everything the handler persists for one eve session. JSON-serializable so
  * stores can be backed by a database or KV in serverless deployments.
@@ -185,36 +165,31 @@ export interface EveSessionStore<UI_MESSAGE extends UIMessage = UIMessage> {
 }
 
 /** Creates the default in-memory {@link EveSessionStore}. */
-export const createMemoryEveSessionStore = <
-  UI_MESSAGE extends UIMessage = UIMessage,
->(): EveSessionStore<UI_MESSAGE> => {
+export const createMemoryEveSessionStore = <UI_MESSAGE extends UIMessage = UIMessage>() => {
   const sessions = new Map<string, EveSessionRecord<UI_MESSAGE>>();
-  return {
+
+  const store: EveSessionStore<UI_MESSAGE> = {
     get(sessionId) {
       return Promise.resolve(sessions.get(sessionId));
     },
     set(sessionId, record) {
       sessions.set(sessionId, record);
+
       return Promise.resolve();
     },
   };
+
+  return store;
 };
 
-/**
- * Parses a value read back from external storage (a JSON column, KV, etc.)
- * into an {@link EveSessionRecord}. Returns `undefined` when the value does
- * not have the record's shape, so stale or foreign rows surface as
- * session-not-found instead of runtime errors.
- *
- * Validation is structural on the record and shallow on `events`/`messages`
- * elements — the record is trusted to have been written by this handler.
- */
 const storedEveStreamEvent = z.looseObject({ type: z.string() });
+
 const storedUiMessage = z.looseObject({
   id: z.string(),
   parts: z.array(z.unknown()),
   role: z.string(),
 });
+
 const storedEveSessionRecord = z.looseObject({
   continuationToken: z.string(),
   events: z.array(storedEveStreamEvent),
@@ -225,27 +200,23 @@ const storedEveSessionRecord = z.looseObject({
 
 export const parseEveSessionRecord = <UI_MESSAGE extends UIMessage = UIMessage>(
   value: JsonValue,
-): EveSessionRecord<UI_MESSAGE> | undefined => {
+) => {
   const result = storedEveSessionRecord.safeParse(value);
-  if (!result.success) {
-    return undefined;
-  }
-  const record = result.data;
-  // SAFETY: validation is deliberately shallow (see doc comment) — the record
-  // was written by this handler, so beyond the structural checks above its
-  // events and messages are trusted to be EveStreamEvent / UI_MESSAGE values.
-  return {
-    continuationToken: record.continuationToken,
-    events: record.events as EveStreamEvent[],
-    messages: record.messages as UI_MESSAGE[],
-    nextSequence: record.nextSequence,
-    turnCount: record.turnCount,
-  };
-};
 
-// ---------------------------------------------------------------------------
-// Handler options
-// ---------------------------------------------------------------------------
+  if (!result.success) {
+    return;
+  }
+
+  const record: EveSessionRecord<UI_MESSAGE> = {
+    continuationToken: result.data.continuationToken,
+    events: result.data.events as EveStreamEvent[],
+    messages: result.data.messages as UI_MESSAGE[],
+    nextSequence: result.data.nextSequence,
+    turnCount: result.data.turnCount,
+  };
+
+  return record;
+};
 
 /**
  * Delay between streamed eve events to simulate generation. Same shapes as
@@ -296,10 +267,6 @@ export interface StaticEveHandlerInit<UI_MESSAGE extends UIMessage = UIMessage> 
  */
 export type StaticEveHandler = (request: Request) => Promise<Response>;
 
-// ---------------------------------------------------------------------------
-// Request body parsing
-// ---------------------------------------------------------------------------
-
 interface ParsedUserMessage {
   text: string;
   receivedParts: EveMessageReceivedPart[];
@@ -310,35 +277,38 @@ const jsonObject: z.ZodType<JsonObject> = z.record(z.string(), z.json());
 const stringValue = z.string();
 
 const userTextPart = z.object({ text: z.string().min(1), type: z.literal("text") });
-// A mistyped filename degrades to undefined rather than rejecting the part.
+
 const userFilePart = z.object({
-  // oxlint-disable-next-line promise/prefer-await-to-then, unicorn/no-useless-undefined -- zod's .catch(), not a promise's
   filename: z.string().optional().catch(undefined),
   mediaType: z.string(),
   type: z.literal("file"),
 });
+
 const userMessageParts = z.array(z.union([userTextPart, userFilePart])).min(1);
 
-/**
- * Validates and flattens the `message` field of a create/continue body
- * (`string | Array<TextPart | FilePart>`). Returns `undefined` when invalid.
- */
-const parseUserMessage = (message: JsonValue | undefined): ParsedUserMessage | undefined => {
+const parseUserMessage = (message: JsonValue | undefined) => {
   const text = stringValue.safeParse(message);
+
   if (text.success) {
     if (text.data.length === 0) {
-      return undefined;
+      return;
     }
-    return { receivedParts: [{ text: text.data, type: "text" }], text: text.data };
+
+    return {
+      receivedParts: [{ text: text.data, type: "text" }],
+      text: text.data,
+    } satisfies ParsedUserMessage;
   }
 
   const parts = userMessageParts.safeParse(message);
+
   if (!parts.success) {
-    return undefined;
+    return;
   }
 
   const texts: string[] = [];
   const receivedParts: EveMessageReceivedPart[] = [];
+
   for (const part of parts.data) {
     if (part.type === "text") {
       texts.push(part.text);
@@ -349,15 +319,11 @@ const parseUserMessage = (message: JsonValue | undefined): ParsedUserMessage | u
   }
 
   if (texts.length === 0) {
-    return undefined;
+    return;
   }
 
-  return { receivedParts, text: texts.join("\n\n") };
+  return { receivedParts, text: texts.join("\n\n") } satisfies ParsedUserMessage;
 };
-
-// ---------------------------------------------------------------------------
-// Part → event translation
-// ---------------------------------------------------------------------------
 
 interface ToolLikePart {
   type: string;
@@ -369,13 +335,15 @@ interface ToolLikePart {
   errorText?: string;
 }
 
-const toolNameForPart = (part: ToolLikePart): string => {
+const toolNameForPart = (part: ToolLikePart) => {
   if (part.toolName !== undefined && part.toolName.length > 0) {
     return part.toolName;
   }
+
   if (part.type.startsWith("tool-")) {
     return part.type.slice("tool-".length);
   }
+
   return "tool";
 };
 
@@ -389,20 +357,22 @@ interface TurnBuilder {
   turnId: string;
 }
 
-const stamp = (builder: TurnBuilder, event: EveStreamEvent, at: string): void => {
+const stamp = (builder: TurnBuilder, event: EveStreamEvent, at: string) => {
   builder.events.push({ ...event, meta: { at } });
 };
 
-const takeSequence = (counter: { nextSequence: number }): number => {
+const takeSequence = (counter: { nextSequence: number }) => {
   const { nextSequence } = counter;
   counter.nextSequence += 1;
+
   return nextSequence;
 };
 
-const openStep = (builder: TurnBuilder, at: string): void => {
+const openStep = (builder: TurnBuilder, at: string) => {
   if (builder.stepOpen) {
     return;
   }
+
   stamp(
     builder,
     {
@@ -420,12 +390,14 @@ const openStep = (builder: TurnBuilder, at: string): void => {
   builder.stepHasTools = false;
 };
 
-const closeStep = (builder: TurnBuilder, at: string): void => {
+const closeStep = (builder: TurnBuilder, at: string) => {
   if (!builder.stepOpen) {
     return;
   }
+
   const finishReason: AssistantStepFinishReason =
     !builder.stepHasText && builder.stepHasTools ? "tool-calls" : "stop";
+
   stamp(
     builder,
     {
@@ -443,22 +415,11 @@ const closeStep = (builder: TurnBuilder, at: string): void => {
   builder.stepIndex += 1;
 };
 
-/** Closes the current step and opens the next when `condition` holds. */
-const breakStepIf = (builder: TurnBuilder, condition: boolean, at: string): void => {
+const breakStepIf = (builder: TurnBuilder, condition: boolean, at: string) => {
   if (condition && builder.stepOpen) {
     closeStep(builder, at);
   }
 };
-
-/**
- * Translates one turn's collected parts into the eve event sequence the
- * default `useEveAgent` reducer renders. Steps mirror the real runtime: one
- * text message per step, tool calls break to a fresh step after streamed text.
- */
-interface TurnEvents {
-  events: EveStreamEvent[];
-  nextSequence: number;
-}
 
 const createTurnEvents = (input: {
   parts: (UIMessagePart<UIDataTypes, UITools> | SpecialToolPart)[];
@@ -469,7 +430,7 @@ const createTurnEvents = (input: {
   autoChunkText: boolean | RegExp;
   autoChunkReasoning: boolean | RegExp;
   at: () => string;
-}): TurnEvents => {
+}) => {
   const builder: TurnBuilder = {
     events: [],
     nextSequence: input.startSequence,
@@ -479,11 +440,13 @@ const createTurnEvents = (input: {
     stepOpen: false,
     turnId: input.turnId,
   };
+
   const { at, turnId } = input;
 
   if (input.isFirstTurn) {
     stamp(builder, { data: {}, type: "session.started" }, at());
   }
+
   stamp(builder, { data: { sequence: takeSequence(builder), turnId }, type: "turn.started" }, at());
   stamp(
     builder,
@@ -506,6 +469,7 @@ const createTurnEvents = (input: {
         breakStepIf(builder, builder.stepHasText, at());
         openStep(builder, at());
         let soFar = "";
+
         for (const segment of segmentText(textPart.text, input.autoChunkText)) {
           soFar += segment;
           stamp(
@@ -523,6 +487,7 @@ const createTurnEvents = (input: {
             at(),
           );
         }
+
         stamp(
           builder,
           {
@@ -540,11 +505,13 @@ const createTurnEvents = (input: {
         builder.stepHasText = true;
         break;
       }
+
       case "reasoning": {
         const reasoningPart = part;
         breakStepIf(builder, builder.stepHasText, at());
         openStep(builder, at());
         let soFar = "";
+
         for (const segment of segmentText(reasoningPart.text, input.autoChunkReasoning)) {
           soFar += segment;
           stamp(
@@ -562,6 +529,7 @@ const createTurnEvents = (input: {
             at(),
           );
         }
+
         stamp(
           builder,
           {
@@ -577,19 +545,16 @@ const createTurnEvents = (input: {
         );
         break;
       }
+
       case "step-start": {
         closeStep(builder, at());
         break;
       }
+
       default: {
         if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-          // SAFETY: at runtime this array also carries SpecialToolPart values
-          // and ToolPart extras (toolName) that the static part union cannot
-          // express; ToolLikePart names exactly the fields read below.
           const toolPart = part as ToolLikePart;
 
-          // Special tool parts (e.g. tool-approval-request) have no `state`;
-          // skip them, matching StaticChatTransport.
           if (toolPart.state === undefined) {
             break;
           }
@@ -660,9 +625,10 @@ const createTurnEvents = (input: {
               at(),
             );
           }
-          // input-streaming / input-available: leave the action pending.
+
           break;
         }
+
         throw new Error(
           `StaticEveHandler does not support streaming parts of type "${part.type}" over the eve protocol.`,
         );
@@ -689,7 +655,7 @@ const createFailureEvents = (input: {
   startSequence: number;
   userMessage: ParsedUserMessage;
   at: () => string;
-}): TurnEvents => {
+}) => {
   const message = input.error instanceof Error ? input.error.message : "The mock response failed.";
   const events: EveStreamEvent[] = [];
   const counter = { nextSequence: input.startSequence };
@@ -698,6 +664,7 @@ const createFailureEvents = (input: {
   if (input.isFirstTurn) {
     push({ data: {}, type: "session.started" });
   }
+
   push({ data: { sequence: takeSequence(counter), turnId: input.turnId }, type: "turn.started" });
   push({
     data: {
@@ -725,15 +692,10 @@ const createFailureEvents = (input: {
   return { events, nextSequence: counter.nextSequence };
 };
 
-// ---------------------------------------------------------------------------
-// Handler
-// ---------------------------------------------------------------------------
-
-const generateId = (prefix: string): string =>
+const generateId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
-/** Content events are paced by `chunkDelayMs`; lifecycle events are emitted immediately. */
-const isDelayedEvent = (event: EveStreamEvent): boolean =>
+const isDelayedEvent = (event: EveStreamEvent) =>
   event.type === "message.appended" ||
   event.type === "reasoning.appended" ||
   event.type === "actions.requested" ||
@@ -746,7 +708,7 @@ const isDelayedEvent = (event: EveStreamEvent): boolean =>
  */
 export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>(
   init: StaticEveHandlerInit<UI_MESSAGE>,
-): StaticEveHandler => {
+) => {
   const sessionStore = init.sessionStore ?? createMemoryEveSessionStore<UI_MESSAGE>();
   const autoChunkText = init.autoChunkText ?? true;
   const autoChunkReasoning = init.autoChunkReasoning ?? true;
@@ -755,10 +717,11 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
   const at = () => now().toISOString();
   const cors = init.cors ?? true;
 
-  const corsHeaderEntries = (): [string, string][] => {
+  const corsHeaderEntries = () => {
     if (cors === false) {
       return [];
     }
+
     return [
       ["access-control-allow-origin", cors === true ? "*" : cors.origin],
       ["access-control-allow-methods", "GET, POST, OPTIONS"],
@@ -774,9 +737,10 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       ],
     ];
   };
+
   const corsHeaders = () => Object.fromEntries(corsHeaderEntries());
 
-  const json = (status: number, body: JsonObject, headers: Record<string, string> = {}): Response =>
+  const json = (status: number, body: JsonObject, headers: Record<string, string> = {}) =>
     Response.json(body, {
       headers: {
         "cache-control": "no-store",
@@ -792,19 +756,17 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     record: EveSessionRecord<UI_MESSAGE>,
     userMessage: ParsedUserMessage,
     clientContext: JsonValue | undefined,
-  ): Promise<string> => {
+  ) => {
     const turnId = `turn-${record.turnCount + 1}`;
     const deliveryId = generateId("dlv");
     const isFirstTurn = record.turnCount === 0;
 
-    // SAFETY: UI_MESSAGE is only constrained by UIMessage, so a concrete
-    // instance cannot be constructed generically; this minimal user message
-    // carries every field `mockResponse` and the session log read.
     const userUiMessage = {
       id: `${turnId}:user`,
       parts: [{ text: userMessage.text, type: "text" }],
       role: "user",
     } as UI_MESSAGE;
+
     const contextMessages = [...record.messages, userUiMessage];
 
     const context: StaticTransportContext<UI_MESSAGE> = {
@@ -817,13 +779,16 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
 
     let turn: { events: EveStreamEvent[]; nextSequence: number };
     let assistantParts: (UI_MESSAGE["parts"][number] | SpecialToolPart)[] = [];
+
     try {
       for await (const part of init.mockResponse(context)) {
         assistantParts.push(part);
       }
+
       if (assistantParts.length === 0) {
         throw new Error("StaticEveHandler: mockResponse must yield at least one part.");
       }
+
       turn = createTurnEvents({
         at,
         autoChunkReasoning,
@@ -847,8 +812,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       });
     }
 
-    // eve's client drops every event until one carries the delivery id the
-    // message route returned, so the whole turn is tagged, as eve's server does.
+    // WARNING: eve's client drops every event until one carries this turn's delivery id.
     record.events.push(
       ...turn.events.map((event) => ({
         ...event,
@@ -858,16 +822,17 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     record.nextSequence = turn.nextSequence;
     record.turnCount += 1;
     record.messages.push(userUiMessage);
+
     if (assistantParts.length > 0) {
-      // SAFETY: same generic-construction constraint as the user message above;
-      // assistantParts may additionally carry SpecialToolPart values by design.
       record.messages.push({
         id: `${turnId}:assistant`,
         parts: assistantParts,
         role: "assistant",
       } as UI_MESSAGE);
     }
+
     await sessionStore.set(sessionId, record);
+
     return deliveryId;
   };
 
@@ -876,7 +841,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     events: EveStreamEvent[],
     signal: AbortSignal,
     tailIndex: number | undefined,
-  ): Response => {
+  ) => {
     const encoder = new TextEncoder();
     let cancelled = false;
 
@@ -890,17 +855,22 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
             if (cancelled || signal.aborted) {
               break;
             }
+
             if (isDelayedEvent(event)) {
               const delay = await resolveChunkDelay(init.chunkDelayMs, event);
+
               if (delay && delay > 0) {
                 await sleep(delay);
+
                 if (cancelled || signal.aborted) {
                   break;
                 }
               }
             }
+
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
           }
+
           controller.close();
         } catch (error) {
           controller.error(error);
@@ -917,6 +887,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       [EVE_STREAM_VERSION_HEADER]: EVE_MESSAGE_STREAM_VERSION,
       ...corsHeaders(),
     });
+
     if (tailIndex !== undefined) {
       headers.set(EVE_STREAM_TAIL_INDEX_HEADER, String(tailIndex));
     }
@@ -924,35 +895,43 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     return new Response(stream, { headers, status: 200 });
   };
 
-  const readJsonBody = async (request: Request): Promise<JsonObject | Response> => {
+  const readJsonBody = async (request: Request) => {
     let rawBody;
+
     try {
       rawBody = await request.json();
     } catch {
       return json(400, { error: "Request body must be JSON.", ok: false });
     }
+
     const parsedBody = jsonObject.safeParse(rawBody);
+
     if (!parsedBody.success) {
       return json(400, { error: "Request body must be an object.", ok: false });
     }
+
     return parsedBody.data;
   };
 
-  // POST /eve/v1/session — create session + first turn
-  const createSession = async (request: Request): Promise<Response> => {
+  const createSession = async (request: Request) => {
     if (request.method !== "POST") {
       return json(405, { error: "Method not allowed.", ok: false });
     }
+
     const body = await readJsonBody(request);
+
     if (body instanceof Response) {
       return body;
     }
+
     const userMessage = parseUserMessage(body.message);
+
     if (!userMessage) {
       return json(400, { error: "A non-empty message is required.", ok: false });
     }
 
     const sessionId = generateSessionId();
+
     const record: EveSessionRecord<UI_MESSAGE> = {
       continuationToken: `eve:${generateId("tok")}`,
       events: [],
@@ -960,6 +939,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       nextSequence: 0,
       turnCount: 0,
     };
+
     const deliveryId = await runTurn(sessionId, record, userMessage, body.clientContext);
 
     return json(
@@ -969,31 +949,36 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     );
   };
 
-  // POST /eve/v1/session/:id — send a turn to one exact session id
-  const sendTurn = async (request: Request, sessionId: string): Promise<Response> => {
+  const sendTurn = async (request: Request, sessionId: string) => {
     if (request.method !== "POST") {
       return json(405, { error: "Method not allowed.", ok: false });
     }
+
     const record = await sessionStore.get(sessionId);
+
     if (!record) {
       return json(404, { error: "Session not found.", ok: false });
     }
+
     const body = await readJsonBody(request);
+
     if (body instanceof Response) {
       return body;
     }
-    // A session id addresses the conversation on its own; eve rejects the
-    // token here rather than letting a stale one silently pick a session.
+
     if ("continuationToken" in body) {
       return json(400, {
         error: "Session-ID routes do not accept 'continuationToken'.",
         ok: false,
       });
     }
+
     const userMessage = parseUserMessage(body.message);
+
     if (!userMessage) {
       const hasInputResponses =
         Array.isArray(body.inputResponses) && body.inputResponses.length > 0;
+
       return json(400, {
         error: hasInputResponses
           ? "StaticEveHandler does not support inputResponses (HITL) turns."
@@ -1003,44 +988,52 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     }
 
     const deliveryId = await runTurn(sessionId, record, userMessage, body.clientContext);
+
     return json(200, { deliveryId, ok: true, sessionId }, { [EVE_SESSION_ID_HEADER]: sessionId });
   };
 
-  // GET /eve/v1/session/:id/stream
-  const streamSession = async (request: Request, sessionId: string): Promise<Response> => {
+  const streamSession = async (request: Request, sessionId: string) => {
     if (request.method !== "GET") {
       return json(405, { error: "Method not allowed.", ok: false });
     }
+
     const record = await sessionStore.get(sessionId);
+
     if (!record) {
       return json(404, { error: "Session not found.", ok: false });
     }
+
     const { searchParams } = new URL(request.url);
     const rawStartIndex = searchParams.get("startIndex");
     const startIndex = rawStartIndex === null ? 0 : Number(rawStartIndex);
+
     if (!Number.isSafeInteger(startIndex) || startIndex < 0) {
       return json(400, { error: "startIndex must be a non-negative integer.", ok: false });
     }
+
     const rawIncludeTailIndex = searchParams.get("includeTailIndex");
-    // Bounded reads (`stream({ follow: false })`, `snapshot()`) throw client-side
-    // without this header, so it must be the index of the last stored event.
+
+    // WARNING: eve's bounded reads throw without the tail index header.
     const tailIndex =
       rawIncludeTailIndex === "1" || rawIncludeTailIndex === "true"
         ? record.events.length - 1
         : undefined;
+
     return streamResponse(sessionId, record.events.slice(startIndex), request.signal, tailIndex);
   };
 
-  return async (request: Request): Promise<Response> => {
+  const handler: StaticEveHandler = async (request) => {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders(), status: 204 });
     }
 
     const { pathname } = new URL(request.url);
     const prefixIndex = pathname.indexOf(EVE_ROUTE_PREFIX);
+
     if (prefixIndex === -1) {
       return json(404, { error: "Not an eve route.", ok: false });
     }
+
     const route = pathname.slice(prefixIndex + EVE_ROUTE_PREFIX.length).replace(/\/+$/u, "");
     const segments = route.split("/").map((segment) => decodeURIComponent(segment));
 
@@ -1057,6 +1050,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     }
 
     const [, sessionId] = segments;
+
     if (!sessionId) {
       return json(404, { error: "Session id missing.", ok: false });
     }
@@ -1071,4 +1065,6 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
 
     return json(404, { error: `Unknown eve route "${route}".`, ok: false });
   };
+
+  return handler;
 };

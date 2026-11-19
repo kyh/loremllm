@@ -42,7 +42,7 @@ pnpm verify           # typecheck + lint + format + test — the gate CI runs, t
 pnpm dev              # Start all (db, studio, app)
 pnpm dev:web          # Web app only -> http://localhost:3000
 pnpm build            # Build all
-pnpm lint             # oxlint
+pnpm lint             # oxlint: ultracite presets + landmines (AGENTS.md → Lint is a clean gate)
 pnpm lint:fix         # oxlint --fix
 pnpm format           # oxfmt --check
 pnpm format:fix       # oxfmt --write

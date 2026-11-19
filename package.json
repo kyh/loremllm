@@ -21,13 +21,14 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm format && pnpm test"
   },
   "devDependencies": {
+    "@interfere/landmines": "^0.1.0",
     "dotenv-cli": "^11.0.0",
     "oxfmt": "^0.71.0",
-    "oxlint": "^1.86.0",
+    "oxlint": "^1.94.0",
     "tsx": "^4.23.15",
     "turbo": "^2.11.7",
     "typescript": "catalog:",
-    "ultracite": "^8.0.0"
+    "ultracite": "^8.3.0"
   },
   "engines": {
     "node": "24.x"

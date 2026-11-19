@@ -16,7 +16,6 @@ export interface HoverTextHandle {
 
 type HoverTextProps = {
   children: React.ReactNode;
-  // Merge props with child element instead of wrapping
   asChild?: boolean;
   ref?: React.Ref<HoverTextHandle>;
 } & React.HTMLAttributes<HTMLSpanElement>;
@@ -31,12 +30,10 @@ const HoverText = ({
   ...props
 }: HoverTextProps) => {
   const { theme } = useTheme();
-  // Light theme = cursor-square (V1), Dark theme = bg (V2)
   const effectiveVariant: HoverTextVariant = theme === "dark" ? "bg" : "cursor-square";
   const internalRef = React.useRef<HTMLElement>(null);
   const animatorRef = React.useRef<TextAnimator | null>(null);
 
-  // Expose animate methods via imperative handle
   React.useImperativeHandle(
     ref,
     () => ({
@@ -50,21 +47,20 @@ const HoverText = ({
     [],
   );
 
-  // Set internal ref when element is available
   const setRef = React.useCallback((el: HTMLElement | null) => {
     internalRef.current = el;
   }, []);
 
-  // Initialize TextAnimator when component mounts and element is available
   React.useEffect(() => {
     const element = internalRef.current;
+
     if (!element || animatorRef.current) {
       return;
     }
 
-    // Use requestAnimationFrame to ensure DOM is fully ready (especially for Slot)
     const rafId = requestAnimationFrame(() => {
       const currentElement = internalRef.current;
+
       if (!currentElement || animatorRef.current) {
         return;
       }
@@ -79,7 +75,6 @@ const HoverText = ({
     };
   }, [effectiveVariant]);
 
-  // Handle mouse events
   const handleMouseEnter = React.useCallback(
     (e: React.MouseEvent<HTMLSpanElement>) => {
       animatorRef.current?.animate();

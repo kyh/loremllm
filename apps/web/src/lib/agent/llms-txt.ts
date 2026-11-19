@@ -16,7 +16,7 @@ import {
  * The when-to-use guidance is deliberately in the pre-H2 block rather than
  * under its own `##` — the spec reserves H2 sections for link lists.
  */
-export const renderLlmsTxt = (): string => {
+export const renderLlmsTxt = () => {
   const lines = [
     `# ${siteConfig.name}`,
     "",

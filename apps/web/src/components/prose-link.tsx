@@ -25,6 +25,7 @@ export const ProseLink = ({
 }) => {
   if (rendersOutsideRouter(href)) {
     const offSite = isOffSite(href);
+
     return (
       <a
         className={className}
@@ -37,6 +38,7 @@ export const ProseLink = ({
       </a>
     );
   }
+
   return (
     <Link className={className} href={href} prefetch={prefetch} tabIndex={tabIndex}>
       {children}

@@ -31,6 +31,7 @@ interface CollectionSettingsProps {
 
 export const CollectionSettings = ({ collection, onDeleted }: CollectionSettingsProps) => {
   const queryClient = useQueryClient();
+
   const [form, setForm] = useState({
     description: collection.description ?? "",
     minSimilarityPercent: String(Math.round(collection.minSimilarity * 100)),
@@ -71,6 +72,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
 
     if (!name.length) {
       toast.error("Collection name is required");
+
       return;
     }
 
@@ -82,6 +84,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
       minSimilarityPercent > 100
     ) {
       toast.error("Match threshold must be between 0 and 100");
+
       return;
     }
 

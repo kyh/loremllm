@@ -2,13 +2,6 @@ import { siteConfig } from "@/lib/site-config";
 
 import { siteSummary } from "./site-overview";
 
-/**
- * OpenAPI 3.1 description of `POST /api/chat`. Hand-written rather than
- * generated because the route is a plain handler, not an oRPC procedure;
- * `openapi.test.ts` pins every documented field to the zod schemas in
- * `app/api/chat/schema.ts` so the two cannot drift.
- */
-
 const problemSchema = {
   properties: {
     detail: { description: "Human-readable explanation of this failure.", type: "string" },

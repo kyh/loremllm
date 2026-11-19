@@ -12,8 +12,10 @@ export const generateStaticParams = () => prosePages.map((page) => ({ slug: page
 export const GET = async (_request: Request, { params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params;
   const page = prosePages.find((candidate) => candidate.path === `/${slug}`);
+
   if (!page) {
     return problemResponse(404, `No Open Graph image for /${slug}.`);
   }
+
   return renderProseOgImage(page);
 };

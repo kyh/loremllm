@@ -1,10 +1,6 @@
 import { problemResponse } from "@/lib/problem";
 import { siteConfig } from "@/lib/site-config";
 
-/**
- * Unmatched `/api/*` paths answer like the API they sit under — a JSON problem
- * document — instead of falling through to the HTML 404 page.
- */
 const notFound = (request: Request) =>
   problemResponse(
     404,

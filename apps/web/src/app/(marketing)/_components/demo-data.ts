@@ -134,6 +134,7 @@ export function ToolCallingDemo() {
         if (chunk.type === "tool-output-available" || chunk.type === "tool-output-error") {
           return 1000;
         }
+
         return [20, 60];
       },
       async *mockResponse(context: StaticTransportContext<UIMessage>) {

@@ -62,8 +62,9 @@ export class TextAnimator {
 
   constructor(textElement: HTMLElement, variant: AnimationVariant = "cursor-square") {
     if (!(textElement instanceof HTMLElement)) {
-      throw new Error("Invalid text element provided.");
+      throw new TypeError("Invalid text element provided.");
     }
+
     this.textElement = textElement;
     this.variant = variant;
     this.splitText();
@@ -74,6 +75,7 @@ export class TextAnimator {
       if (this.splitter) {
         this.splitter.revert();
       }
+
       this.splitter = new SplitType(this.textElement, {
         types: "words,chars",
       });
@@ -89,13 +91,17 @@ export class TextAnimator {
     if (!this.splitter) {
       return;
     }
+
     const chars = this.splitter.chars ?? [];
+
     for (const [index, char] of chars.entries()) {
       gsap.killTweensOf(char);
+
       if (this.originalChars[index] !== undefined) {
         char.innerHTML = this.originalChars[index] ?? "";
       }
     }
+
     if (this.variant === "bg") {
       gsap.killTweensOf(this.textElement);
       gsap.set(this.textElement, { "--anim": 0 });
@@ -106,8 +112,10 @@ export class TextAnimator {
     if (!this.splitter) {
       return;
     }
+
     this.reset();
     const chars = this.splitter.chars || [];
+
     if (chars.length === 0) {
       return;
     }
@@ -129,6 +137,7 @@ export class TextAnimator {
             },
             onRepeat: () => {
               repeatCount += 1;
+
               if (repeatCount === 1) {
                 gsap.set(char, { "--opa": 0 });
               }
@@ -163,6 +172,7 @@ export class TextAnimator {
           },
         );
       }
+
       gsap.fromTo(this.textElement, { "--anim": 0 }, { "--anim": 1, duration: 1, ease: "expo" });
     }
   }

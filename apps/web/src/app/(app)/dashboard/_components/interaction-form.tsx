@@ -61,6 +61,7 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
 
     if (!title.length || !input.length || !output.length) {
       toast.error("Title, input, and output are required");
+
       return;
     }
 

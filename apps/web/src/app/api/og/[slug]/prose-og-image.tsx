@@ -27,7 +27,6 @@ const WORDMARK = [
 
 const FONT_DIR = path.join(process.cwd(), "node_modules/geist/dist/fonts/geist-mono");
 
-/** The dark theme's tokens (`packages/ui` and `apps/web` globals.css), as sRGB. */
 const colors = {
   background: "#09090b",
   border: "#27272a",
@@ -41,6 +40,7 @@ export const renderProseOgImage = async (page: ProsePage) => {
     readFile(path.join(FONT_DIR, "GeistMono-Regular.ttf")),
     readFile(path.join(FONT_DIR, "GeistMono-SemiBold.ttf")),
   ]);
+
   const url = absoluteUrl(page.path).replace(/^https?:\/\//u, "");
 
   return new ImageResponse(
@@ -87,7 +87,6 @@ export const renderProseOgImage = async (page: ProsePage) => {
         { data: regular, name: "Geist Mono", style: "normal", weight: 400 },
         { data: bold, name: "Geist Mono", style: "normal", weight: 600 },
       ],
-      // Copy only changes on deploy, so the CDN keeps a card for a day and serves it stale for a week.
       headers: {
         "Cache-Control": "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800",
       },

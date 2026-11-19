@@ -22,7 +22,7 @@ export interface Problem {
   detail: string;
 }
 
-export const buildProblem = (status: number, detail: string): Problem => ({
+export const buildProblem = (status: number, detail: string) => ({
   detail,
   status,
   title: statusTitles.get(status) ?? "Error",
@@ -32,6 +32,7 @@ export const buildProblem = (status: number, detail: string): Problem => ({
 export const problemResponse = (status: number, detail: string, headers?: HeadersInit) => {
   const merged = new Headers(headers);
   merged.set("Content-Type", PROBLEM_CONTENT_TYPE);
+
   return Response.json(buildProblem(status, detail), { headers: merged, status });
 };
 
@@ -42,9 +43,10 @@ const problemDetail = z.object({ detail: z.string() });
  * recovers the human sentence from a problem document and passes any other
  * text through unchanged.
  */
-export const readProblemDetail = (message: string): string => {
+export const readProblemDetail = (message: string) => {
   try {
     const parsed = problemDetail.safeParse(JSON.parse(message));
+
     return parsed.success ? parsed.data.detail : message;
   } catch {
     return message;

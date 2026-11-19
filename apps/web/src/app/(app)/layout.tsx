@@ -18,11 +18,6 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-/**
- * The session is per-request, so it is read inside Suspense: the header chrome
- * is the static App Shell a <Link> prefetches, and the session check streams in
- * behind it. `getSession` is React-cached, so the two reads below are one lookup.
- */
 const RequireSession = async (props: LayoutProps) => {
   const session = await getSession();
 
@@ -36,7 +31,6 @@ const RequireSession = async (props: LayoutProps) => {
 const Account = async () => {
   const session = await getSession();
 
-  // RequireSession redirects in its own boundary; until then, no account chrome.
   if (!session) {
     return null;
   }

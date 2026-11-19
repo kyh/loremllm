@@ -8,13 +8,6 @@ import {
 
 import type { ProseListItem } from "@/lib/agent/site-pages";
 
-/**
- * The home page's text layer. The visible page is an ASCII logo and a list of
- * interactive demos, which reads as nearly empty to a crawler that does not run
- * JavaScript and to a screen reader looking for what the product is. This
- * renders the same overview `/llms.txt` carries, so all of them get it.
- */
-
 const OutlineList = ({ items }: { items: ProseListItem[] }) => (
   <ul>
     {items.map((item) => (

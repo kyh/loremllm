@@ -46,6 +46,7 @@ export const DraggablePanel = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
   const dragStartRef = useRef<{
     x: number;
     y: number;
@@ -57,8 +58,10 @@ export const DraggablePanel = ({
     const checkMobile = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
+
     checkMobile();
     window.addEventListener("resize", checkMobile);
+
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
@@ -78,6 +81,7 @@ export const DraggablePanel = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
+
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, hasPrevious, hasNext, onPrevious, onNext]);
 
@@ -104,6 +108,7 @@ export const DraggablePanel = ({
         if (!dragStartRef.current) {
           return;
         }
+
         if (moveEvent.pointerId !== e.pointerId) {
           return;
         }
@@ -114,7 +119,6 @@ export const DraggablePanel = ({
         let newLeft = dragStartRef.current.left + deltaX;
         let newTop = dragStartRef.current.top + deltaY;
 
-        // Constrain to viewport
         const maxLeft = window.innerWidth - size.width;
         const maxTop = window.innerHeight - size.height;
         newLeft = Math.max(0, Math.min(newLeft, maxLeft));

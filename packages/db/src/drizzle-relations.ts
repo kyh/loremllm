@@ -1,8 +1,3 @@
-/**
- * Relational graph for `db.query`, over the auth and application schemas
- * together. Keys are the schema export names, and the auth adapter resolves
- * its tables through this graph too, so every table must be part of it.
- */
 import { defineRelations } from "drizzle-orm";
 
 import * as schema from "./drizzle-schema";
@@ -10,7 +5,6 @@ import * as schemaAuth from "./drizzle-schema-auth";
 
 export const relations = defineRelations({ ...schema, ...schemaAuth }, (r) => ({
   member: {
-    // Allow-list only — full user rows include admin-only fields (role, banned)
     user: r.one.user({ from: r.member.userId, to: r.user.id }),
   },
   mockCollection: {

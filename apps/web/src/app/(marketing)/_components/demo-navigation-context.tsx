@@ -28,6 +28,7 @@ export const DemoNavigationProvider = ({ demos, children }: DemoNavigationProvid
   const openDemo = React.useCallback(
     (demo: Demo) => {
       const index = demos.findIndex((d) => d.id === demo.id);
+
       if (index !== -1) {
         setOpenIndex(index);
       }
@@ -68,8 +69,10 @@ export const DemoNavigationProvider = ({ demos, children }: DemoNavigationProvid
 
 export const useDemoNavigation = () => {
   const context = React.useContext(DemoNavigationContext);
+
   if (!context) {
     throw new Error("useDemoNavigation must be used within a DemoNavigationProvider");
   }
+
   return context;
 };
