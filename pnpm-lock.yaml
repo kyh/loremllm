@@ -178,6 +178,15 @@ importers:
       '@interfere/landmines':
         specifier: ^0.1.0
         version: 0.1.0(oxlint@1.94.0)
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 2.0.0-beta.45
+      '@repo/contract':
+        specifier: workspace:*
+        version: link:packages/contract
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.4
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
@@ -199,6 +208,9 @@ importers:
       ultracite:
         specifier: ^8.3.0
         version: 8.3.0(oxfmt@0.71.0)(oxlint@1.94.0)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.6
 
   apps/web:
     dependencies:
@@ -10373,7 +10385,7 @@ snapshots:
       string-width: 8.3.0
       which-command: 0.1.0
       yaml: 2.9.1
-      zod: 4.6.5
+      zod: 4.6.6
     optionalDependencies:
       oxfmt: 0.71.0
       oxlint: 1.94.0

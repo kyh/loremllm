@@ -38,7 +38,9 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ## Commands
 
 ```bash
+pnpm bootstrap        # First run: .env, local Turso, schema, seed (idempotent)
 pnpm verify           # typecheck + lint + format + test — the gate CI runs, then pnpm build
+pnpm smoke            # Drive a running app end-to-end (SMOKE_URL for a deployment)
 pnpm dev              # Start all (db, studio, app)
 pnpm dev:web          # Web app only -> http://localhost:3000
 pnpm build            # Build all
@@ -57,7 +59,7 @@ pnpm emulate          # Local GitHub OAuth emulator on :4000
 ### Package-specific
 
 ```bash
-pnpm -F db db         # Local Turso server on :8080 (packages/db/local.db)
+pnpm db:start         # Local Turso server on :8080 (packages/db/local.db), foreground
 pnpm -F db studio     # Drizzle Studio
 ```
 
