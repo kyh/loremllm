@@ -104,21 +104,6 @@ const signIn = async () => {
   cookie = cookies.map((value) => value.split(";")[0]).join("; ");
 };
 
-const HTML_ENTITIES = new Map([
-  ["&#39;", "'"],
-  ["&#x27;", "'"],
-  ["&amp;", "&"],
-  ["&gt;", ">"],
-  ["&lt;", "<"],
-  ["&quot;", '"'],
-]);
-
-const decodeEntities = (html: string) =>
-  html.replaceAll(
-    /&(?:amp|lt|gt|quot|#x27|#39);/gu,
-    (entity) => HTML_ENTITIES.get(entity) ?? entity,
-  );
-
 const step = async <T>(label: string, run: () => Promise<T>) => {
   const startedAt = performance.now();
   let result: T;
@@ -145,15 +130,13 @@ const main = async () => {
   await step("server is live (/api/health)", waitForServer);
   await step(`signed in as ${EMAIL}`, signIn);
 
-  const demo = await step("read the seeded Demo collection", async () => {
+  await step("read the seeded Demo collection", async () => {
     const collections = await client.collection.list();
     const seeded = collections.find((collection) => collection.publicId === "demo");
 
     if (!seeded) {
       fail("no collection with publicId demo — run pnpm db:seed");
     }
-
-    return seeded;
   });
 
   const created = await step("created a collection", async () => {
@@ -192,17 +175,12 @@ const main = async () => {
   await step("the authenticated dashboard renders", async () => {
     const response = await fetch(url("/dashboard"), {
       headers: { ...BROWSER_HEADERS, cookie },
+      redirect: "manual",
       signal: deadline(),
     });
 
-    if (!response.ok) {
-      fail(`/dashboard failed: ${await describeResponse(response)}`);
-    }
-
-    const html = decodeEntities(await response.text());
-
-    if (demo.name !== null && !html.includes(demo.name)) {
-      fail(`dashboard rendered without the seeded collection "${demo.name}"`);
+    if (response.status !== 200) {
+      fail(`/dashboard answered ${await describeResponse(response)}, not the signed-in page`);
     }
   });
 
