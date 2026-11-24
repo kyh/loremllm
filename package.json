@@ -10,7 +10,7 @@
     "db:push-remote": "pnpm -F db push:remote",
     "db:seed": "pnpm -F @repo/service seed",
     "dev": "turbo watch db studio dev --continue",
-    "dev:web": "turbo watch dev --filter=@loremllm/web --continue",
+    "dev:web": "turbo watch dev --filter=@repo/web --continue",
     "emulate": "npx emulate@0.9.0 --service github",
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test --continue",

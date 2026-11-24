@@ -33,7 +33,7 @@ export const ogImage = {
  * The home page's og:video: the ASCII wordmark scrambling into place, the tagline
  * typing on, a hold, then a scramble back out (`scripts/og-video/scene.html`, not
  * part of the app). Recorded frame by frame by `scripts/og-video.ts`
- * (`pnpm -F @loremllm/web og:video`); after a re-record, update `uploadDate` (and
+ * (`pnpm -F @repo/web og:video`); after a re-record, update `uploadDate` (and
  * `duration` if the scene's length changed).
  */
 export const ogVideo = {
