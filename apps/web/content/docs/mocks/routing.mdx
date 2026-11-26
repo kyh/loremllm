@@ -1,0 +1,90 @@
+---
+title: Smart routing
+description: Give one prompt many possible results. Routing picks the right one by meaning and weight, locally or on our servers.
+---
+
+A REST mock maps one request to one response. Real models don't work that way: the same question can get a direct answer, a clarifying question or a tool call. LoremLLM lets you give one prompt several possible results, and smart routing picks which one comes back.
+
+```ts
+import { defineMock, oneOf, text, toolCall } from "loremllm";
+
+export const supportBot = defineMock("support-bot", {
+  scenarios: [
+    {
+      name: "cancel",
+      when: { semantic: "How do I cancel my subscription?" },
+      reply: oneOf([
+        {
+          name: "steps",
+          weight: 7,
+          reply: text("Go to Settings, then Billing, then Cancel plan."),
+        },
+        { name: "retention", weight: 2, reply: text("Before you go: 50% off your next 3 months?") },
+        { name: "escalate", weight: 1, reply: toolCall("escalateToHuman", { reason: "cancel" }) },
+      ]),
+    },
+  ],
+});
+```
+
+"How do I cancel?", "cancel my plan" and "I want out of my subscription" all route to `cancel`. Seven times in ten they get the steps.
+
+## How a request is routed
+
+1. **Filter.** Exact conditions (`prompt`, `turn`, `tools`, `header` and the rest of [Matching](/docs/mocks/matching)) remove scenarios that can't apply.
+2. **Rank.** Scenarios with a `semantic` condition are scored by how close the last user message is in meaning. The best score at or above its `threshold` wins. Ties go to the scenario listed first. Exact-only scenarios rank by order, as before.
+3. **Pick a result.** If the winner's reply is a `oneOf`, one result is drawn by weight using the request's [seed](#deterministic-by-default). A `sequence` advances by turn instead.
+
+Every response says what happened in its headers: `loremllm-scenario` names the scenario, `loremllm-result` names the result. The [inspector](/docs/platform/request-inspector) shows the similarity score of every candidate.
+
+## Local or hosted
+
+Routing runs the same way in both places, so a seed picks the same result in each.
+
+| Where      | How                                                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Local**  | The SDK packages and `loremllm dev` route in process. Semantic scoring uses a small embedding model that runs on CPU, so nothing leaves your machine.                                 |
+| **Hosted** | Save results to your project from the dashboard or with `loremllm push`. Requests to `api.loremllm.com/m/<mock>` are routed on our servers, and new results go live without a deploy. |
+
+A common split: hosted mocks back demos and UI work, where a PM can add a result in the dashboard, and `loremllm pull` brings the same mock into tests that route locally.
+
+## Deterministic by default
+
+Probabilistic doesn't mean flaky. The seed is derived from the mock, the scenario, the conversation and the request body, so **the same request always gets the same result**. Change the prompt and you may land on a different one.
+
+| To                               | Do                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| Change the draw for a whole mock | Set `seed` on the mock, or `mockLLM({ seed: "ci" })` in tests            |
+| Change it for one request        | Send `loremllm-seed: <value>`                                            |
+| Force a specific result          | Send `loremllm-result: retention`, or `llm.pin("cancel", "retention")`   |
+| Override everything in one test  | `llm.on("cancel").replyOnce(...)` takes priority over the mock's results |
+| Sample truly at random (demos)   | Send `loremllm-seed: random`                                             |
+
+Tests usually pin a result per case, so each branch of your UI or agent gets its own test:
+
+```tsx
+test("offers retention before cancelling", async () => {
+  await using llm = await mockLLM(supportBot);
+  llm.pin("cancel", "retention");
+
+  render(<Chat baseURL={llm.url} />);
+  await send("cancel my plan");
+
+  expect(await screen.findByText(/50% off/)).toBeVisible();
+});
+```
+
+## Evals
+
+Pinning tests one branch at a time. To see how your agent does across the whole mix, run it many times and let routing draw results by weight. See [Cheap evals](/docs/guides/evals).
+
+## Checking the mix
+
+`loremllm route` sends a prompt through routing many times and prints where it landed, so you can check weights and thresholds before you push:
+
+```bash
+npx loremllm route support-bot "I want out of my subscription" --samples 1000
+# cancel   steps      69.8%
+#          retention  20.3%
+#          escalate    9.9%
+```

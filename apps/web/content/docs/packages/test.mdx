@@ -34,7 +34,7 @@ test("refunds a delivered order", async () => {
 });
 ```
 
-`mockLLM` takes a hosted slug, a mock definition, or nothing for an empty mock. `await using` closes the server at the end of the test; without it, the setup file closes it in `afterEach`. Scenarios added with `llm.on()` take priority over the mock's own.
+`mockLLM` takes a hosted slug, a mock definition, or nothing for an empty mock. `await using` closes the server at the end of the test; without it, the setup file closes it in `afterEach`. Scenarios added with `llm.on()` take priority over the mock's own. Pass `{ seed }` as a second argument to change which [routed result](/docs/mocks/routing) each request draws.
 
 `llm.on(when)` takes the same [`when`](/docs/mocks/matching) as a scenario, or a string or RegExp as shorthand for `{ prompt }`. Replies use the same [builders](/docs/mocks/replies) as config files, re-exported from `@loremllm/test`:
 
@@ -43,13 +43,14 @@ test("refunds a delivered order", async () => {
 | `.reply(...parts)`     | `mockReturnValue`: answers every matching request                 |
 | `.replyOnce(...parts)` | `mockReturnValueOnce`: answers the next match, then falls through |
 
-| Property       | What it is                                                              |
-| -------------- | ----------------------------------------------------------------------- |
-| `llm.url`      | Base URL. Add `/v1` for OpenAI and Anthropic clients                    |
-| `llm.fetch`    | A `fetch` for SDKs, if you'd rather not use a URL                       |
-| `llm.model`    | An AI SDK `LanguageModelV2` backed by the same mock                     |
-| `llm.requests` | Every request this test made: `{ endpoint, messages, tools, scenario }` |
-| `llm.reset()`  | Clear requests, scenarios and conversation state                        |
+| Property                    | What it is                                                              |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `llm.url`                   | Base URL. Add `/v1` for OpenAI and Anthropic clients                    |
+| `llm.fetch`                 | A `fetch` for SDKs, if you'd rather not use a URL                       |
+| `llm.model`                 | An AI SDK `LanguageModelV2` backed by the same mock                     |
+| `llm.requests`              | Every request this test made: `{ endpoint, messages, tools, scenario }` |
+| `llm.pin(scenario, result)` | Always pick this named result for that scenario                         |
+| `llm.reset()`               | Clear requests, scenarios and conversation state                        |
 
 ## Matchers
 
@@ -66,6 +67,10 @@ Names follow Vitest's `toHaveBeenCalledWith` family. Expected values are compare
 All of them work with `.not`.
 
 Matchers print the full request log when they fail, so you can see what your agent actually did.
+
+## Evals
+
+`defineEval` and `runEval` run a task many times against routed results and report pass rates. See [Cheap evals](/docs/guides/evals).
 
 ## Timing
 

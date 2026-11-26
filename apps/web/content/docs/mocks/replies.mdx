@@ -87,11 +87,13 @@ A range like `[2, 4]` picks a length between the two, seeded by the request so t
 
 ```ts
 reply: oneOf([
-  { weight: 9, reply: text("OK") },
-  { weight: 1, reply: error(503) },
+  { name: "ok", weight: 9, reply: text("OK") },
+  { name: "outage", weight: 1, reply: error(503) },
 ]);
 ```
 
+`name` is optional. It shows up in the `loremllm-result` header and lets a test pin that result. See [Smart routing](/docs/mocks/routing).
+
 ## Seeds
 
-Anything random (lorem, `oneOf`, faker, jitter) uses a seed built from the mock, the scenario and the conversation. Set `seed` on a mock to change it, or send `loremllm-seed` to override it per request.
+Anything random (lorem, `oneOf`, faker, jitter) uses a seed built from the mock, the scenario and the conversation. Set `seed` on a mock to change it, or send `loremllm-seed` to override it per request. The same request always gets the same draw.

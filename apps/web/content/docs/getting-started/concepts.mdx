@@ -32,6 +32,8 @@ A scenario pairs a **match** with a **reply**. Scenarios are checked top to bott
 
 See [Matching](/docs/mocks/matching).
 
+A scenario can hold several possible results. [Smart routing](/docs/mocks/routing) matches the prompt by meaning, then picks a result by weight, seeded so the same request always lands on the same one.
+
 ## Reply
 
 A reply is what the mock streams back. It is a single part or a list of parts: text, templates, lorem, reasoning, tool calls, JSON, usage and errors. See [Replies](/docs/mocks/replies).

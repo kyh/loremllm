@@ -22,16 +22,18 @@ The [config reference](/docs/reference/config) lists every option.
 
 ## Commands
 
-| Command                         | What it does                                                    |
-| ------------------------------- | --------------------------------------------------------------- |
-| `loremllm init`                 | Write a starter config                                          |
-| `loremllm dev`                  | Run the [local server](/docs/getting-started/local-development) |
-| `loremllm login`                | Authenticate this machine                                       |
-| `loremllm push`                 | Upload mocks from your config to the project                    |
-| `loremllm pull`                 | Download hosted mocks to `loremllm/mocks`                       |
-| `loremllm record`               | Proxy real traffic and save it as a mock                        |
-| `loremllm test <mock> "prompt"` | Send one prompt and print the matched scenario and stream       |
-| `loremllm logs <mock>`          | Tail the request inspector                                      |
+| Command                          | What it does                                                    |
+| -------------------------------- | --------------------------------------------------------------- |
+| `loremllm init`                  | Write a starter config                                          |
+| `loremllm dev`                   | Run the [local server](/docs/getting-started/local-development) |
+| `loremllm login`                 | Authenticate this machine                                       |
+| `loremllm push`                  | Upload mocks from your config to the project                    |
+| `loremllm pull`                  | Download hosted mocks to `loremllm/mocks`                       |
+| `loremllm record`                | Proxy real traffic and save it as a mock                        |
+| `loremllm test <mock> "prompt"`  | Send one prompt and print the matched scenario and stream       |
+| `loremllm route <mock> "prompt"` | Sample [smart routing](/docs/mocks/routing) and print the mix   |
+| `loremllm eval [file...]`        | Run [evals](/docs/guides/evals) and print pass rates            |
+| `loremllm logs <mock>`           | Tail the request inspector                                      |
 
 See the [CLI reference](/docs/reference/cli) for flags.
 
