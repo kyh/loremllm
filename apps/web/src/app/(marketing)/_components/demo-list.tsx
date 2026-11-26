@@ -67,11 +67,13 @@ const DemoItem = ({ demo, index, setHoverTextRef, createMouseHandlers }: DemoIte
         nativeButton={false}
         render={
           <li
-            className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_180px_1fr] sm:gap-x-8 sm:text-lg"
+            className="grid cursor-pointer grid-cols-[40px_1fr] gap-x-4 py-2 text-base sm:grid-cols-[50px_240px_1fr] sm:gap-x-8 sm:text-lg"
             {...mouseHandlers}
           >
             <span>{formatCounter(index)}</span>
-            <HoverText ref={setHoverTextRef(index, 0)}>{demo.title}</HoverText>
+            <HoverText ref={setHoverTextRef(index, 0)} className="whitespace-normal">
+              {demo.title}
+            </HoverText>
             <HoverText
               ref={setHoverTextRef(index, 1)}
               className="hidden whitespace-normal sm:block"
