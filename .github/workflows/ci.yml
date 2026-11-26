@@ -44,3 +44,50 @@ jobs:
           TURSO_DATABASE_URL: http://127.0.0.1:8080
           BETTER_AUTH_SECRET: ci-placeholder-not-used-at-runtime
         run: pnpm build
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+    # The server `turso dev` runs locally (sqld), which turso's Linux installer leaves out
+    services:
+      libsql:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@24
+          cache: true
+
+      # Local URLs and a local-only secret, the same file bootstrap writes
+      - run: cp .env.example .env
+
+      - name: Wait for libSQL
+        run: |
+          curl --fail --silent --retry 30 --retry-delay 1 --retry-all-errors --max-time 2 \
+            --output /dev/null http://127.0.0.1:8080/health
+
+      - name: Push schema
+        run: pnpm db:push
+
+      - name: Seed dev@loremllm.local
+        run: pnpm db:seed
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start web
+        run: pnpm -F @repo/web start > "$RUNNER_TEMP/web.log" 2>&1 &
+
+      # Health, a code's sign-in, the collection lifecycle through oRPC, the dashboard (scripts/smoke.ts)
+      - name: Smoke
+        run: pnpm smoke
+
+      - name: Server logs
+        if: failure()
+        run: cat "$RUNNER_TEMP/web.log"

@@ -42,7 +42,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 ```bash
 pnpm bootstrap        # First run: .env, local Turso, schema, seed (idempotent)
 pnpm verify           # typecheck + lint + format + test — the gate CI runs, then pnpm build
-pnpm smoke            # Drive a running app end-to-end (SMOKE_URL for a deployment)
+pnpm smoke            # Drive a running app end-to-end (SMOKE_URL for a deployment; CI runs it)
 pnpm dev              # Start all (db, studio, app)
 pnpm dev:web          # Web app only -> http://localhost:3000
 pnpm build            # Build all
