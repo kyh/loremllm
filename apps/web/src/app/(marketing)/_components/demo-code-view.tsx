@@ -9,7 +9,7 @@ interface DemoCodeViewProps {
 }
 
 export const DemoCodeView = ({ demo }: DemoCodeViewProps) => {
-  if (!demo.code) {
+  if (demo.code === undefined || demo.code === "") {
     return (
       <div className="text-muted-foreground flex h-full items-center justify-center">
         No code example available

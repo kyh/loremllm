@@ -5,6 +5,7 @@ import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 
 import { cn } from "cn";
+import { rendersContent } from "@repo/ui/lib/renders-content";
 import { Label } from "@repo/ui/components/label";
 import { Separator } from "@repo/ui/components/separator";
 
@@ -131,7 +132,7 @@ const FieldSeparator = ({
 }) => (
   <div
     data-slot="field-separator"
-    data-content={!!children}
+    data-content={rendersContent(children)}
     className={cn(
       "relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2",
       className,
@@ -139,7 +140,7 @@ const FieldSeparator = ({
     {...props}
   >
     <Separator className="absolute inset-0 top-1/2" />
-    {children && (
+    {rendersContent(children) && (
       <span
         className="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
         data-slot="field-separator-content"
@@ -158,31 +159,35 @@ const FieldError = ({
 }: React.ComponentProps<"div"> & {
   errors?: ({ message?: string } | undefined)[];
 }) => {
-  const content = useMemo(() => {
-    if (children) {
-      return children;
-    }
+  const hasChildren = rendersContent(children);
 
-    if (!errors?.length) {
+  const errorContent = useMemo(() => {
+    if (errors === undefined || errors.length === 0) {
       return null;
     }
 
     const uniqueErrors = [...new Map(errors.map((error) => [error?.message, error])).values()];
 
-    if (uniqueErrors?.length === 1) {
+    if (uniqueErrors.length === 1) {
       return uniqueErrors[0]?.message;
     }
 
     return (
       <ul className="ml-4 flex list-disc flex-col gap-1">
         {uniqueErrors.map(
-          (error) => error?.message && <li key={error.message}>{error.message}</li>,
+          (error) =>
+            error !== undefined &&
+            error.message !== undefined &&
+            error.message !== "" && <li key={error.message}>{error.message}</li>,
         )}
       </ul>
     );
-  }, [children, errors]);
+  }, [errors]);
 
-  if (!content) {
+  if (
+    !hasChildren &&
+    (errorContent === null || errorContent === undefined || errorContent === "")
+  ) {
     return null;
   }
 
@@ -193,7 +198,7 @@ const FieldError = ({
       className={cn("text-sm font-normal text-destructive", className)}
       {...props}
     >
-      {content}
+      {hasChildren ? children : errorContent}
     </div>
   );
 };

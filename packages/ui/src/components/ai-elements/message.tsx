@@ -2,7 +2,16 @@
 
 import type { FileUIPart, UIMessage } from "ai";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  isValidElement,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { ChevronLeftIcon, ChevronRightIcon, PaperclipIcon, XIcon } from "lucide-react";
 import { Streamdown } from "streamdown";
 
@@ -15,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@repo/ui/components/tooltip";
 import { cn } from "cn";
+import { rendersContent } from "@repo/ui/lib/renders-content";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -71,11 +81,11 @@ export const MessageAction = ({
   const button = (
     <Button size={size} type="button" variant={variant} {...props}>
       {children}
-      <span className="sr-only">{label || tooltip}</span>
+      <span className="sr-only">{label === undefined || label === "" ? tooltip : label}</span>
     </Button>
   );
 
-  if (tooltip) {
+  if (tooltip !== undefined && tooltip !== "") {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -169,7 +179,7 @@ export const MessageBranchContent = ({ children, ...props }: MessageBranchConten
   const { currentBranch, setBranches, branches } = useMessageBranch();
 
   const childrenArray = useMemo(
-    () => (Array.isArray(children) ? children : [children]),
+    () => (Array.isArray(children) ? children : [children]).filter(isValidElement),
     [children],
   );
 
@@ -303,7 +313,7 @@ export const MessageAttachment = ({
   onRemove,
   ...props
 }: MessageAttachmentProps) => {
-  const filename = data.filename || "";
+  const filename = data.filename === undefined || data.filename === "" ? "" : data.filename;
   const mediaType = data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
   const isImage = mediaType === "image";
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
@@ -373,7 +383,7 @@ export const MessageAttachment = ({
 export type MessageAttachmentsProps = ComponentProps<"div">;
 
 export const MessageAttachments = ({ children, className, ...props }: MessageAttachmentsProps) => {
-  if (!children) {
+  if (!rendersContent(children)) {
     return null;
   }
 

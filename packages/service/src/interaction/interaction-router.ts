@@ -73,7 +73,7 @@ export const interactionRouter = {
 
     const now = new Date();
 
-    return context.db.transaction(async (tx) => {
+    return await context.db.transaction(async (tx) => {
       const [interaction] = await tx
         .insert(mockInteraction)
         .values({
@@ -255,7 +255,7 @@ export const interactionRouter = {
       updatedAt: now,
     };
 
-    return context.db.transaction(async (tx) => {
+    return await context.db.transaction(async (tx) => {
       const [updatedInteraction] = await tx
         .update(mockInteraction)
         .set(

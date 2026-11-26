@@ -93,9 +93,12 @@ export const requireActiveOrganization = builder
     const { activeOrganizationId } = context.session.session;
 
     const membership = await context.db.query.member.findFirst({
-      where: activeOrganizationId
-        ? { organizationId: activeOrganizationId, userId: context.session.user.id }
-        : { userId: context.session.user.id },
+      where:
+        activeOrganizationId !== undefined &&
+        activeOrganizationId !== null &&
+        activeOrganizationId !== ""
+          ? { organizationId: activeOrganizationId, userId: context.session.user.id }
+          : { userId: context.session.user.id },
     });
 
     if (!membership) {
@@ -111,7 +114,7 @@ export const requireActiveOrganization = builder
         .where(eq(sessionSchema.id, context.session.session.id));
     }
 
-    return next({
+    return await next({
       context: { organizationId: membership.organizationId },
     });
   });

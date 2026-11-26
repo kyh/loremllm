@@ -101,7 +101,9 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
         variant="outline"
         type="button"
         loading={submittingGithub}
-        onClick={handleAuthWithGithub}
+        onClick={() => {
+          void handleAuthWithGithub();
+        }}
       >
         Continue with Github
       </Button>
@@ -142,7 +144,9 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                      }}
                       aria-invalid={isInvalid}
                       required
                       type="email"
@@ -178,7 +182,9 @@ export const AuthForm = ({ className, type, nextPath, ...props }: AuthFormProps)
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                      }}
                       aria-invalid={isInvalid}
                       required
                       type="password"
@@ -274,7 +280,9 @@ export const RequestPasswordResetForm = () => {
                     name={field.name}
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                    }}
                     aria-invalid={isInvalid}
                     required
                     type="email"
@@ -306,7 +314,7 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
       password: "",
     },
     onSubmit: async ({ value }) => {
-      if (!token) {
+      if (token === undefined || token === "") {
         toast.error("Invalid or expired reset link. Request a new one.");
 
         return;
@@ -368,7 +376,9 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
                     name={field.name}
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                    }}
                     aria-invalid={isInvalid}
                     required
                     type="password"
@@ -393,9 +403,7 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
 
               const password = fieldApi.form.getFieldValue("password");
 
-              if (password !== value) {
-                return "Passwords don't match";
-              }
+              return password === value ? undefined : "Passwords don't match";
             },
           }}
         >
@@ -413,7 +421,9 @@ export const UpdatePasswordForm = ({ token }: { token?: string }) => {
                     name={field.name}
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                    }}
                     aria-invalid={isInvalid}
                     required
                     type="password"

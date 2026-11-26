@@ -1,5 +1,6 @@
 "use client";
 
+import { noop } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/components/tooltip";
@@ -62,12 +63,14 @@ export const DraggablePanel = ({
     checkMobile();
     window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener("resize", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
   }, []);
 
   useEffect(() => {
     if (!isOpen) {
-      return;
+      return noop;
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -82,7 +85,9 @@ export const DraggablePanel = ({
 
     window.addEventListener("keydown", handleKeyDown);
 
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen, hasPrevious, hasNext, onPrevious, onNext]);
 
   const handleDragStart = useCallback(
@@ -156,7 +161,7 @@ export const DraggablePanel = ({
       <m.div
         ref={panelRef}
         data-draggable-panel=""
-        initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+        initial={shouldReduceMotion === true ? false : { opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         className={cn(
           "bg-popover/20 border-border fixed z-50 flex flex-col rounded-lg border shadow-lg backdrop-blur-sm",
@@ -187,7 +192,7 @@ export const DraggablePanel = ({
             <h3 className="truncate font-mono text-sm font-semibold">{title}</h3>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {(onPrevious || onNext) && (
+            {(onPrevious !== undefined || onNext !== undefined) && (
               <>
                 <Tooltip>
                   <TooltipTrigger
@@ -196,7 +201,9 @@ export const DraggablePanel = ({
                         variant="ghost"
                         size="icon"
                         onClick={onPrevious}
-                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                        }}
                         disabled={!hasPrevious}
                         className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
                       >
@@ -213,7 +220,9 @@ export const DraggablePanel = ({
                         variant="ghost"
                         size="icon"
                         onClick={onNext}
-                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                        }}
                         disabled={!hasNext}
                         className="size-5 sm:size-5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0"
                       >

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { alertDialog } from "@repo/ui/components/alert-dialog";
 import { Badge } from "@repo/ui/components/badge";
@@ -65,7 +65,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
     },
   });
 
-  const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+  const handleUpdate = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const name = form.name.trim();
@@ -126,7 +126,7 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
               {collection.isPublic ? "Public" : "Private"}
             </Badge>
           </div>
-          {collection.description ? (
+          {collection.description !== null && collection.description !== "" ? (
             <CardDescription>{collection.description}</CardDescription>
           ) : null}
           <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
@@ -158,7 +158,9 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
               id="collection-name"
               placeholder="My new collection"
               value={form.name}
-              onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, name: event.target.value }));
+              }}
               required
             />
           </div>
@@ -171,9 +173,9 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
               max={100}
               step={1}
               value={form.minSimilarityPercent}
-              onChange={(event) =>
-                setForm((state) => ({ ...state, minSimilarityPercent: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((state) => ({ ...state, minSimilarityPercent: event.target.value }));
+              }}
             />
             <p className="text-muted-foreground text-xs">
               Queries below this similarity return a 404 instead of the best match. 0 disables.
@@ -185,9 +187,9 @@ export const CollectionSettings = ({ collection, onDeleted }: CollectionSettings
               id="collection-description"
               placeholder="A brief description of what this collection does."
               value={form.description}
-              onChange={(event) =>
-                setForm((state) => ({ ...state, description: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((state) => ({ ...state, description: event.target.value }));
+              }}
               rows={3}
             />
           </div>

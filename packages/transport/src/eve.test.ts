@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import { after, before, describe, test } from "node:test";
 import type { UIMessage } from "ai";
@@ -21,13 +22,49 @@ const postJson = (path: string, body: JsonValue) =>
     method: "POST",
   });
 
+const EVE_EVENT_TYPES = {
+  "action.result": true,
+  "actions.requested": true,
+  "message.appended": true,
+  "message.completed": true,
+  "message.received": true,
+  "reasoning.appended": true,
+  "reasoning.completed": true,
+  "session.failed": true,
+  "session.started": true,
+  "session.waiting": true,
+  "step.completed": true,
+  "step.started": true,
+  "turn.completed": true,
+  "turn.failed": true,
+  "turn.started": true,
+} satisfies Record<EveStreamEvent["type"], true>;
+
+const eveEventEnvelope = z.looseObject({ data: z.looseObject({}), type: z.string() });
+
+const isEveStreamEvent = (value: unknown): value is EveStreamEvent => {
+  const parsed = eveEventEnvelope.safeParse(value);
+
+  return parsed.success && Object.hasOwn(EVE_EVENT_TYPES, parsed.data.type);
+};
+
+const toEveStreamEvent = (line: string) => {
+  const value: unknown = JSON.parse(line);
+
+  if (!isEveStreamEvent(value)) {
+    throw new Error(`Not an eve stream event: ${line}`);
+  }
+
+  return value;
+};
+
 const readEvents = async (response: Response) => {
   const text = await response.text();
 
   return text
     .split("\n")
     .filter((line) => line.length > 0)
-    .map((line) => JSON.parse(line) as EveStreamEvent);
+    .map(toEveStreamEvent);
 };
 
 const createSessionResponse = z.object({
@@ -61,7 +98,7 @@ const streamEvents = async (
 
   assert.strictEqual(response.status, 200);
 
-  return readEvents(response);
+  return await readEvents(response);
 };
 
 const textHandler = () =>
@@ -454,7 +491,7 @@ describe("createStaticEveHandler", () => {
       const events = await streamEvents(handler, sessionId);
 
       const sequences = events.flatMap((event) =>
-        "sequence" in event.data ? [event.data.sequence] : [],
+        event.type !== "session.started" && "sequence" in event.data ? [event.data.sequence] : [],
       );
 
       const sorted = [...sequences].toSorted((a, b) => a - b);
@@ -568,7 +605,9 @@ describe("createStaticEveHandler", () => {
 
       const { sessionId } = await createSession(handler);
       const stream = await handler(createRequest(`/eve/v1/session/${sessionId}/stream`));
-      assert.ok(stream.headers.get("access-control-expose-headers")?.includes("x-eve-session-id"));
+      assert.ok(
+        stream.headers.get("access-control-expose-headers")?.includes("x-eve-session-id") === true,
+      );
     });
 
     test("supports cors: false and single-origin cors", async () => {
@@ -657,42 +696,50 @@ describe("createStaticEveHandler", () => {
   });
 });
 
-const importEveClient = () => import("eve/client");
+const importEveClient = async () => await import("eve/client");
 
-let routeToHandler: (request: Request) => Promise<Response> = () =>
-  Promise.resolve(new Response(null, { status: 503 }));
+let routeToHandler: (request: Request) => Promise<Response> = async () =>
+  await Promise.resolve(new Response(null, { status: 503 }));
 
-const server = createServer(async (incoming, outgoing) => {
-  let body = "";
-  incoming.setEncoding("utf-8");
+const relay = async (incoming: IncomingMessage, outgoing: ServerResponse) => {
+  try {
+    let body = "";
+    incoming.setEncoding("utf-8");
 
-  for await (const chunk of incoming) {
-    body += chunk;
-  }
-
-  const headers = new Headers();
-
-  for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
-    headers.append(incoming.rawHeaders[index] ?? "", incoming.rawHeaders[index + 1] ?? "");
-  }
-
-  const response = await routeToHandler(
-    new Request(new URL(incoming.url ?? "/", HOST), {
-      body: body.length > 0 ? body : undefined,
-      headers,
-      method: incoming.method,
-    }),
-  );
-
-  outgoing.writeHead(response.status, Object.fromEntries(response.headers));
-
-  if (response.body) {
-    for await (const chunk of response.body) {
-      outgoing.write(chunk);
+    for await (const chunk of incoming) {
+      body += chunk;
     }
-  }
 
-  outgoing.end();
+    const headers = new Headers();
+
+    for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
+      headers.append(incoming.rawHeaders[index] ?? "", incoming.rawHeaders[index + 1] ?? "");
+    }
+
+    const response = await routeToHandler(
+      new Request(new URL(incoming.url ?? "/", HOST), {
+        body: body.length > 0 ? body : undefined,
+        headers,
+        method: incoming.method,
+      }),
+    );
+
+    outgoing.writeHead(response.status, Object.fromEntries(response.headers));
+
+    if (response.body) {
+      for await (const chunk of response.body) {
+        outgoing.write(chunk);
+      }
+    }
+
+    outgoing.end();
+  } catch {
+    outgoing.destroy();
+  }
+};
+
+const server = createServer((incoming, outgoing) => {
+  void relay(incoming, outgoing);
 });
 
 const listeningAddress = z.object({ port: z.number() });
@@ -829,7 +876,7 @@ describe("type parity with StaticChatTransport", () => {
     const { StaticChatTransport } = await import("./index");
 
     const transport = new StaticChatTransport<UIMessage>({ mockResponse: sharedMockResponse });
-    const handler = createStaticEveHandler<UIMessage>({ mockResponse: sharedMockResponse });
+    const handler = createStaticEveHandler({ mockResponse: sharedMockResponse });
 
     assert.notStrictEqual(transport, undefined);
     const response = await handler(postJson("/eve/v1/session", { message: "hi" }));

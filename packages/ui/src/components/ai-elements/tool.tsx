@@ -118,7 +118,7 @@ const structuredOutput = z.union([
 const renderablePrimitive = z.union([z.number(), z.boolean(), z.null(), z.undefined()]);
 
 export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutputProps) => {
-  if (!(output || errorText)) {
+  if (!(Boolean(output) || (errorText !== undefined && errorText !== ""))) {
     return null;
   }
 
@@ -141,15 +141,17 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
   return (
     <div className={cn("space-y-2 p-4", className)} {...props}>
       <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        {errorText ? "Error" : "Result"}
+        {errorText !== undefined && errorText !== "" ? "Error" : "Result"}
       </h4>
       <div
         className={cn(
           "overflow-x-auto rounded-md text-xs [&_table]:w-full",
-          errorText ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-foreground",
+          errorText !== undefined && errorText !== ""
+            ? "bg-destructive/10 text-destructive"
+            : "bg-muted/50 text-foreground",
         )}
       >
-        {errorText && <div>{errorText}</div>}
+        {errorText !== undefined && errorText !== "" && <div>{errorText}</div>}
         {Output}
       </div>
     </div>

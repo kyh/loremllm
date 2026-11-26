@@ -10,7 +10,9 @@ export const ThemeToggle = () => {
 
   return (
     <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        setTheme(isDark ? "light" : "dark");
+      }}
       className="text-link hover:text-link-hover pointer-events-auto cursor-pointer no-underline outline-none"
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       type="button"

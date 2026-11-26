@@ -25,7 +25,7 @@ describe("copyMessagesToClipboard outside a browser", () => {
     });
 
     assert.deepEqual(
-      info.mock.calls.map((call) => call.arguments),
+      info.mock.calls.map<unknown[]>((call) => call.arguments),
       [["No assistant messages were found to copy."]],
     );
   });
@@ -41,7 +41,7 @@ describe("copyMessagesToClipboard outside a browser", () => {
       { message: "Clipboard access is not available in this environment." },
     );
     assert.deepEqual(
-      info.mock.calls.map((call) => call.arguments),
+      info.mock.calls.map<unknown[]>((call) => call.arguments),
       [["Clipboard access is not available in this environment."]],
     );
   });

@@ -10,7 +10,7 @@ describe("renderLlmsTxt", () => {
   test("follows the llmstxt.org shape: H1, then a blockquote summary", () => {
     assert.equal(lines[0], "# LoremLLM");
     assert.equal(lines[1], "");
-    assert.ok(lines[2]?.startsWith("> "));
+    assert.ok(lines[2]?.startsWith("> ") === true);
   });
 
   test("has exactly one H1", () => {

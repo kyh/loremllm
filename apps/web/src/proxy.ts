@@ -46,7 +46,7 @@ export const proxy = (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
   if (isProtected(pathname)) {
-    if (!getSessionCookie(request)) {
+    if ((getSessionCookie(request) ?? "") === "") {
       return loginRedirect(request);
     }
 

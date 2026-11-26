@@ -29,11 +29,9 @@ export const ChatRequestSchema = z.object({
   messages: z.array(jsonValue).optional(),
 });
 
-export const LoremRequestSchema = LoremParamsSchema.merge(
-  z.object({
-    messages: z.array(jsonValue).optional(),
-  }),
-);
+export const LoremRequestSchema = LoremParamsSchema.extend({
+  messages: z.array(jsonValue).optional(),
+});
 
 export type LoremParams = z.infer<typeof LoremParamsSchema>;
 

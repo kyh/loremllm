@@ -1,5 +1,6 @@
 "use client";
 
+import { noop } from "@tanstack/react-query";
 import * as React from "react";
 import { useTheme } from "next-themes";
 import { cn } from "cn";
@@ -55,7 +56,7 @@ const HoverText = ({
     const element = internalRef.current;
 
     if (!element || animatorRef.current) {
-      return;
+      return noop;
     }
 
     const rafId = requestAnimationFrame(() => {

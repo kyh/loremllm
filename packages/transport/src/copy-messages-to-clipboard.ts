@@ -34,7 +34,7 @@ const notify = (runtime: RuntimeGlobal, message: string) => {
 export const copyMessagesToClipboard = <UI_MESSAGE extends UIMessage = UIMessage>(
   options: CopyMessagesOptions<UI_MESSAGE>,
 ) => {
-  const runtime = globalThis as RuntimeGlobal;
+  const runtime: RuntimeGlobal = globalThis;
 
   try {
     const seenIds = new Set<string>();
@@ -72,7 +72,9 @@ export const copyMessagesToClipboard = <UI_MESSAGE extends UIMessage = UIMessage
     const result = clipboard.writeText(template);
 
     if (result instanceof Promise) {
-      void reportClipboardWrite(result, (message) => notify(runtime, message));
+      void reportClipboardWrite(result, (message) => {
+        notify(runtime, message);
+      });
     } else {
       notify(runtime, COPY_SUCCESS_MESSAGE);
     }

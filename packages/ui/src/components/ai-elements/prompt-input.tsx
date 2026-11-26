@@ -6,8 +6,8 @@ import type {
   ChangeEventHandler,
   ClipboardEventHandler,
   ComponentProps,
-  FormEvent,
-  FormEventHandler,
+  SubmitEvent,
+  SubmitEventHandler,
   HTMLAttributes,
   KeyboardEventHandler,
   PropsWithChildren,
@@ -223,12 +223,15 @@ export const PromptInputProvider = ({
   children,
 }: PromptInputProviderProps) => {
   const [textInput, setTextInput] = useState(initialTextInput);
-  const clearInput = useCallback(() => setTextInput(""), []);
+
+  const clearInput = useCallback(() => {
+    setTextInput("");
+  }, []);
 
   const [attachmentFiles, setAttachmentFiles] = useState<(FileUIPart & { id: string })[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const openRef = useRef<() => void>(noop);
+  const openRef = useRef<(() => void) | null>(null);
 
   const createObjectUrl = useOwnedObjectUrls(attachmentFiles);
 
@@ -315,13 +318,15 @@ const convertBlobUrlToDataUrl = async (url: string) => {
     const blob = await response.blob();
 
     // oxlint-disable-next-line promise/avoid-new -- FileReader has no promise form
-    return new Promise<string | null>((resolve) => {
+    return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.addEventListener("loadend", () => {
         const { result } = reader;
         resolve(result === null || result instanceof ArrayBuffer ? null : result);
       });
-      reader.addEventListener("error", () => resolve(null));
+      reader.addEventListener("error", () => {
+        resolve(null);
+      });
       reader.readAsDataURL(blob);
     });
   } catch {
@@ -378,7 +383,7 @@ export const PromptInputAttachment = ({
 }: PromptInputAttachmentProps) => {
   const attachments = usePromptInputAttachments();
 
-  const filename = data.filename || "";
+  const filename = data.filename === undefined || data.filename === "" ? "" : data.filename;
 
   const mediaType = data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
   const isImage = mediaType === "image";
@@ -521,7 +526,7 @@ export type PromptInputProps = Omit<HTMLAttributes<HTMLFormElement>, "onSubmit" 
   onError?: (err: { code: "max_files" | "max_file_size" | "accept"; message: string }) => void;
   onSubmit: (
     message: PromptInputMessage,
-    event: FormEvent<HTMLFormElement>,
+    event: SubmitEvent<HTMLFormElement>,
   ) => void | Promise<void>;
   inputGroupClassName?: string;
 };
@@ -574,7 +579,7 @@ export const PromptInput = ({
 
   const matchesAccept = useCallback(
     (f: File) => {
-      if (!accept || accept.trim() === "") {
+      if (accept === undefined || accept === "" || accept.trim() === "") {
         return true;
       }
 
@@ -601,7 +606,9 @@ export const PromptInput = ({
         return;
       }
 
-      const withinSize = (f: File) => (maxFileSize ? f.size <= maxFileSize : true);
+      const withinSize = (f: File) =>
+        maxFileSize !== undefined && maxFileSize !== 0 ? f.size <= maxFileSize : true;
+
       const sized = accepted.filter(withinSize);
 
       if (accepted.length > 0 && sized.length === 0) {
@@ -651,7 +658,7 @@ export const PromptInput = ({
   }, [usingProvider, controller]);
 
   useEffect(() => {
-    if (syncHiddenInput && inputRef.current && files.length === 0) {
+    if (syncHiddenInput === true && inputRef.current && files.length === 0) {
       inputRef.current.value = "";
     }
   }, [files, syncHiddenInput]);
@@ -660,17 +667,17 @@ export const PromptInput = ({
     const form = formRef.current;
 
     if (!form) {
-      return;
+      return noop;
     }
 
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types?.includes("Files") === true) {
         e.preventDefault();
       }
     };
 
     const onDrop = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types?.includes("Files") === true) {
         e.preventDefault();
       }
 
@@ -689,18 +696,18 @@ export const PromptInput = ({
   }, [add]);
 
   useEffect(() => {
-    if (!globalDrop) {
-      return;
+    if (globalDrop !== true) {
+      return noop;
     }
 
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types?.includes("Files") === true) {
         e.preventDefault();
       }
     };
 
     const onDrop = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types?.includes("Files") === true) {
         e.preventDefault();
       }
 
@@ -738,7 +745,7 @@ export const PromptInput = ({
     [files, add, remove, clear, openFileDialog],
   );
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
 
     const form = event.currentTarget;
@@ -846,7 +853,7 @@ export const PromptInputTextarea = ({
       const { form } = e.currentTarget;
       const submitButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
 
-      if (submitButton?.disabled) {
+      if (submitButton?.disabled === true) {
         return;
       }
 
@@ -864,11 +871,7 @@ export const PromptInputTextarea = ({
   };
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
-    const items = event.clipboardData?.items;
-
-    if (!items) {
-      return;
-    }
+    const { items } = event.clipboardData;
 
     const files: File[] = [];
 
@@ -1089,8 +1092,8 @@ type SpeechRecognitionErrorEvent = {
 
 declare global {
   interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
   }
 }
 
@@ -1123,11 +1126,12 @@ export const PromptInputSpeechButton = ({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    if (!isSupported) {
-      return;
+    const SpeechRecognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!isSupported || SpeechRecognition === undefined) {
+      return noop;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const speechRecognition = new SpeechRecognition();
 
     speechRecognition.continuous = true;
@@ -1148,7 +1152,7 @@ export const PromptInputSpeechButton = ({
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
 
-        if (result?.isFinal) {
+        if (result?.isFinal === true) {
           finalTranscript += result[0]?.transcript ?? "";
         }
       }

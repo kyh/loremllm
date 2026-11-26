@@ -43,9 +43,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "dev": "tsc --watch --preserveWatchOutput",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@ai-sdk/react": "^4.0.130",
+    "@types/node": "catalog:",
     "ai": "^7.0.127",
     "eve": "^0.71.0",
     "tsx": "^4.23.15",

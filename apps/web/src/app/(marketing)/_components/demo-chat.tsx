@@ -1,6 +1,6 @@
 "use client";
 
-import type { UIMessage } from "ai";
+import type { DynamicToolUIPart, ToolUIPart, UIMessage } from "ai";
 import { useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -40,7 +40,7 @@ import {
   ToolOutput,
 } from "@repo/ui/components/ai-elements/tool";
 import { Spinner } from "@repo/ui/components/spinner";
-import { getToolOrDynamicToolName, isToolUIPart } from "ai";
+import { getToolName, isToolUIPart } from "ai";
 
 import type { Demo } from "./demo-data";
 import type { PromptInputMessage } from "@repo/ui/components/ai-elements/prompt-input";
@@ -54,6 +54,20 @@ interface MessagePartsProps {
   parts: UIMessage["parts"];
   messageId: string;
 }
+
+const ToolPart = ({ part }: { part: ToolUIPart | DynamicToolUIPart }) => (
+  <Tool>
+    <ToolHeader
+      title={getToolName(part)}
+      type={part.type === "dynamic-tool" ? "tool-dynamic" : part.type}
+      state={part.state}
+    />
+    <ToolContent>
+      {part.input !== undefined && <ToolInput input={part.input} />}
+      <ToolOutput output={part.output} errorText={part.errorText} />
+    </ToolContent>
+  </Tool>
+);
 
 const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
   const { otherParts, sourceParts } = useMemo(() => {
@@ -104,22 +118,21 @@ const MessageParts = ({ parts, messageId }: MessagePartsProps) => {
             return <MessageAttachment key={key} data={part} className="mt-2" />;
           }
 
+          case "dynamic-tool": {
+            return <ToolPart key={key} part={part} />;
+          }
+
+          case "custom":
+          case "reasoning-file":
+          case "source-document":
+          case "source-url":
+          case "step-start": {
+            return null;
+          }
+
           default: {
             if (isToolUIPart(part)) {
-              const toolName = getToolOrDynamicToolName(part);
-
-              const toolType: `tool-${string}` =
-                part.type === "dynamic-tool" ? "tool-dynamic" : part.type;
-
-              return (
-                <Tool key={key}>
-                  <ToolHeader title={toolName} type={toolType} state={part.state} />
-                  <ToolContent>
-                    {part.input !== undefined && <ToolInput input={part.input} />}
-                    <ToolOutput output={part.output} errorText={part.errorText} />
-                  </ToolContent>
-                </Tool>
-              );
+              return <ToolPart key={key} part={part} />;
             }
 
             if (part.type.startsWith("data-")) {
@@ -217,7 +230,9 @@ export const DemoChat = ({ demo }: { demo: Demo }) => {
       <PromptInput onSubmit={handleSubmit} inputGroupClassName="border-b-0 border-x-0">
         <PromptInputBody className="h-[80px]">
           <PromptInputTextarea
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+            }}
             placeholder="Type your message..."
             value={input}
           />

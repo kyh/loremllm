@@ -55,10 +55,10 @@ const randomChar = () =>
   LETTERS_AND_SYMBOLS[Math.floor(Math.random() * LETTERS_AND_SYMBOLS.length)];
 
 export class TextAnimator {
-  private textElement: HTMLElement;
+  private readonly textElement: HTMLElement;
   private splitter: SplitType | null = null;
   private originalChars: string[] = [];
-  private variant: AnimationVariant;
+  private readonly variant: AnimationVariant;
 
   constructor(textElement: HTMLElement, variant: AnimationVariant = "cursor-square") {
     if (!(textElement instanceof HTMLElement)) {
@@ -114,7 +114,7 @@ export class TextAnimator {
     }
 
     this.reset();
-    const chars = this.splitter.chars || [];
+    const chars = this.splitter.chars ?? [];
 
     if (chars.length === 0) {
       return;

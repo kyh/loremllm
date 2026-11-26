@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   title: "Dashboard",
 };
 
+const MAIN_CLASS = "mx-auto w-full max-w-6xl flex-1 px-4 py-6";
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -25,7 +27,7 @@ const RequireSession = async (props: LayoutProps) => {
     redirect("/auth/login");
   }
 
-  return props.children;
+  return <main className={MAIN_CLASS}>{props.children}</main>;
 };
 
 const Account = async () => {
@@ -57,17 +59,17 @@ const Layout = (props: LayoutProps) => (
         </div>
       </div>
     </header>
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-      <Suspense
-        fallback={
+    <Suspense
+      fallback={
+        <main className={MAIN_CLASS}>
           <div className="flex justify-center py-12">
             <Spinner />
           </div>
-        }
-      >
-        <RequireSession>{props.children}</RequireSession>
-      </Suspense>
-    </main>
+        </main>
+      }
+    >
+      <RequireSession>{props.children}</RequireSession>
+    </Suspense>
   </div>
 );
 

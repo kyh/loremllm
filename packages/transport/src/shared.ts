@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type MaybePromise<T> = T | Promise<T>;
 
 /**
@@ -14,11 +16,67 @@ export type DelayResolver<CHUNK> =
 
 type DelayFunction<CHUNK> = Exclude<DelayResolver<CHUNK>, number | [number, number]>;
 
-export const sleep = (ms: number) =>
+export const sleep = async (ms: number) => {
   // oxlint-disable-next-line promise/avoid-new -- a timer has no promise form
-  new Promise<void>((resolve) => {
+  await new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+};
+
+const toolPartSchema = z.object({
+  errorText: z.string().optional().catch(undefined),
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  providerMetadata: z
+    .record(z.string(), z.record(z.string(), z.json()))
+    .optional()
+    .catch(undefined),
+  state: z.string().optional().catch(undefined),
+  toolCallId: z.string(),
+  toolName: z.string().optional().catch(undefined),
+  type: z.string(),
+});
+
+export type ToolLikePart = z.infer<typeof toolPartSchema>;
+
+/**
+ * Reads the fields both transports stream from a `tool-*` or `dynamic-tool`
+ * part, whichever of the AI SDK's tool part shapes (or a `SpecialToolPart`) it arrived as.
+ */
+export const parseToolPart = (part: { type: string }) => {
+  const parsed = toolPartSchema.safeParse(part);
+
+  if (!parsed.success) {
+    throw new Error(`A "${part.type}" part needs a string \`toolCallId\`.`);
+  }
+
+  return parsed.data;
+};
+
+type Visit<ITEM> = (item: ITEM) => Promise<"next" | "stop">;
+
+const visitRest: <ITEM>(iterator: Iterator<ITEM>, visit: Visit<ITEM>) => Promise<void> = async (
+  iterator,
+  visit,
+) => {
+  const next = iterator.next();
+
+  if (next.done === true) {
+    return;
+  }
+
+  if ((await visit(next.value)) === "next") {
+    await visitRest(iterator, visit);
+  }
+};
+
+/**
+ * Visits `items` one at a time, awaiting each visit before starting the next,
+ * until a visit answers `"stop"`.
+ */
+export const eachInOrder = async <ITEM>(items: Iterable<ITEM>, visit: Visit<ITEM>) => {
+  await visitRest(items[Symbol.iterator](), visit);
+};
 
 const randomDelay = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -27,14 +85,14 @@ const isDelayFunction = <CHUNK>(resolver: DelayResolver<CHUNK>): resolver is Del
 
 /**
  * Resolves a {@link DelayResolver} to a concrete millisecond delay for one chunk.
- * Returns `undefined` when no delay should be applied.
+ * Returns `null` when no delay should be applied.
  */
 export const resolveChunkDelay = async <CHUNK>(
   resolver: DelayResolver<CHUNK> | undefined,
   chunk: CHUNK,
 ) => {
   if (resolver === undefined) {
-    return;
+    return null;
   }
 
   if (Array.isArray(resolver)) {
@@ -45,7 +103,7 @@ export const resolveChunkDelay = async <CHUNK>(
     const result = await resolver(chunk);
 
     if (result === undefined) {
-      return;
+      return null;
     }
 
     return Array.isArray(result) ? randomDelay(result[0], result[1]) : result;

@@ -35,7 +35,7 @@ const generateAvailableSlug = async (slug: string, attempt = 0) => {
   });
 
   if (org) {
-    return generateAvailableSlug(`${slug}-${attempt + 1}`, attempt + 1);
+    return await generateAvailableSlug(`${slug}-${attempt + 1}`, attempt + 1);
   }
 
   return slug;
@@ -104,13 +104,15 @@ export const auth = betterAuth({
   plugins: [
     oAuthProxy({
       currentURL: baseUrl,
-      productionURL: process.env.VERCEL_PROJECT_PRODUCTION_URL
-        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-        : baseUrl,
+      productionURL:
+        process.env.VERCEL_PROJECT_PRODUCTION_URL !== undefined &&
+        process.env.VERCEL_PROJECT_PRODUCTION_URL !== ""
+          ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+          : baseUrl,
     }),
     organization(),
     admin(),
-    ...(emulatorUrl
+    ...(emulatorUrl !== undefined && emulatorUrl !== ""
       ? [
           genericOAuth({
             config: [

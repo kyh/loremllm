@@ -18,17 +18,9 @@ export const createDbEveSessionStore = (collectionPublicId: string) =>
         where: { collectionPublicId, id: sessionId },
       });
 
-      if (!row) {
-        return;
-      }
+      const record = jsonValue.safeParse(row?.record);
 
-      const record = jsonValue.safeParse(row.record);
-
-      if (!record.success) {
-        return;
-      }
-
-      return parseEveSessionRecord(record.data);
+      return record.success ? parseEveSessionRecord(record.data) : undefined;
     },
     async set(sessionId, record) {
       const now = new Date();

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -52,7 +52,7 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
     },
   });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const title = form.title.trim();
@@ -88,7 +88,9 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
               id="interaction-title"
               placeholder="Weather in San Francisco"
               value={form.title}
-              onChange={(event) => setForm((state) => ({ ...state, title: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, title: event.target.value }));
+              }}
               required
             />
           </div>
@@ -98,9 +100,9 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
               id="interaction-description"
               placeholder="A brief description of this mock interaction."
               value={form.description}
-              onChange={(event) =>
-                setForm((state) => ({ ...state, description: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((state) => ({ ...state, description: event.target.value }));
+              }}
               rows={3}
             />
           </div>
@@ -110,7 +112,9 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
               id="interaction-input"
               placeholder="What's the weather like in San Francisco?"
               value={form.input}
-              onChange={(event) => setForm((state) => ({ ...state, input: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, input: event.target.value }));
+              }}
               rows={4}
               required
             />
@@ -124,7 +128,9 @@ export const InteractionForm = ({ collectionId }: InteractionFormProps) => {
               id="interaction-output"
               placeholder="It's 72°F and sunny along the bay."
               value={form.output}
-              onChange={(event) => setForm((state) => ({ ...state, output: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, output: event.target.value }));
+              }}
               rows={5}
               required
             />

@@ -8,6 +8,7 @@ import { codeToHtml } from "shiki";
 
 import { Button } from "@repo/ui/components/button";
 import { cn } from "cn";
+import { rendersContent } from "@repo/ui/lib/renders-content";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
@@ -111,7 +112,7 @@ export const CodeBlock = ({
             className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden overflow-hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
-          {children && (
+          {rendersContent(children) && (
             <div className="absolute top-2 right-2 flex items-center gap-2">{children}</div>
           )}
         </div>
@@ -139,7 +140,7 @@ export const CodeBlockCopyButton = ({
   const { code } = useContext(CodeBlockContext);
 
   const copyToClipboard = async () => {
-    if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
+    if (!("navigator" in globalThis) || !("clipboard" in navigator)) {
       onError?.(new Error("Clipboard API not available"));
 
       return;
@@ -149,7 +150,9 @@ export const CodeBlockCopyButton = ({
       await navigator.clipboard.writeText(code);
       setIsCopied(true);
       onCopy?.();
-      setTimeout(() => setIsCopied(false), timeout);
+      setTimeout(() => {
+        setIsCopied(false);
+      }, timeout);
     } catch (error) {
       onError?.(error instanceof Error ? error : new Error(String(error)));
     }
@@ -160,7 +163,9 @@ export const CodeBlockCopyButton = ({
   return (
     <Button
       className={cn("shrink-0", className)}
-      onClick={copyToClipboard}
+      onClick={() => {
+        void copyToClipboard();
+      }}
       size="icon"
       variant="ghost"
       {...props}

@@ -31,7 +31,7 @@ const BROWSER_HEADERS = { origin: BASE_URL };
 let cookie = "";
 
 const link = new RPCLink({
-  fetch: (request, init) => fetch(request, { ...init, signal: deadline() }),
+  fetch: async (request, init) => await fetch(request, { ...init, signal: deadline() }),
   headers: () => (cookie ? { cookie } : {}),
   origin: BASE_URL,
   url: "/api/orpc",
@@ -46,38 +46,47 @@ const describeResponse = async (response: Response) => {
   return `HTTP ${response.status} — ${trimmed.slice(0, 400) || "<empty body>"}`;
 };
 
-const waitForServer = async () => {
-  const startedAt = performance.now();
-  let lastSeen = "no response at all";
-  let attempts = 0;
+const probeHealth = async () => {
+  try {
+    const response = await fetch(url("/api/health"), { signal: deadline() });
 
-  while (performance.now() - startedAt < BOOT_BUDGET_MS) {
-    attempts += 1;
+    const body = z
+      .object({ status: z.string().optional() })
+      .catch({})
+      .parse(await response.json());
 
-    try {
-      const response = await fetch(url("/api/health"), { signal: deadline() });
+    return response.ok && body.status === "ok"
+      ? null
+      : `HTTP ${response.status} ${JSON.stringify(body)}`;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+};
 
-      const body = z
-        .object({ status: z.string().optional() })
-        .catch({})
-        .parse(await response.json());
-
-      if (response.ok && body.status === "ok") {
-        return;
-      }
-
-      lastSeen = `HTTP ${response.status} ${JSON.stringify(body)}`;
-    } catch (error) {
-      lastSeen = error instanceof Error ? error.message : String(error);
-    }
-
-    await sleep(250);
+const pollHealth: (startedAt: number, attempts: number, lastSeen: string) => Promise<void> = async (
+  startedAt,
+  attempts,
+  lastSeen,
+) => {
+  if (performance.now() - startedAt >= BOOT_BUDGET_MS) {
+    fail(
+      `server never became healthy at ${BASE_URL} within ${BOOT_BUDGET_MS / 1000}s ` +
+        `(${attempts} attempts) — last saw: ${lastSeen}`,
+    );
   }
 
-  fail(
-    `server never became healthy at ${BASE_URL} within ${BOOT_BUDGET_MS / 1000}s ` +
-      `(${attempts} attempts) — last saw: ${lastSeen}`,
-  );
+  const seen = await probeHealth();
+
+  if (seen === null) {
+    return;
+  }
+
+  await sleep(250);
+  await pollHealth(startedAt, attempts + 1, seen);
+};
+
+const waitForServer = async () => {
+  await pollHealth(performance.now(), 0, "no response at all");
 };
 
 const signIn = async () => {

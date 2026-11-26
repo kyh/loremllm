@@ -39,7 +39,7 @@ const handleEveRequest = async (request: Request, context: RouteContext) => {
     sessionStore: createDbEveSessionStore(collectionId),
   });
 
-  return handler(request);
+  return await handler(request);
 };
 
 export const GET = handleEveRequest;

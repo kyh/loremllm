@@ -74,9 +74,7 @@ const ReasoningComponent = ({
 
   useEffect(() => {
     if (isStreaming) {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = Date.now();
-      }
+      startTimeRef.current ??= Date.now();
     } else if (startTimeRef.current !== null) {
       setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
       startTimeRef.current = null;
@@ -84,14 +82,17 @@ const ReasoningComponent = ({
   }, [isStreaming, setDuration]);
 
   useEffect(() => {
-    if (defaultOpen && !isStreaming && isOpen && !hasAutoClosed) {
-      const timer = setTimeout(() => {
-        setIsOpen(false);
-        setHasAutoClosed(true);
-      }, AUTO_CLOSE_DELAY);
+    const timer =
+      defaultOpen && !isStreaming && isOpen && !hasAutoClosed
+        ? setTimeout(() => {
+            setIsOpen(false);
+            setHasAutoClosed(true);
+          }, AUTO_CLOSE_DELAY)
+        : undefined;
 
-      return () => clearTimeout(timer);
-    }
+    return () => {
+      clearTimeout(timer);
+    };
   }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosed]);
 
   const handleOpenChange = (newOpen: boolean) => {

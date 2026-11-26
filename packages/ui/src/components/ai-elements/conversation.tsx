@@ -2,6 +2,7 @@
 
 import { Button } from "@repo/ui/components/button";
 import { cn } from "cn";
+import { rendersContent } from "@repo/ui/lib/renders-content";
 import { ArrowDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
@@ -48,7 +49,7 @@ export const ConversationEmptyState = ({
   >
     {children ?? (
       <>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+        {rendersContent(icon) && <div className="text-muted-foreground">{icon}</div>}
         <div className="space-y-1">
           <h3 className="font-medium text-sm">{title}</h3>
           {description && <p className="text-muted-foreground text-sm">{description}</p>}
@@ -67,7 +68,7 @@ export const ConversationScrollButton = ({
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
   const handleScrollToBottom = useCallback(() => {
-    scrollToBottom();
+    void scrollToBottom();
   }, [scrollToBottom]);
 
   return (

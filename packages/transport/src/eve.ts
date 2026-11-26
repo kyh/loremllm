@@ -2,8 +2,8 @@ import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from "ai";
 import { z } from "zod";
 
 import type { SpecialToolPart, StaticChatTransportInit, StaticTransportContext } from "./index.ts";
-import type { DelayResolver } from "./shared.ts";
-import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
+import type { DelayResolver, ToolLikePart } from "./shared.ts";
+import { eachInOrder, parseToolPart, resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
 const EVE_ROUTE_PREFIX = "/eve/v1/";
 const EVE_SESSION_ID_HEADER = "x-eve-session-id";
@@ -169,13 +169,13 @@ export const createMemoryEveSessionStore = <UI_MESSAGE extends UIMessage = UIMes
   const sessions = new Map<string, EveSessionRecord<UI_MESSAGE>>();
 
   const store: EveSessionStore<UI_MESSAGE> = {
-    get(sessionId) {
-      return Promise.resolve(sessions.get(sessionId));
+    async get(sessionId) {
+      return await Promise.resolve(sessions.get(sessionId));
     },
-    set(sessionId, record) {
+    async set(sessionId, record) {
       sessions.set(sessionId, record);
 
-      return Promise.resolve();
+      await Promise.resolve();
     },
   };
 
@@ -186,9 +186,20 @@ const storedEveStreamEvent = z.looseObject({ type: z.string() });
 
 const storedUiMessage = z.looseObject({
   id: z.string(),
-  parts: z.array(z.unknown()),
+  parts: z.array(z.looseObject({ type: z.string() })),
   role: z.string(),
 });
+
+const UI_MESSAGE_ROLES = {
+  assistant: true,
+  system: true,
+  user: true,
+} satisfies Record<UIMessage["role"], true>;
+
+const isStoredUiMessage = (
+  message: z.infer<typeof storedUiMessage>,
+): message is UIMessage & z.infer<typeof storedUiMessage> =>
+  Object.hasOwn(UI_MESSAGE_ROLES, message.role);
 
 const storedEveSessionRecord = z.looseObject({
   continuationToken: z.string(),
@@ -198,22 +209,52 @@ const storedEveSessionRecord = z.looseObject({
   turnCount: z.number(),
 });
 
-export const parseEveSessionRecord = <UI_MESSAGE extends UIMessage = UIMessage>(
-  value: JsonValue,
-) => {
+const EVE_STREAM_EVENT_TYPES = {
+  "action.result": true,
+  "actions.requested": true,
+  "message.appended": true,
+  "message.completed": true,
+  "message.received": true,
+  "reasoning.appended": true,
+  "reasoning.completed": true,
+  "session.failed": true,
+  "session.started": true,
+  "session.waiting": true,
+  "step.completed": true,
+  "step.started": true,
+  "turn.completed": true,
+  "turn.failed": true,
+  "turn.started": true,
+} satisfies Record<EveStreamEvent["type"], true>;
+
+const isStoredEveStreamEvent = (
+  event: z.infer<typeof storedEveStreamEvent>,
+): event is EveStreamEvent & z.infer<typeof storedEveStreamEvent> =>
+  Object.hasOwn(EVE_STREAM_EVENT_TYPES, event.type);
+
+interface BuiltUiMessage {
+  id: string;
+  parts: unknown[];
+  role: string;
+}
+
+export const parseEveSessionRecord = (value: JsonValue) => {
   const result = storedEveSessionRecord.safeParse(value);
 
-  if (!result.success) {
-    return;
-  }
+  const valid =
+    result.success &&
+    result.data.events.every(isStoredEveStreamEvent) &&
+    result.data.messages.every(isStoredUiMessage);
 
-  const record: EveSessionRecord<UI_MESSAGE> = {
-    continuationToken: result.data.continuationToken,
-    events: result.data.events as EveStreamEvent[],
-    messages: result.data.messages as UI_MESSAGE[],
-    nextSequence: result.data.nextSequence,
-    turnCount: result.data.turnCount,
-  };
+  const record: EveSessionRecord | undefined = valid
+    ? {
+        continuationToken: result.data.continuationToken,
+        events: result.data.events.filter(isStoredEveStreamEvent),
+        messages: result.data.messages.filter(isStoredUiMessage),
+        nextSequence: result.data.nextSequence,
+        turnCount: result.data.turnCount,
+      }
+    : undefined;
 
   return record;
 };
@@ -291,7 +332,7 @@ const parseUserMessage = (message: JsonValue | undefined) => {
 
   if (text.success) {
     if (text.data.length === 0) {
-      return;
+      return null;
     }
 
     return {
@@ -303,7 +344,7 @@ const parseUserMessage = (message: JsonValue | undefined) => {
   const parts = userMessageParts.safeParse(message);
 
   if (!parts.success) {
-    return;
+    return null;
   }
 
   const texts: string[] = [];
@@ -319,21 +360,13 @@ const parseUserMessage = (message: JsonValue | undefined) => {
   }
 
   if (texts.length === 0) {
-    return;
+    return null;
   }
 
   return { receivedParts, text: texts.join("\n\n") } satisfies ParsedUserMessage;
 };
 
-interface ToolLikePart {
-  type: string;
-  toolCallId: string;
-  toolName?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
-}
+type TurnPart = UIMessagePart<UIDataTypes, UITools> | SpecialToolPart;
 
 const toolNameForPart = (part: ToolLikePart) => {
   if (part.toolName !== undefined && part.toolName.length > 0) {
@@ -421,8 +454,86 @@ const breakStepIf = (builder: TurnBuilder, condition: boolean, at: string) => {
   }
 };
 
+const stampToolPart = (builder: TurnBuilder, part: TurnPart, at: () => string) => {
+  const toolPart = parseToolPart(part);
+
+  if (toolPart.state === undefined) {
+    return;
+  }
+
+  breakStepIf(builder, builder.stepHasText, at());
+  openStep(builder, at());
+  const toolName = toolNameForPart(toolPart);
+  const parsedInput = jsonObject.safeParse(toolPart.input);
+  const toolInput = parsedInput.success ? parsedInput.data : {};
+  stamp(
+    builder,
+    {
+      data: {
+        actions: [{ callId: toolPart.toolCallId, input: toolInput, kind: "tool-call", toolName }],
+        sequence: takeSequence(builder),
+        stepIndex: builder.stepIndex,
+        turnId: builder.turnId,
+      },
+      type: "actions.requested",
+    },
+    at(),
+  );
+  builder.stepHasTools = true;
+
+  if (toolPart.state === "output-available") {
+    stamp(
+      builder,
+      {
+        data: {
+          result: {
+            callId: toolPart.toolCallId,
+            kind: "tool-result",
+            output: toolPart.output ?? null,
+            toolName,
+          },
+          sequence: takeSequence(builder),
+          status: "completed",
+          stepIndex: builder.stepIndex,
+          turnId: builder.turnId,
+        },
+        type: "action.result",
+      },
+      at(),
+    );
+  } else if (toolPart.state === "output-error") {
+    const message = toolPart.errorText ?? "An unknown tool error occurred.";
+    stamp(
+      builder,
+      {
+        data: {
+          error: { code: "TOOL_EXECUTION_FAILED", message },
+          result: {
+            callId: toolPart.toolCallId,
+            isError: true,
+            kind: "tool-result",
+            output: null,
+            toolName,
+          },
+          sequence: takeSequence(builder),
+          status: "failed",
+          stepIndex: builder.stepIndex,
+          turnId: builder.turnId,
+        },
+        type: "action.result",
+      },
+      at(),
+    );
+  }
+};
+
+const unsupportedEvePart = (type: string) =>
+  new Error(
+    `StaticEveHandler does not support streaming parts of type "${type}" over the eve protocol.`,
+  );
+
 const createTurnEvents = (input: {
-  parts: (UIMessagePart<UIDataTypes, UITools> | SpecialToolPart)[];
+  parts: TurnPart[];
   turnId: string;
   isFirstTurn: boolean;
   startSequence: number;
@@ -551,87 +662,26 @@ const createTurnEvents = (input: {
         break;
       }
 
+      case "dynamic-tool": {
+        stampToolPart(builder, part, at);
+        break;
+      }
+
+      case "custom":
+      case "file":
+      case "reasoning-file":
+      case "source-document":
+      case "source-url": {
+        throw unsupportedEvePart(part.type);
+      }
+
       default: {
-        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-          const toolPart = part as ToolLikePart;
-
-          if (toolPart.state === undefined) {
-            break;
-          }
-
-          breakStepIf(builder, builder.stepHasText, at());
-          openStep(builder, at());
-          const toolName = toolNameForPart(toolPart);
-          const parsedInput = jsonObject.safeParse(toolPart.input);
-          const toolInput = parsedInput.success ? parsedInput.data : {};
-          stamp(
-            builder,
-            {
-              data: {
-                actions: [
-                  { callId: toolPart.toolCallId, input: toolInput, kind: "tool-call", toolName },
-                ],
-                sequence: takeSequence(builder),
-                stepIndex: builder.stepIndex,
-                turnId,
-              },
-              type: "actions.requested",
-            },
-            at(),
-          );
-          builder.stepHasTools = true;
-
-          if (toolPart.state === "output-available") {
-            stamp(
-              builder,
-              {
-                data: {
-                  result: {
-                    callId: toolPart.toolCallId,
-                    kind: "tool-result",
-                    output: toolPart.output ?? null,
-                    toolName,
-                  },
-                  sequence: takeSequence(builder),
-                  status: "completed",
-                  stepIndex: builder.stepIndex,
-                  turnId,
-                },
-                type: "action.result",
-              },
-              at(),
-            );
-          } else if (toolPart.state === "output-error") {
-            const message = toolPart.errorText ?? "An unknown tool error occurred.";
-            stamp(
-              builder,
-              {
-                data: {
-                  error: { code: "TOOL_EXECUTION_FAILED", message },
-                  result: {
-                    callId: toolPart.toolCallId,
-                    isError: true,
-                    kind: "tool-result",
-                    output: null,
-                    toolName,
-                  },
-                  sequence: takeSequence(builder),
-                  status: "failed",
-                  stepIndex: builder.stepIndex,
-                  turnId,
-                },
-                type: "action.result",
-              },
-              at(),
-            );
-          }
-
+        if (part.type.startsWith("tool-")) {
+          stampToolPart(builder, part, at);
           break;
         }
 
-        throw new Error(
-          `StaticEveHandler does not support streaming parts of type "${part.type}" over the eve protocol.`,
-        );
+        throw unsupportedEvePart(part.type);
       }
     }
   }
@@ -717,28 +767,28 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
   const at = () => now().toISOString();
   const cors = init.cors ?? true;
 
-  const corsHeaderEntries = () => {
-    if (cors === false) {
-      return [];
-    }
+  const asUiMessage = (message: BuiltUiMessage) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/require-safety-comment-for-type-assertion -- UI_MESSAGE is the caller's type parameter: nothing at runtime describes its metadata, data or tool types, so a message the handler builds can only be asserted to it
+    message as UI_MESSAGE;
 
-    return [
-      ["access-control-allow-origin", cors === true ? "*" : cors.origin],
-      ["access-control-allow-methods", "GET, POST, OPTIONS"],
-      ["access-control-allow-headers", "content-type, authorization"],
-      [
-        "access-control-expose-headers",
-        [
-          EVE_SESSION_ID_HEADER,
-          EVE_STREAM_FORMAT_HEADER,
-          EVE_STREAM_TAIL_INDEX_HEADER,
-          EVE_STREAM_VERSION_HEADER,
-        ].join(", "),
-      ],
-    ];
+  const corsHeaders = () => {
+    const headers: Record<string, string> =
+      cors === false
+        ? {}
+        : {
+            "access-control-allow-headers": "content-type, authorization",
+            "access-control-allow-methods": "GET, POST, OPTIONS",
+            "access-control-allow-origin": cors === true ? "*" : cors.origin,
+            "access-control-expose-headers": [
+              EVE_SESSION_ID_HEADER,
+              EVE_STREAM_FORMAT_HEADER,
+              EVE_STREAM_TAIL_INDEX_HEADER,
+              EVE_STREAM_VERSION_HEADER,
+            ].join(", "),
+          };
+
+    return headers;
   };
-
-  const corsHeaders = () => Object.fromEntries(corsHeaderEntries());
 
   const json = (status: number, body: JsonObject, headers: Record<string, string> = {}) =>
     Response.json(body, {
@@ -761,11 +811,11 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     const deliveryId = generateId("dlv");
     const isFirstTurn = record.turnCount === 0;
 
-    const userUiMessage = {
+    const userUiMessage = asUiMessage({
       id: `${turnId}:user`,
       parts: [{ text: userMessage.text, type: "text" }],
       role: "user",
-    } as UI_MESSAGE;
+    });
 
     const contextMessages = [...record.messages, userUiMessage];
 
@@ -824,11 +874,13 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     record.messages.push(userUiMessage);
 
     if (assistantParts.length > 0) {
-      record.messages.push({
-        id: `${turnId}:assistant`,
-        parts: assistantParts,
-        role: "assistant",
-      } as UI_MESSAGE);
+      record.messages.push(
+        asUiMessage({
+          id: `${turnId}:assistant`,
+          parts: assistantParts,
+          role: "assistant",
+        }),
+      );
     }
 
     await sessionStore.set(sessionId, record);
@@ -851,25 +903,27 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
       },
       start: async (controller) => {
         try {
-          for (const event of events) {
+          await eachInOrder(events, async (event) => {
             if (cancelled || signal.aborted) {
-              break;
+              return "stop";
             }
 
             if (isDelayedEvent(event)) {
               const delay = await resolveChunkDelay(init.chunkDelayMs, event);
 
-              if (delay && delay > 0) {
+              if (delay !== null && delay > 0) {
                 await sleep(delay);
 
                 if (cancelled || signal.aborted) {
-                  break;
+                  return "stop";
                 }
               }
             }
 
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-          }
+
+            return "next";
+          });
 
           controller.close();
         } catch (error) {
@@ -896,7 +950,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
   };
 
   const readJsonBody = async (request: Request) => {
-    let rawBody;
+    let rawBody: unknown;
 
     try {
       rawBody = await request.json();
@@ -1051,7 +1105,7 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
 
     const [, sessionId] = segments;
 
-    if (!sessionId) {
+    if (sessionId === undefined || sessionId === "") {
       return json(404, { error: "Session id missing.", ok: false });
     }
 

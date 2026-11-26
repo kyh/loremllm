@@ -58,8 +58,15 @@ const clientFor = (caller: ORPCContext["session"]) =>
 
 describe("interaction.query on a private collection", () => {
   test("refuses a session whose membership is gone", async (t) => {
-    t.mock.method(db.query.mockCollection, "findFirst", () => Promise.resolve(privateCollection));
-    const findMember = t.mock.method(db.query.member, "findFirst", () => Promise.resolve());
+    t.mock.method(
+      db.query.mockCollection,
+      "findFirst",
+      async () => await Promise.resolve(privateCollection),
+    );
+
+    const findMember = t.mock.method(db.query.member, "findFirst", async () => {
+      await Promise.resolve();
+    });
 
     await assert.rejects(
       clientFor(session).interaction.query({ publicId: "private-1", query: "hi" }),
@@ -73,10 +80,16 @@ describe("interaction.query on a private collection", () => {
   });
 
   test("refuses anonymous callers and other organizations without a lookup", async (t) => {
-    t.mock.method(db.query.mockCollection, "findFirst", () => Promise.resolve(privateCollection));
+    t.mock.method(
+      db.query.mockCollection,
+      "findFirst",
+      async () => await Promise.resolve(privateCollection),
+    );
 
-    const findMember = t.mock.method(db.query.member, "findFirst", () =>
-      Promise.resolve(membership),
+    const findMember = t.mock.method(
+      db.query.member,
+      "findFirst",
+      async () => await Promise.resolve(membership),
     );
 
     const otherOrganization = {
@@ -84,21 +97,27 @@ describe("interaction.query on a private collection", () => {
       session: { ...session.session, activeOrganizationId: "org-2" },
     };
 
-    for (const caller of [null, otherOrganization]) {
-      await assert.rejects(
-        clientFor(caller).interaction.query({ publicId: "private-1", query: "hi" }),
-        {
-          code: "FORBIDDEN",
-        },
-      );
-    }
+    await Promise.all(
+      [null, otherOrganization].map(async (caller) => {
+        await assert.rejects(
+          clientFor(caller).interaction.query({ publicId: "private-1", query: "hi" }),
+          {
+            code: "FORBIDDEN",
+          },
+        );
+      }),
+    );
 
     assert.equal(findMember.mock.callCount(), 0);
   });
 
   test("lets a member through to the search", async (t) => {
-    t.mock.method(db.query.mockCollection, "findFirst", () => Promise.resolve(privateCollection));
-    t.mock.method(db.query.member, "findFirst", () => Promise.resolve(membership));
+    t.mock.method(
+      db.query.mockCollection,
+      "findFirst",
+      async () => await Promise.resolve(privateCollection),
+    );
+    t.mock.method(db.query.member, "findFirst", async () => await Promise.resolve(membership));
     t.mock.method(console, "error", () => {});
 
     await assert.rejects(

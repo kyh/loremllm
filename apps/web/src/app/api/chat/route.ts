@@ -1,4 +1,5 @@
 import { COMMON_ERROR_STATUS_MAP, ORPCError } from "@orpc/server";
+import { z } from "zod";
 
 import { problemResponse } from "@/lib/problem";
 import { siteConfig } from "@/lib/site-config";
@@ -7,8 +8,11 @@ import { handleChatQuery } from "./chat-handler";
 import { handleLoremGeneration } from "./lorem-handler";
 import { handleMarkdownParsing } from "./markdown-handler";
 import { parseRequestPayload, PayloadError } from "./schema";
-import type { JsonBody } from "./schema";
 import { extractUserQuery } from "./utils";
+
+const errorCode = z.string();
+
+const jsonBody = z.json();
 
 const orpcErrorStatus: Record<string, number | undefined> = COMMON_ERROR_STATUS_MAP;
 
@@ -18,7 +22,7 @@ const applyCors = (response: Response, origin?: string) => {
   headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  if (origin) {
+  if (origin !== undefined && origin !== "") {
     headers.set("Access-Control-Allow-Credentials", "true");
   }
 
@@ -31,9 +35,9 @@ const applyCors = (response: Response, origin?: string) => {
 
 const readJsonBody = async (request: Request) => {
   try {
-    const body: JsonBody = await request.json();
+    const body: unknown = await request.json();
 
-    return body;
+    return jsonBody.parse(body);
   } catch {
     throw new PayloadError("Request body must be valid JSON");
   }
@@ -64,7 +68,7 @@ export const POST = async (request: Request) => {
 
     switch (payload.type) {
       case "markdown": {
-        const response = await handleMarkdownParsing(payload.data.markdown);
+        const response = handleMarkdownParsing(payload.data.markdown);
 
         return applyCors(response, origin);
       }
@@ -87,7 +91,7 @@ export const POST = async (request: Request) => {
 
       case "lorem": {
         const { messages: _messages, ...params } = payload.data;
-        const response = await handleLoremGeneration(params);
+        const response = handleLoremGeneration(params);
 
         return applyCors(response, origin);
       }
@@ -106,7 +110,8 @@ export const POST = async (request: Request) => {
     if (error instanceof PayloadError) {
       status = 400;
     } else if (error instanceof ORPCError) {
-      status = orpcErrorStatus[error.code] ?? 500;
+      const code = errorCode.safeParse(error.code);
+      status = (code.success ? orpcErrorStatus[code.data] : undefined) ?? 500;
     }
 
     return applyCors(

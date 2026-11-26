@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 
 import { cn } from "cn";
+import { rendersContent } from "@repo/ui/lib/renders-content";
 import { Button } from "@repo/ui/components/button";
 
 const AlertDialog = ({ ...props }: AlertDialogPrimitive.Root.Props) => (
@@ -240,16 +241,16 @@ export const GlobalAlertDialog = () => {
         <AlertDialogHeader>
           <AlertDialogTitle>{alertState.title}</AlertDialogTitle>
         </AlertDialogHeader>
-        {alertState.description && (
+        {rendersContent(alertState.description) && (
           <AlertDialogDescription>{alertState.description}</AlertDialogDescription>
         )}
         <AlertDialogFooter>
-          {!alertState.action?.hidden && (
+          {alertState.action?.hidden !== true && (
             <Button onClick={onConfirm} loading={pendingAction}>
               {alertState.action?.label ?? "Confirm"}
             </Button>
           )}
-          {!alertState.cancel?.hidden && (
+          {alertState.cancel?.hidden !== true && (
             <Button variant="secondary" onClick={onCancel} loading={pendingCancel}>
               {alertState.cancel?.label ?? "Close"}
             </Button>
