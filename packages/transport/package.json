@@ -1,6 +1,7 @@
 {
   "name": "@loremllm/transport",
   "version": "0.7.1",
+  "description": "Deprecated: use @loremllm/ai-sdk (StaticChatTransport) and @loremllm/eve (createStaticEveHandler). This package re-exports both.",
   "keywords": [
     "agent",
     "ai",
@@ -21,7 +22,6 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.ts",
     "CHANGELOG.md"
   ],
   "type": "module",
@@ -46,18 +46,14 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
-    "test": "node --import tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "catalog:"
+    "@loremllm/ai-sdk": "workspace:^",
+    "@loremllm/eve": "workspace:^"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^4.0.186",
-    "@types/node": "catalog:",
     "ai": "^7.0.181",
-    "eve": "^0.71.0",
-    "tsx": "^4.23.15",
     "typescript": "catalog:"
   },
   "peerDependencies": {

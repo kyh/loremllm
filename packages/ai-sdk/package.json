@@ -1,0 +1,70 @@
+{
+  "name": "@loremllm/ai-sdk",
+  "version": "0.8.0",
+  "description": "Mock Vercel AI SDK chat transport: stream scripted UIMessage parts into useChat with no network or model.",
+  "keywords": [
+    "ai",
+    "ai-sdk",
+    "chat",
+    "chatbot",
+    "demo",
+    "llm",
+    "mock",
+    "static-chat",
+    "streaming",
+    "testing",
+    "transport",
+    "ui-message",
+    "vercel-ai-sdk"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyh/loremllm.git",
+    "directory": "packages/ai-sdk"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./copy-messages-to-clipboard": {
+      "types": "./dist/copy-messages-to-clipboard.d.ts",
+      "import": "./dist/copy-messages-to-clipboard.js"
+    },
+    "./internal": {
+      "types": "./dist/shared.d.ts",
+      "import": "./dist/shared.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ai-sdk/react": "^4.0.186",
+    "@types/node": "catalog:",
+    "ai": "^7.0.181",
+    "tsx": "^4.23.15",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "ai": "^6.0.0 || ^7.0.0"
+  }
+}

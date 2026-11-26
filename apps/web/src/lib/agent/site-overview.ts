@@ -12,7 +12,7 @@ export const siteSummary = `${siteConfig.name} mocks LLM responses: store input/
 
 export const siteIntroParagraphs: string[] = [
   `${siteConfig.name} is a set of tools for building and testing AI interfaces without paying for, or waiting on, a real language model. It is open source and built by ${siteConfig.author.name}.`,
-  "There are two ways to use it. The `@loremllm/transport` npm package is a chat transport for the Vercel AI SDK: you describe the exact message parts the UI should receive — text, reasoning, tool calls — and `useChat` streams them back with no network request at all. The hosted API at `/api/chat` does the same over HTTP: it streams lorem ipsum, replays a markdown string, or answers from a collection of recorded interactions, picking the closest one by embedding similarity.",
+  "There are two ways to use it. The `@loremllm/ai-sdk` npm package is a chat transport for the Vercel AI SDK: you describe the exact message parts the UI should receive — text, reasoning, tool calls — and `useChat` streams them back with no network request at all. The hosted API at `/api/chat` does the same over HTTP: it streams lorem ipsum, replays a markdown string, or answers from a collection of recorded interactions, picking the closest one by embedding similarity.",
 ];
 
 /**
@@ -22,7 +22,7 @@ export const siteIntroParagraphs: string[] = [
 export const whenToUse: ProseListItem[] = [
   {
     label: "You are building a chat UI before the backend exists",
-    text: "point `useChat` at `@loremllm/transport` or at `/api/chat` and the UI receives a realistic streamed response today",
+    text: "point `useChat` at `@loremllm/ai-sdk` or at `/api/chat` and the UI receives a realistic streamed response today",
   },
   {
     label: "You need deterministic AI responses in tests or demos",

@@ -1,5 +1,5 @@
-import type { EveSessionStore } from "@loremllm/transport/eve";
-import { parseEveSessionRecord } from "@loremllm/transport/eve";
+import type { EveSessionStore } from "@loremllm/eve";
+import { parseEveSessionRecord } from "@loremllm/eve";
 import { db } from "@repo/db/drizzle-client";
 import { mockEveSession } from "@repo/db/drizzle-schema";
 import { z } from "zod";

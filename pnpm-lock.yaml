@@ -296,9 +296,12 @@ importers:
       '@ai-sdk/react':
         specifier: ^4.0.186
         version: 4.0.186(react@19.3.0)(zod@4.6.7)
-      '@loremllm/transport':
+      '@loremllm/ai-sdk':
         specifier: workspace:^
-        version: link:../../packages/transport
+        version: link:../../packages/ai-sdk
+      '@loremllm/eve':
+        specifier: workspace:^
+        version: link:../../packages/eve
       '@orpc/client':
         specifier: 'catalog:'
         version: 2.0.0-beta.45
@@ -415,6 +418,28 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  packages/ai-sdk:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@ai-sdk/react':
+        specifier: ^4.0.186
+        version: 4.0.186(react@19.3.0)(zod@4.6.7)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.4
+      ai:
+        specifier: ^7.0.181
+        version: 7.0.181(zod@4.6.7)
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   packages/contract:
     dependencies:
       '@orpc/contract':
@@ -468,6 +493,31 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  packages/eve:
+    dependencies:
+      '@loremllm/ai-sdk':
+        specifier: workspace:^
+        version: link:../ai-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.4
+      ai:
+        specifier: ^7.0.181
+        version: 7.0.181(zod@4.6.7)
+      eve:
+        specifier: ^0.71.0
+        version: 0.71.0(ai@7.0.181(zod@4.6.7))
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   packages/service:
     dependencies:
       '@better-auth/drizzle-adapter':
@@ -513,25 +563,16 @@ importers:
 
   packages/transport:
     dependencies:
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.7
+      '@loremllm/ai-sdk':
+        specifier: workspace:^
+        version: link:../ai-sdk
+      '@loremllm/eve':
+        specifier: workspace:^
+        version: link:../eve
     devDependencies:
-      '@ai-sdk/react':
-        specifier: ^4.0.186
-        version: 4.0.186(react@19.3.0)(zod@4.6.7)
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.4
       ai:
         specifier: ^7.0.181
         version: 7.0.181(zod@4.6.7)
-      eve:
-        specifier: ^0.71.0
-        version: 0.71.0(ai@7.0.181(zod@4.6.7))
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

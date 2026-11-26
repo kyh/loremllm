@@ -88,7 +88,7 @@ export const buildStaticTransportTemplate = (messages: readonly UIMessage[]) => 
 
   const partsSection = formattedParts.join("\n");
 
-  return `import { StaticChatTransport } from "@loremllm/transport";
+  return `import { StaticChatTransport } from "@loremllm/ai-sdk";
 
 export const transport = new StaticChatTransport({
   chunkDelayMs: [50, 100],

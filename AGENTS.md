@@ -2,7 +2,7 @@
 
 **LoremLLM** mocks LLM responses: you store input/output pairs in a collection, and the hosted endpoints replay the best semantic match instead of calling a real model. This is the tool-agnostic guide for coding agents — it's meant to be run, not just read. Claude also reads `CLAUDE.md`; both point back here.
 
-One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/contract` (the oRPC contract) and `packages/service` (its implementation + better-auth), `packages/db` (Drizzle + Turso/libSQL), `packages/ui` (shadcn/Base UI), and `packages/transport` — the published `@loremllm/transport` npm package.
+One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/contract` (the oRPC contract) and `packages/service` (its implementation + better-auth), `packages/db` (Drizzle + Turso/libSQL), `packages/ui` (shadcn/Base UI), and the published npm packages: `packages/ai-sdk` (`@loremllm/ai-sdk`, the AI SDK chat transport), `packages/eve` (`@loremllm/eve`, the eve mock server, built on ai-sdk's `mockResponse` types and its `./internal` helpers) and `packages/transport` (deprecated `@loremllm/transport`, a re-export shim of both).
 
 ## Quickstart (headless)
 
@@ -48,15 +48,15 @@ Static gate (mirrors `.github/workflows/ci.yml`, which also runs `pnpm build` �
 pnpm verify     # typecheck · lint · format · test
 ```
 
-`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s modes, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
+`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/ai-sdk`, `packages/eve`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s modes, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
 **Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, `landmines`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. Landmines means:
 
-- **No prose comments.** What survives is directives (`oxlint-disable…`), a single-line `// WARNING:` on a dangerous recurring footgun, and TSDoc on exported API (the published `@loremllm/transport` keeps its own). Rationale goes in the commit, or here when it is a decision.
-- **No explicit return types.** Pin a contract with `satisfies` or a typed const (`const handler: StaticEveHandler = …; return handler;`). In `packages/transport`, check that `pnpm -F @loremllm/transport build` emits the same `dist/*.d.ts` signatures: an inferred type can silently change the published API.
+- **No prose comments.** What survives is directives (`oxlint-disable…`), a single-line `// WARNING:` on a dangerous recurring footgun, and TSDoc on exported API (the published `@loremllm/*` packages keep their own). Rationale goes in the commit, or here when it is a decision.
+- **No explicit return types.** Pin a contract with `satisfies` or a typed const (`const handler: StaticEveHandler = …; return handler;`). In the published packages, check that `pnpm -F @loremllm/ai-sdk -F @loremllm/eve build` emits the same `dist/*.d.ts` signatures: an inferred type can silently change the published API.
 - **Tests use real implementations**: no module mocks, `mock.fn(impl)`, stubbed globals or fake responses; spies only observe (`mock.method(console, "info")`, `mock.fn()`). No fixed sleeps: await the operation. Test files are `<subject>.test.ts` beside their subject, and a package declares explicit `exports`, never a `./*` → `./src/*` wildcard.
 
-No rule is turned off, and lint is type-aware (`options.typeAware`, run by the `oxlint-tsgolint` devDependency), so every file it reads must sit in a tsconfig: the transport's tests and `packages/db/drizzle.config.ts` are typechecked for that reason. Sequential awaits are a recursive function or `for await`, never an `await` in a loop (`eachInOrder` in `packages/transport/src/shared.ts` streams chunks in order). Fix the code rather than adding an `oxlint-disable` comment; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
+No rule is turned off, and lint is type-aware (`options.typeAware`, run by the `oxlint-tsgolint` devDependency), so every file it reads must sit in a tsconfig: the published packages' tests and `packages/db/drizzle.config.ts` are typechecked for that reason. Sequential awaits are a recursive function or `for await`, never an `await` in a loop (`eachInOrder` in `packages/ai-sdk/src/shared.ts` streams chunks in order). Fix the code rather than adding an `oxlint-disable` comment; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
 
 Runtime — drive the real web UI with [agent-browser](https://github.com/vercel-labs/agent-browser):
 
@@ -72,7 +72,7 @@ agent-browser snapshot                        # assert the Demo collection rende
 
 Refs are assigned per snapshot — read them from your own snapshot rather than trusting the numbers above.
 
-Give each agent its own browser with `AGENT_BROWSER_SESSION=<repo>-<task>` (or `--session`): the default one is shared. Locate by `snapshot -i` refs or `find role … --name`, never `find text`, which can match a hidden duplicate label. A background tab gets no animation frames, so menus won't open: `agent-browser tab keep live` fixes it.
+Each session gets its own browser: the SessionStart hook sets `AGENT_BROWSER_SESSION` to the session's id, and the SessionEnd hook closes every browser named after it. Subagents share that browser, so one driving a browser beside another passes `--session "$AGENT_BROWSER_SESSION-<task>"`. Locate by `snapshot -i` refs or `find role … --name`, never `find text`, which can match a hidden duplicate label. A background tab gets no animation frames, so menus won't open: `agent-browser tab keep live` fixes it.
 
 The public API is curl-able without auth against a public collection:
 
@@ -109,11 +109,12 @@ If you run the app on a non-default port, set `PORT` to match (`PORT=3011 next d
 
 ## Platform matrix
 
-| Surface                       | Command                            | Agent-verifiable at runtime?                                            |
-| ----------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
-| Web (Next.js)                 | `pnpm dev:web`                     | **Yes** — headless via agent-browser                                    |
-| `@loremllm/transport` (npm)   | `pnpm -F @loremllm/transport test` | **Yes** — 88 node:test cases; the eve client one uses a loopback server |
-| Public API (`/api/chat`, eve) | `pnpm dev:web` + curl              | **Yes** — plain HTTP, no auth needed                                    |
+| Surface                       | Command                         | Agent-verifiable at runtime?                                   |
+| ----------------------------- | ------------------------------- | -------------------------------------------------------------- |
+| Web (Next.js)                 | `pnpm dev:web`                  | **Yes** — headless via agent-browser                           |
+| `@loremllm/ai-sdk` (npm)      | `pnpm -F @loremllm/ai-sdk test` | **Yes** — node:test, no network                                |
+| `@loremllm/eve` (npm)         | `pnpm -F @loremllm/eve test`    | **Yes** — node:test; the eve client one uses a loopback server |
+| Public API (`/api/chat`, eve) | `pnpm dev:web` + curl           | **Yes** — plain HTTP, no auth needed                           |
 
 There is no mobile, desktop, or extension target. Everything this repo ships can be checked headlessly.
 

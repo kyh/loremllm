@@ -27,7 +27,8 @@ const getRemotePatterns = () => {
 };
 
 const transpilePackages = [
-  "@loremllm/transport",
+  "@loremllm/ai-sdk",
+  "@loremllm/eve",
   "@repo/contract",
   "@repo/db",
   "@repo/service",
