@@ -26,7 +26,7 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 
 ### Tech Stack
 
-- **Runtime**: Node 24.x, pnpm 12.3.4
+- **Runtime**: Node 24.x, pnpm 12.23.0
 - **Framework**: Next.js, React
 - **API**: oRPC, Zod
 - **Auth**: better-auth
