@@ -21,9 +21,9 @@ The hosted API covers most needs. Packages run the same mocks inside your proces
 Every package accepts the same mock definition. Reply builders like `text`, `toolCall` and `error` come from `loremllm` and work everywhere:
 
 ```ts
-import { mock, text, toolCall } from "loremllm";
+import { defineMock, text, toolCall } from "loremllm";
 
-export const supportBot = mock("support-bot", {
+export const supportBot = defineMock("support-bot", {
   scenarios: [
     { when: { prompt: /refund/i }, reply: toolCall("lookupOrder", { id: "A-1042" }) },
     { reply: text("How can I help?") },

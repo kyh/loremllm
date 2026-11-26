@@ -10,11 +10,11 @@ npm install -D loremllm
 ## Config
 
 ```ts title="loremllm.config.ts"
-import { defineConfig, mock, text } from "loremllm";
+import { defineConfig, defineMock, text } from "loremllm";
 
 export default defineConfig({
   project: "acme",
-  mocks: [mock("support-bot", { scenarios: [{ reply: text("Hello") }] })],
+  mocks: [defineMock("support-bot", { scenarios: [{ reply: text("Hello") }] })],
 });
 ```
 
@@ -37,4 +37,4 @@ See the [CLI reference](/docs/reference/cli) for flags.
 
 ## Exports
 
-`loremllm` also exports the builders every other package uses: `defineConfig`, `mock`, `text`, `template`, `markdown`, `lorem`, `reasoning`, `toolCall`, `json`, `usage`, `delay`, `error`, `sequence` and `oneOf`.
+`loremllm` also exports the builders every other package uses: `defineConfig`, `defineMock`, `text`, `markdown`, `lorem`, `reasoning`, `toolCall`, `json`, `source`, `usage`, `delay`, `finish`, `error`, `fault`, `sequence` and `oneOf`, plus the MCP builders `image`, `resourceLink` and `toolError`.

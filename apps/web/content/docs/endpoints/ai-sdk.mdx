@@ -26,7 +26,18 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
-The stream carries text, reasoning, tool input and output parts, sources and message metadata. [Resolved tool calls](/docs/mocks/tool-calls) render as finished tool parts. The finish part's metadata includes `scenario`, `usage` and `cost`.
+The response is a UI message stream (SSE with the `x-vercel-ai-ui-message-stream: v1` header), the same thing `result.toUIMessageStreamResponse()` returns from a route handler:
+
+| Reply part      | Stream parts                                                       |
+| --------------- | ------------------------------------------------------------------ |
+| `text`          | `text-start`, `text-delta`, `text-end`                             |
+| `reasoning`     | `reasoning-start`, `reasoning-delta`, `reasoning-end`              |
+| `toolCall`      | `tool-input-start`, `tool-input-delta`, `tool-input-available`     |
+| with `output`   | then `tool-output-available` (or `tool-output-error` with `error`) |
+| `source`        | `source-url`                                                       |
+| each model step | `start-step`, `finish-step`                                        |
+
+The stream opens with `start` and closes with `finish`, whose `messageMetadata` holds `scenario`, `usage` and `cost`. [Resolved tool calls](/docs/mocks/tool-calls) render as `output-available` tool parts, so tool UIs work without a backend.
 
 CORS is open on this route, so browser apps on any origin can call it.
 
@@ -45,6 +56,8 @@ const loremllm = createOpenAI({
 
 const result = streamText({ model: loremllm("gpt-4.1"), prompt: "Refund order A-1042" });
 ```
+
+`loremllm(...)` calls the Responses API, the provider's default. Use `loremllm.chat(...)` for Chat Completions. `createAnthropic({ baseURL: "https://api.loremllm.com/m/support-bot/v1" })` works the same way.
 
 ## No network at all
 

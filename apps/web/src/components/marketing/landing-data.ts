@@ -176,7 +176,7 @@ export const packages: Package[] = [
     href: "/docs/packages/record",
   },
   {
-    description: "Vitest and Jest helpers. Scenario setup and matchers like toHaveCalledTool.",
+    description: "Vitest and Jest helpers. Scenario setup and matchers like toHaveRequestedTool.",
     name: "@loremllm/test",
     href: "/docs/packages/test",
   },
@@ -213,25 +213,30 @@ export const scenarioRows: ScenarioRow[] = [
   { reply: "Call lookupOrder, then refund", trigger: 'Prompt has "refund"' },
   { reply: "Reply with the order summary", trigger: "Second turn" },
   { reply: "Call getWeather with the city", trigger: "Matches /weather in (\\w+)/" },
-  { reply: "Return 429 after two chunks", trigger: "Header x-mock-fail: rate" },
+  { reply: "Return 429 after two chunks", trigger: "Header loremllm-scenario: rate-limit" },
   { reply: "Stream 40 words of lorem", trigger: "Anything else" },
 ];
 
-export const agentTestCode = `import { mockLLM } from "@loremllm/test";
+export const agentTestCode = `import { mockLLM, text, toolCall } from "@loremllm/test";
 
 test("refunds a delivered order", async () => {
-  const llm = await mockLLM("support-bot");
+  await using llm = await mockLLM("support-bot");
 
-  llm.on(/refund/i)
-    .toolCall("lookupOrder", { id: "A-1042" })
-    .toolCall("refund", { id: "A-1042", amount: 48 })
-    .reply("Done. $48 is on its way back.");
+  llm.on(/refund/i).replyOnce(
+    toolCall("lookupOrder", { id: "A-1042" }),
+  );
+  llm.on({ toolResult: "lookupOrder" }).replyOnce(
+    toolCall("refund", { id: "A-1042", amount: 48 }),
+  );
+  llm.on({ toolResult: "refund" }).reply(
+    text("Done. $48 is on its way back."),
+  );
 
   await agent.run("Refund order A-1042", {
-    baseURL: llm.url,
+    baseURL: \`\${llm.url}/v1\`,
   });
 
-  expect(llm).toHaveCalledTool("refund");
+  expect(llm).toHaveRequestedTool("refund", { amount: 48 });
   expect(payments.refunds).toHaveLength(1);
 });`;
 

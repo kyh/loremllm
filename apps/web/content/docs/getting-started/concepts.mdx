@@ -26,7 +26,7 @@ A scenario pairs a **match** with a **reply**. Scenarios are checked top to bott
 ```ts
 {
   when: { prompt: /weather in (?<city>\w+)/i },
-  reply: toolCall("getWeather", { city: "{{match.city}}" }),
+  reply: ({ match }) => toolCall("getWeather", { city: match.groups.city }),
 }
 ```
 

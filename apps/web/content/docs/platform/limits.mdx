@@ -12,6 +12,6 @@ description: Rate limits, payload sizes and retention.
 | Inspector retention              | 7 days   | 30 days   |
 | Conversation state               | 24 hours | 24 hours  |
 
-Hitting a LoremLLM limit returns `429` with a `loremllm-rate-limit` problem, which is different from a scripted `error(429)`. The `x-loremllm-limit` header tells them apart.
+Hitting a LoremLLM limit returns `429` with a `loremllm-rate-limit` problem, which is different from a scripted `error(429)`. The `loremllm-limit` header tells them apart.
 
 The local server and in-process packages have no limits.

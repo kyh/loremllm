@@ -15,29 +15,29 @@ when: {
 
 ## Conditions
 
-| Condition    | Matches when                                                                      |
-| ------------ | --------------------------------------------------------------------------------- |
-| `prompt`     | The last user message contains a string, or matches a RegExp                      |
-| `system`     | The system prompt contains a string, or matches a RegExp                          |
-| `semantic`   | The last user message is close in meaning to a reference text                     |
-| `turn`       | The conversation is on this turn number (1 is the first user message)             |
-| `model`      | The request asks for this model name, or matches a RegExp                         |
-| `header`     | Every listed request header has the given value                                   |
-| `tools`      | The request offers every listed tool                                              |
-| `toolResult` | The last message is the result of this tool                                       |
-| `schema`     | The request asks for structured output (optionally with this schema name)         |
-| `endpoint`   | The request came in on this format: `openai`, `anthropic`, `ai-sdk`, `mcp`, `eve` |
-| `anyOf`      | Any of the nested `when` objects match                                            |
-| `not`        | The nested `when` does not match                                                  |
+| Condition    | Matches when                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `prompt`     | The last user message contains a string, or matches a RegExp                                                        |
+| `system`     | The system prompt contains a string, or matches a RegExp                                                            |
+| `semantic`   | The last user message is close in meaning to a reference text                                                       |
+| `turn`       | The conversation is on this turn number (1 is the first user message)                                               |
+| `model`      | The request asks for this model name, or matches a RegExp                                                           |
+| `header`     | Every listed request header has the given value                                                                     |
+| `tools`      | The request offers every listed tool                                                                                |
+| `toolResult` | The last message is the result of this tool (`{ name, output?, isError? }` or a name)                               |
+| `schema`     | The request asks for structured output (optionally with this schema name)                                           |
+| `endpoint`   | The request came in on this API: `openai-chat`, `openai-responses`, `anthropic-messages`, `ai-sdk-ui`, `mcp`, `eve` |
+| `anyOf`      | Any of the nested `when` objects match                                                                              |
+| `not`        | The nested `when` does not match                                                                                    |
 
 ## Text matching
 
-A string matches if the text contains it, ignoring case. A RegExp is tested as written. Named groups are available to [templates](/docs/mocks/replies#templates) as `{{match.<name>}}`.
+A string matches if the text contains it, ignoring case. A RegExp is tested as written. Named groups land on `match.groups`, the same as `RegExp.exec`, and [function replies](/docs/mocks/replies#replies-as-functions) receive them.
 
 ```ts
 {
   when: { prompt: /weather in (?<city>[a-z ]+)/i },
-  reply: toolCall("getWeather", { city: "{{match.city}}" }),
+  reply: ({ match }) => toolCall("getWeather", { city: match.groups.city }),
 }
 ```
 
@@ -56,11 +56,16 @@ Semantic matching is the only condition that is not exact. Two different phrasin
 Header conditions let a test pick a scenario without changing the prompt:
 
 ```ts
-when: { header: { "x-mock-scenario": "rate-limit" } }
+when: { header: { "x-test-case": "rate-limit" } }
+```
+
+To force a scenario by name, send the built-in `loremllm-scenario` header instead. It skips matching entirely and picks the scenario whose `name` equals its value.
+
 ```
 
 Every SDK lets you set default or per-request headers, so you can switch scenarios from a test without touching app code.
 
 ## Debugging a match
 
-Every response carries `x-loremllm-scenario` with the matched scenario's name or index. The [inspector](/docs/platform/request-inspector) shows each condition that passed or failed for every scenario above the match.
+Every response carries `loremllm-scenario` with the matched scenario's name or index. The [inspector](/docs/platform/request-inspector) shows each condition that passed or failed for every scenario above the match.
+```

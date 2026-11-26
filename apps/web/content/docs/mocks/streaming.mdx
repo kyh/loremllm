@@ -6,10 +6,10 @@ description: Control time to first token, chunk size, chunk speed and jitter.
 Every endpoint streams with server-sent events when the client asks for a stream, and returns one JSON body when it doesn't. The timing is yours to set.
 
 ```ts
-mock("support-bot", {
+defineMock("support-bot", {
   stream: {
-    firstTokenMs: 350,
-    chunkBy: "word",
+    initialDelayMs: 350,
+    chunking: "word",
     chunkDelayMs: [15, 45],
   },
 });
@@ -17,13 +17,13 @@ mock("support-bot", {
 
 ## Settings
 
-| Setting        | Default    | What it does                                                                             |
-| -------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `firstTokenMs` | `200`      | Wait before the first content chunk                                                      |
-| `chunkBy`      | `"word"`   | Split text by `"char"`, `"word"`, `"line"`, `"sentence"` or a number of characters       |
-| `chunkDelayMs` | `[10, 30]` | Delay between chunks. A number, a `[min, max]` range, or a function                      |
-| `toolDelayMs`  | `300`      | Extra delay before each tool call                                                        |
-| `pattern`      | `"steady"` | `"steady"`, `"bursty"` (groups of chunks, then a pause) or `"jitter"` (wide random gaps) |
+| Setting          | Default    | What it does                                                                             |
+| ---------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `initialDelayMs` | `200`      | Wait before the first content chunk                                                      |
+| `chunking`       | `"word"`   | Split text by `"word"`, `"line"` or a RegExp, like the AI SDK's `smoothStream`           |
+| `chunkDelayMs`   | `[10, 30]` | Delay between chunks. A number, a `[min, max]` range, or a function                      |
+| `toolDelayMs`    | `300`      | Extra delay before each tool call                                                        |
+| `pattern`        | `"steady"` | `"steady"`, `"bursty"` (groups of chunks, then a pause) or `"jitter"` (wide random gaps) |
 
 ## Per-chunk delays
 
@@ -35,8 +35,8 @@ chunkDelayMs: (chunk) => (chunk.type === "tool-call" ? 1200 : [10, 30]);
 
 ## Turning timing off
 
-Tests rarely need realistic timing. Send `x-loremllm-latency: none`, or start the local server with `--latency none`, and every chunk is sent immediately. Order and content stay the same.
+Tests rarely need realistic timing. Send `loremllm-latency: none`, or start the local server with `--latency none`, and every chunk is sent immediately. Order and content stay the same.
 
 ## Non-streaming requests
 
-If the client doesn't ask for a stream, the mock waits `firstTokenMs` and returns the full reply in one body, in the endpoint's format.
+If the client doesn't ask for a stream, the mock waits `initialDelayMs` and returns the full reply in one body, in the endpoint's format.

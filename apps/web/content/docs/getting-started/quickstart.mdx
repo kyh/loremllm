@@ -19,12 +19,12 @@ npx loremllm init
 `init` writes a `loremllm.config.ts`:
 
 ```ts title="loremllm.config.ts"
-import { defineConfig, mock, lorem, text, toolCall } from "loremllm";
+import { defineConfig, defineMock, lorem, text, toolCall } from "loremllm";
 
 export default defineConfig({
   project: "acme",
   mocks: [
-    mock("support-bot", {
+    defineMock("support-bot", {
       model: "gpt-4.1",
       scenarios: [
         {

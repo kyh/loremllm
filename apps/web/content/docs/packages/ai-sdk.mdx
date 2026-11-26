@@ -55,7 +55,7 @@ const transport = mockTransport(supportBot);
 
 ## Language model
 
-`mockModel` is an AI SDK `LanguageModel`, so `generateText`, `streamText`, `generateObject` and agents run against a mock:
+`mockModel` returns a `LanguageModelV2`, the same interface `MockLanguageModelV2` from `ai/test` implements, but driven by your scenarios instead of a hand-written `doStream`. `generateText`, `streamText`, `generateObject` and `Agent` all accept it:
 
 ```ts
 import { streamText } from "ai";

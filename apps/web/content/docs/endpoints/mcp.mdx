@@ -21,42 +21,70 @@ Add it to any MCP client:
 
 ## Defining the server
 
+Field names follow the [MCP spec](https://modelcontextprotocol.io/specification), so a definition reads like a `tools/list` or `resources/list` result.
+
 ```ts
-mock("support-bot", {
+import { defineMock, json, text, toolError } from "loremllm";
+
+defineMock("support-bot", {
   mcp: {
     tools: {
       lookupOrder: {
         description: "Find an order by id",
-        input: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+        inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
         scenarios: [
-          { when: { args: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
-          { reply: error("tool", { message: "Order not found" }) },
+          { when: { input: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
+          { reply: toolError("Order not found") },
         ],
       },
     },
     resources: [
-      { uri: "docs://refund-policy", name: "Refund policy", text: "Refunds within 30 days." },
+      {
+        uri: "docs://refund-policy",
+        name: "refund-policy",
+        title: "Refund policy",
+        mimeType: "text/markdown",
+        text: "Refunds within 30 days.",
+      },
     ],
     prompts: [
       {
         name: "triage",
         description: "Triage a ticket",
-        messages: [{ role: "user", text: "Triage: {{args.ticket}}" }],
+        arguments: [{ name: "ticket", required: true }],
+        messages: ({ ticket }) => [
+          { role: "user", content: { type: "text", text: `Triage: ${ticket}` } },
+        ],
       },
     ],
   },
 });
 ```
 
-Tool `scenarios` work like mock scenarios, but match on `args` instead of prompts. Tool input schemas also accept Zod in config files.
+Tool `scenarios` work like mock scenarios, but `when.input` matches the call's `arguments` (partial deep equality, RegExps allowed in leaves). `inputSchema` also accepts a Zod schema in config files.
+
+## Tool results
+
+| Builder             | `tools/call` result                                               |
+| ------------------- | ----------------------------------------------------------------- |
+| `text("...")`       | `content: [{ type: "text", text }]`                               |
+| `json(value)`       | `structuredContent: value`, plus the same JSON as a `text` block  |
+| `image(data, mime)` | `content: [{ type: "image", data, mimeType }]`                    |
+| `resourceLink(uri)` | `content: [{ type: "resource_link", uri, name }]`                 |
+| `toolError("...")`  | `isError: true` with the message as a `text` block                |
+| `error(-32602)`     | A JSON-RPC error instead of a result, for protocol-level failures |
+
+`toolError` is the one to reach for: per the spec, tool failures are results the model can read, not protocol errors.
 
 ## What it supports
 
-- `tools/list` and `tools/call`, with text, JSON and error results
-- `resources/list`, `resources/read` and resource templates
+- `initialize`, with `tools`, `resources` and `prompts` capabilities
+- `tools/list` and `tools/call`, including `outputSchema` and `structuredContent`
+- `resources/list`, `resources/read`, `resources/templates/list` and `resources/subscribe`
 - `prompts/list` and `prompts/get`
-- `notifications/progress` for slow tools, via `delay(ms)`
-- session ids and server-sent notifications
+- `notifications/progress` when the client sends a `progressToken`, timed by `delay(ms)`
+- `notifications/tools/list_changed` when you push a new version
+- Streamable HTTP: one endpoint for `POST` and `GET`, sessions via the `Mcp-Session-Id` header
 
 ## Testing an MCP client
 
