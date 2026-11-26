@@ -173,7 +173,7 @@ const main = async () => {
   exec("pnpm db:push");
   ok("schema pushed");
   exec("pnpm db:seed");
-  ok("seeded dev@loremllm.local / password");
+  ok("seeded dev@loremllm.local (sign in with a code: pnpm sign-in-code)");
   checkAgentTooling();
 
   console.log(`\n  ${styleText("green", "Ready.")} pnpm dev:web, then pnpm smoke\n`);

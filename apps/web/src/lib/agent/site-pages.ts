@@ -311,8 +311,7 @@ const privacySections: ProseBlock[] = [
     "**Information you provide to us.** Personal information you may provide to us through the Service or otherwise includes:",
   ),
   bullets(
-    '**Contact data**, such as your name and email address. When you sign up with an email address and a password, the name on your account is the part of your email address before the "@".',
-    "**Profile data**, such as the password that you set to establish an online account on the Service, which we store only as a hash, never in plain text.",
+    '**Contact data**, such as your name and email address. When you sign up with an email address, the name on your account is the part of your email address before the "@".',
     "**Communications data** based on our exchanges with you, including when you contact us by email, through GitHub issues, social media, or otherwise.",
     "**User-generated content and input data**, such as the collections you create (their names, descriptions, settings and public ids), the interactions you save in them (their titles, descriptions, inputs and outputs), the requests you send to the Service's API (lorem settings, markdown text and chat questions) and the messages exchanged in an eve session, as well as associated metadata, such as when a collection or interaction was created or last edited.",
     "**Other data** not specifically listed here, which we will use as described in this Privacy Policy or as otherwise disclosed at the time of collection.",
@@ -364,7 +363,7 @@ const privacySections: ProseBlock[] = [
     "provide the Service;",
     "enable security features of the Service, such as signed-in sessions and the rate limits on authentication requests;",
     "establish and maintain your user profile on the Service;",
-    "communicate with you about the Service, including by sending Service-related announcements, updates, security alerts, and support and administrative messages, such as password-reset emails; and",
+    "communicate with you about the Service, including by sending Service-related announcements, updates, security alerts, and support and administrative messages, such as sign-in codes; and",
     "provide support for the Service, and respond to your requests, questions and feedback.",
   ),
   paragraph("**Service personalization**, which may include using your personal information to:"),
@@ -405,7 +404,7 @@ const privacySections: ProseBlock[] = [
     "Session records, with the IP address and user agent each was created from, are deleted when you sign out or when your account is deleted.",
     "Rate-limit counters, keyed by IP address and the path requested, are deleted automatically by later authentication requests once they are more than a minute old.",
     "Vercel keeps its request logs for the short period its retention settings allow. The same logs hold the errors our server records, and when embedding a question or an interaction fails, the error can include the text being embedded.",
-    "Password-reset links expire one hour after they are sent.",
+    "Sign-in codes expire five minutes after they are sent.",
     "Your theme choice stays in your browser until you clear it.",
   ),
 
@@ -436,7 +435,7 @@ const privacySections: ProseBlock[] = [
       {
         href: "https://resend.com/legal/privacy-policy",
         label: "Resend",
-        text: "delivers password-reset emails to your address",
+        text: "delivers sign-in codes to your address",
       },
     ],
     kind: "list",
@@ -465,7 +464,7 @@ const privacySections: ProseBlock[] = [
     "In this section, we describe the rights and choices available to all users. Users who are located in certain U.S. states and Europe can find additional information about their rights below.",
   ),
   paragraph(
-    "**Access or update your information.** If you have registered for an account with us through the Service, you may review and update certain account information by logging into the account, where you can review, edit and delete your collections and interactions. You can change your password through the password reset page, and you can ask us to update your name or email address by contacting us.",
+    "**Access or update your information.** If you have registered for an account with us through the Service, you may review and update certain account information by logging into the account, where you can review, edit and delete your collections and interactions. You can ask us to update your name or email address by contacting us.",
   ),
   paragraph(
     "**Cookies and other technologies.** Most browsers let you remove or reject cookies. To do this, follow the instructions in your browser settings. Many browsers accept cookies by default until you change your settings. Please note that if you set your browser to disable cookies, the Service may not work properly: you will not be able to sign in, although the documentation and the public API keep working. Your browser may also provide functionality to clear your browser web storage, which resets your theme choice.",
@@ -1034,7 +1033,7 @@ export const utilityPages: ProsePage[] = [
     blocks: [
       {
         kind: "paragraph",
-        text: "An interactive sign-in form (email and password, or GitHub). An account is only needed to create collections; the lorem and markdown API and the npm transport work without one.",
+        text: "An interactive sign-in form (an emailed code, or GitHub). An account is only needed to create collections; the lorem and markdown API and the npm transport work without one.",
       },
     ],
     description: `Sign in to ${siteConfig.name}.`,
@@ -1046,32 +1045,13 @@ export const utilityPages: ProsePage[] = [
     blocks: [
       {
         kind: "paragraph",
-        text: "An interactive sign-up form. Accounts are free and are needed only to create and manage collections.",
+        text: "An interactive sign-up form: the same emailed code signs a new address up. Accounts are free and are needed only to create and manage collections.",
       },
     ],
     description: `Create a ${siteConfig.name} account.`,
     heading: "Create an account",
     path: "/auth/register",
     title: "Register",
-  },
-  {
-    blocks: [{ kind: "paragraph", text: "An interactive form for requesting a password reset." }],
-    description: `Request a ${siteConfig.name} password reset.`,
-    heading: "Reset your password",
-    path: "/auth/password-reset",
-    title: "Password reset",
-  },
-  {
-    blocks: [
-      {
-        kind: "paragraph",
-        text: "An interactive form for setting a new password from a reset link.",
-      },
-    ],
-    description: `Set a new ${siteConfig.name} password from a reset link.`,
-    heading: "Choose a new password",
-    path: "/auth/password-update",
-    title: "Password update",
   },
   {
     blocks: [

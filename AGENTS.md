@@ -25,17 +25,17 @@ Resetting the database is manual, because the schema is pushed _through_ the run
 ## Seeded login
 
 ```
-dev@loremllm.local / password
+dev@loremllm.local  (no password: sign in with an emailed code)
 ```
 
-Created by `pnpm db:seed` (`packages/service/scripts/seed.ts`) with a personal organization and a public `demo` collection of 11 interactions. It signs up through `auth.api.signUpEmail`, not a raw insert, so the organization is provisioned by the same hook production uses. Idempotent — re-run any time.
+Created by `pnpm db:seed` (`packages/service/scripts/seed.ts`) with a personal organization and a public `demo` collection of 11 interactions. It signs in through better-auth's email-code API (`auth.api.signInEmailOTP`), not a raw insert, so the organization is provisioned by the same hook production uses. Idempotent — re-run any time.
 
-Headless auth (no browser) — exchange the login for a session cookie and hand it to curl or agent-browser:
+Sign-in is an emailed six-digit code (better-auth's `emailOTP`, five minutes, three tries); there are no passwords. `pnpm sign-in-code [email]` mints a code straight into the database (`auth.api.createVerificationOTP`), so nothing needs an inbox. Headless auth — exchange one for a session cookie and hand it to curl or agent-browser:
 
 ```sh
-curl -s -i -X POST localhost:3000/api/auth/sign-in/email \
+curl -s -i -X POST localhost:3000/api/auth/sign-in/email-otp \
   -H 'content-type: application/json' \
-  -d '{"email":"dev@loremllm.local","password":"password"}' | grep -i set-cookie
+  -d "{\"email\":\"dev@loremllm.local\",\"otp\":\"$(pnpm sign-in-code)\"}" | grep -i set-cookie
 ```
 
 `/api/auth/*` is rate-limited (`packages/service/src/auth/auth.ts` sets `window: 60, max: 10`), but better-auth applies a stricter built-in rule to the sign-in paths: **3 requests per 10s per IP** on any `/sign-in*`, `/sign-up*`, `/change-password*` or `/change-email*`, which overrides the configured value. A loop that signs in repeatedly gets 429s almost immediately — sign in once and reuse the cookie.
@@ -65,8 +65,10 @@ agent-browser open http://localhost:3000/auth/login
 agent-browser wait '[data-test="email-input"]' # the form streams in under <Suspense>
 agent-browser snapshot                        # accessibility tree with @eN refs
 agent-browser fill @e8 dev@loremllm.local     # email  (also has data-test="email-input")
-agent-browser fill @e9 password               # password
-agent-browser click @e5                       # Login
+agent-browser click @e9                       # Continue with email: the code lands in pnpm dev:web's log
+agent-browser snapshot
+agent-browser fill @e8 <code>                 # data-test="code-input"; or a fresh one: pnpm sign-in-code
+agent-browser click @e9                       # Sign in
 agent-browser snapshot                        # assert the Demo collection renders in the sidebar
 ```
 
@@ -92,7 +94,7 @@ Don't stop at typecheck and tests — exercise the actual flow and observe the r
 
 ## OAuth without the internet
 
-Email/password needs no external service. To exercise the **Github** button offline, use [emulate](https://github.com/vercel-labs/emulate), a local OAuth provider (fixtures in `emulate.config.yaml`). Uncomment `NEXT_PUBLIC_GITHUB_EMULATOR_URL` in `.env`, then:
+Email codes need no external service: without `RESEND_API_KEY` they land in the server log. To exercise the **Github** button offline, use [emulate](https://github.com/vercel-labs/emulate), a local OAuth provider (fixtures in `emulate.config.yaml`). Uncomment `NEXT_PUBLIC_GITHUB_EMULATOR_URL` in `.env`, then:
 
 ```sh
 pnpm emulate     # GitHub emulator on :4000
@@ -123,7 +125,7 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - **Org scoping lives in `requireActiveOrganization`** (the session's active organization), not in input schemas — don't re-declare it as procedure input.
 - **`cacheComponents` and `partialPrefetching` are on** (`apps/web/next.config.ts`): a `<Link>` prefetches its route's static App Shell. Request data (the session, `searchParams`, `connection()`) is read only inside `<Suspense>` — `(app)/layout.tsx` checks the session there (the real gate); `src/proxy.ts` first 307s a `/dashboard` request with no session cookie to `/auth/login?next=…` (optimistic, cookie presence only). No route segment config (`dynamic`, `revalidate`); cache static output with `"use cache"`.
 - **The legal pages are claims about the code.** `/privacy` and `/terms` (`apps/web/src/lib/agent/site-pages.ts`) follow General Legal's templates (GDPR-enhanced privacy policy, website terms of use, JAMS arbitration) with each clause resolved to what this product does: a change to what the code collects, stores or sends changes the copy in the same commit.
-- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Without `RESEND_API_KEY`, mail is logged, links included, outside production only; a production deployment sends and logs nothing, warns once at boot, and refuses password reset up front (`packages/service/src/email/send-email.ts`): a live reset link in production logs would hand the account to anyone who reads them. Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
+- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Without `RESEND_API_KEY`, mail is logged, sign-in codes included, outside production only; a production deployment sends and logs nothing, warns once at boot, and refuses sign-in by email code up front, leaving GitHub (`packages/service/src/email/send-email.ts`): a live code in production logs would hand the account to anyone who reads them. Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
 
 ## Map
 

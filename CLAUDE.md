@@ -51,7 +51,8 @@ pnpm format:fix       # oxfmt --write
 pnpm typecheck        # TypeScript check
 pnpm test             # Run tests (packages/transport, packages/service, apps/web)
 pnpm db:push          # Push DB schema locally
-pnpm db:seed          # Seed local DB -> dev@loremllm.local / password
+pnpm db:seed          # Seed local DB -> dev@loremllm.local (sign-in is an emailed code)
+pnpm sign-in-code     # Print a fresh sign-in code for dev@loremllm.local (or the email given)
 pnpm db:push-remote   # Push DB schema to production
 pnpm emulate          # Local GitHub OAuth emulator on :4000
 ```

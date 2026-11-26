@@ -5,7 +5,8 @@ import { session as sessionSchema, user as userSchema } from "@repo/db/drizzle-s
 import { betterAuth } from "better-auth";
 // WARNING: not `better-auth/adapters/drizzle`, which reads `db._.fullSchema`, gone in drizzle 1.0.
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
-import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
+import { APIError } from "better-auth/api";
+import { admin, emailOTP, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
 import { EMAIL_MODE, EMAIL_OFF_WARNING, sendEmail } from "../email/send-email";
 import { env } from "../env";
@@ -97,18 +98,6 @@ export const auth = betterAuth({
       },
     },
   },
-  emailAndPassword: {
-    enabled: true,
-    sendResetPassword: sendsEmail
-      ? async ({ user, url }) => {
-          await sendEmail({
-            subject: "Reset your password",
-            text: `Click the link to reset your password: ${url}`,
-            to: user.email,
-          });
-        }
-      : undefined,
-  },
   plugins: [
     oAuthProxy({
       currentURL: baseUrl,
@@ -119,6 +108,26 @@ export const auth = betterAuth({
           : baseUrl,
     }),
     organization(),
+    emailOTP({
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type !== "sign-in") {
+          return;
+        }
+
+        if (!sendsEmail) {
+          throw APIError.from("SERVICE_UNAVAILABLE", {
+            code: "EMAIL_DISABLED",
+            message: "Sign-in by email is unavailable: this site sends no email.",
+          });
+        }
+
+        await sendEmail({
+          subject: "Your sign-in code",
+          text: `Your sign-in code is ${otp}. It expires in 5 minutes. If you didn't ask for it, ignore this email.`,
+          to: email,
+        });
+      },
+    }),
     admin(),
     ...(emulatorUrl !== undefined && emulatorUrl !== ""
       ? [

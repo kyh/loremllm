@@ -7,7 +7,7 @@ import { db } from "@repo/db/drizzle-client";
 
 import { createRouterClient } from "@orpc/server";
 
-import { auth } from "../src/auth/auth";
+import { signInWithCode } from "../src/auth/sign-in-code";
 import { env } from "../src/env";
 import { appRouter } from "../src/root-router";
 
@@ -15,7 +15,6 @@ const scriptDir = import.meta.dirname;
 
 const USER_EMAIL = "dev@loremllm.local";
 const USER_NAME = "Dev";
-const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password";
 
 const COLLECTION_PUBLIC_ID = "demo";
 
@@ -102,16 +101,10 @@ const ensureUser = async () => {
     return existingUser.id;
   }
 
-  const { user } = await auth.api.signUpEmail({
-    body: {
-      email: USER_EMAIL,
-      name: USER_NAME,
-      password: USER_PASSWORD,
-    },
-  });
+  const { user } = await signInWithCode(USER_EMAIL, USER_NAME);
 
   console.log(`   ✅ User created: ${USER_EMAIL}`);
-  console.log(`   🔑 Password: ${USER_PASSWORD}`);
+  console.log("   🔑 Sign in with a code: pnpm sign-in-code");
   console.log(`   ℹ️  Personal organization provisioned by the signup hook`);
 
   return user.id;
@@ -299,7 +292,7 @@ const main = async () => {
       console.log("   Set the key in .env and re-run `pnpm db:seed` to populate them.\n");
     }
 
-    console.log(`\n👤 Login: ${USER_EMAIL} / ${USER_PASSWORD}`);
+    console.log(`\n👤 Login: ${USER_EMAIL} (code from pnpm sign-in-code)`);
     console.log(`📦 Collection ID: ${collection.id}`);
     console.log(`🔗 Public ID: ${collection.publicId}`);
     console.log("\n🎉 Demo collection seed complete!");
