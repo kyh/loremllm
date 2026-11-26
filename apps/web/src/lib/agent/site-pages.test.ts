@@ -26,8 +26,16 @@ const blockText = (block: ProseBlock) => {
       return [...block.columns, ...block.rows.flat()].join(" ");
     }
 
-    default: {
+    case "code":
+    case "heading":
+    case "paragraph":
+    case "subheading": {
       return block.text;
+    }
+
+    default: {
+      const exhaustive: never = block;
+      throw new Error(`Unknown prose block: ${JSON.stringify(exhaustive)}`);
     }
   }
 };

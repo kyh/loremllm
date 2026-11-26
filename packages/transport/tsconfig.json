@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023", "DOM"],
+    "lib": ["ES2023", "ES2024.Promise", "DOM"],
+    "types": ["node"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
@@ -25,5 +26,5 @@
     "tsBuildInfoFile": "./.cache/tsbuildinfo.json"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts"]
+  "exclude": ["node_modules", "dist"]
 }

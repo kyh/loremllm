@@ -37,6 +37,9 @@ const config: NextConfig = {
   // WARNING: on, next dev rewrites AGENTS.md and CLAUDE.md when it detects an agent.
   agentRules: false,
   cacheComponents: true,
+  env: {
+    BUILT_AT: new Date().toISOString(),
+  },
   images: {
     remotePatterns: getRemotePatterns(),
   },

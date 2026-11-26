@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { alertDialog } from "@repo/ui/components/alert-dialog";
 import { Button } from "@repo/ui/components/button";
@@ -83,7 +83,7 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
     setOpen(nextOpen);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const title = form.title.trim();
@@ -121,7 +121,9 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
             <Input
               id={`edit-title-${interaction.id}`}
               value={form.title}
-              onChange={(event) => setForm((state) => ({ ...state, title: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, title: event.target.value }));
+              }}
               required
             />
           </div>
@@ -130,9 +132,9 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
             <Textarea
               id={`edit-description-${interaction.id}`}
               value={form.description}
-              onChange={(event) =>
-                setForm((state) => ({ ...state, description: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((state) => ({ ...state, description: event.target.value }));
+              }}
               rows={2}
             />
           </div>
@@ -141,7 +143,9 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
             <Textarea
               id={`edit-input-${interaction.id}`}
               value={form.input}
-              onChange={(event) => setForm((state) => ({ ...state, input: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, input: event.target.value }));
+              }}
               rows={3}
               required
             />
@@ -151,7 +155,9 @@ const EditInteractionDialog = ({ interaction }: { interaction: Interaction }) =>
             <Textarea
               id={`edit-output-${interaction.id}`}
               value={form.output}
-              onChange={(event) => setForm((state) => ({ ...state, output: event.target.value }))}
+              onChange={(event) => {
+                setForm((state) => ({ ...state, output: event.target.value }));
+              }}
               rows={6}
               required
             />
@@ -217,7 +223,7 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
                 <TableRow key={interaction.id}>
                   <TableCell className="align-top whitespace-normal">
                     <div className="leading-6 font-medium">{interaction.title}</div>
-                    {interaction.description ? (
+                    {interaction.description !== null && interaction.description !== "" ? (
                       <p className="text-muted-foreground mt-1 text-xs leading-5">
                         {interaction.description}
                       </p>
@@ -238,7 +244,9 @@ export const InteractionsTable = ({ interactions }: InteractionsTableProps) => {
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => confirmDelete(interaction)}
+                        onClick={() => {
+                          confirmDelete(interaction);
+                        }}
                         disabled={deleteInteraction.isPending}
                       >
                         Remove

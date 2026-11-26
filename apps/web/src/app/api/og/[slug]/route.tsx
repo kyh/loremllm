@@ -17,5 +17,5 @@ export const GET = async (_request: Request, { params }: { params: Promise<{ slu
     return problemResponse(404, `No Open Graph image for /${slug}.`);
   }
 
-  return renderProseOgImage(page);
+  return await renderProseOgImage(page);
 };

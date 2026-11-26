@@ -70,10 +70,10 @@ const Button = ({
   <ButtonPrimitive
     data-slot="button"
     className={cn(buttonVariants({ className, loading, size, variant }))}
-    disabled={loading || disabled}
+    disabled={loading === true || disabled}
     {...props}
   >
-    {loading && (
+    {loading === true && (
       <span className="pointer-events-none absolute inset-0 grid place-items-center rounded-md">
         <Spinner className="size-4" />
       </span>

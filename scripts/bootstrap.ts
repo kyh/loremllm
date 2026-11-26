@@ -13,7 +13,10 @@ const DB_LOG = "packages/db/turso-dev.log";
 const DB_BOOT_BUDGET_MS = 15_000;
 
 const dim = (text: string) => styleText("dim", text);
-const ok = (text: string) => console.log(`  ${styleText("green", "✓")} ${text}`);
+
+const ok = (text: string) => {
+  console.log(`  ${styleText("green", "✓")} ${text}`);
+};
 
 const exec = (command: string) => {
   if (DRY_RUN) {
@@ -70,6 +73,23 @@ const createEnv = () => {
   ok(".env created from .env.example, with a fresh BETTER_AUTH_SECRET");
 };
 
+const databaseAnswersWithin: (url: string, startedAt: number) => Promise<boolean> = async (
+  url,
+  startedAt,
+) => {
+  if (performance.now() - startedAt >= DB_BOOT_BUDGET_MS) {
+    return false;
+  }
+
+  if (await databaseAnswers(url)) {
+    return true;
+  }
+
+  await sleep(250);
+
+  return await databaseAnswersWithin(url, startedAt);
+};
+
 const databaseAnswers = async (url: string) => {
   try {
     await fetch(url, { signal: AbortSignal.timeout(1000) });
@@ -120,18 +140,12 @@ const ensureDatabase = async () => {
 
   child.unref();
 
-  const startedAt = performance.now();
+  if (await databaseAnswersWithin(url, performance.now())) {
+    ok(
+      `started local Turso at ${url} (pid ${child.pid}, log ${DB_LOG}; stop it with kill ${child.pid})`,
+    );
 
-  while (performance.now() - startedAt < DB_BOOT_BUDGET_MS) {
-    if (await databaseAnswers(url)) {
-      ok(
-        `started local Turso at ${url} (pid ${child.pid}, log ${DB_LOG}; stop it with kill ${child.pid})`,
-      );
-
-      return;
-    }
-
-    await sleep(250);
+    return;
   }
 
   throw new Error(

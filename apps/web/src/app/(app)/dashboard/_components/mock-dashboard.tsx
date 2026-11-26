@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -57,7 +57,7 @@ const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
     },
   });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = form.name.trim();
 
@@ -81,7 +81,9 @@ const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
           id="new-collection-name"
           placeholder="My new collection"
           value={form.name}
-          onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))}
+          onChange={(event) => {
+            setForm((state) => ({ ...state, name: event.target.value }));
+          }}
           required
         />
       </div>
@@ -91,7 +93,9 @@ const CreateCollectionForm = ({ onCreated }: CreateCollectionFormProps) => {
           id="new-collection-description"
           placeholder="A brief description of what this collection does."
           value={form.description}
-          onChange={(event) => setForm((state) => ({ ...state, description: event.target.value }))}
+          onChange={(event) => {
+            setForm((state) => ({ ...state, description: event.target.value }));
+          }}
           rows={3}
         />
       </div>
@@ -139,7 +143,10 @@ export const MockDashboard = () => {
 
   const selectedCollectionQuery = useQuery(
     orpc.collection.byId.queryOptions({
-      input: activeCollectionId ? { collectionId: activeCollectionId } : skipToken,
+      input:
+        activeCollectionId !== null && activeCollectionId !== ""
+          ? { collectionId: activeCollectionId }
+          : skipToken,
     }),
   );
 
@@ -203,7 +210,9 @@ export const MockDashboard = () => {
             <button
               key={item.id}
               type="button"
-              onClick={() => setSelectedCollectionId(item.id)}
+              onClick={() => {
+                setSelectedCollectionId(item.id);
+              }}
               className={cn(
                 "hover:bg-muted flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
                 item.id === activeCollectionId && "bg-muted font-medium",
@@ -231,7 +240,9 @@ export const MockDashboard = () => {
             <CollectionSettings
               key={collection.id}
               collection={collection}
-              onDeleted={() => setSelectedCollectionId(null)}
+              onDeleted={() => {
+                setSelectedCollectionId(null);
+              }}
             />
             <EndpointCard publicId={collection.publicId} isPublic={collection.isPublic} />
             <InteractionForm collectionId={collection.id} />

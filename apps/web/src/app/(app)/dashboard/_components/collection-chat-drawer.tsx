@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { Badge } from "@repo/ui/components/badge";
@@ -16,7 +16,7 @@ import {
 } from "@repo/ui/components/drawer";
 import { Input } from "@repo/ui/components/input";
 import { MessageResponse } from "@repo/ui/components/ai-elements/message";
-import { getToolOrDynamicToolName, isToolUIPart } from "ai";
+import { getToolName, isToolUIPart } from "ai";
 import { z } from "zod";
 
 import { readProblemDetail } from "@/lib/problem";
@@ -74,7 +74,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
 
   const isStreaming = status === "submitted" || status === "streaming";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedInput = input.trim();
@@ -110,14 +110,16 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
         <div className="border-primary/30 bg-primary/5 text-primary rounded-md border p-3 text-xs">
           <div className="flex flex-col gap-1">
             <span className="font-semibold">Matched interaction</span>
-            {latestMatch.title ? <span>{latestMatch.title}</span> : null}
+            {latestMatch.title !== null && latestMatch.title !== "" ? (
+              <span>{latestMatch.title}</span>
+            ) : null}
             <div className="text-primary/80 flex flex-wrap items-center gap-2">
               {latestMatch.similarity === null ? null : (
                 <span>
                   Similarity: <strong>{(latestMatch.similarity * 100).toFixed(1)}%</strong>
                 </span>
               )}
-              {latestMatch.interactionId ? (
+              {latestMatch.interactionId !== null && latestMatch.interactionId !== "" ? (
                 <span className="truncate">
                   ID: <code>{latestMatch.interactionId}</code>
                 </span>
@@ -159,9 +161,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
                           className="border-border/70 bg-muted/40 text-muted-foreground rounded-md border p-2 text-xs"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-foreground font-medium">
-                              {getToolOrDynamicToolName(part)}
-                            </span>
+                            <span className="text-foreground font-medium">{getToolName(part)}</span>
                             <code className="bg-background rounded px-1 py-0.5 text-[10px]">
                               {part.toolCallId}
                             </code>
@@ -181,7 +181,7 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
                               {JSON.stringify(part.output, null, 2)}
                             </pre>
                           )}
-                          {part.errorText ? (
+                          {part.errorText !== undefined && part.errorText !== "" ? (
                             <p className="text-destructive mt-1 text-xs">{part.errorText}</p>
                           ) : null}
                         </div>
@@ -202,7 +202,9 @@ const ChatPanel = ({ collectionId, collectionName }: CollectionChatDrawerProps) 
       <form className="flex items-center gap-2" onSubmit={handleSubmit}>
         <Input
           value={input}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) => {
+            setInput(event.target.value);
+          }}
           placeholder="Ask the mock assistant a question"
           disabled={isStreaming}
         />

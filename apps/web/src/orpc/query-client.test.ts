@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { z } from "zod";
 
 import { createQueryClient } from "./query-client";
 
@@ -23,7 +24,15 @@ describe("dehydrate/hydrate", () => {
       url: new URL("https://example.com/path?q=1"),
     };
 
-    const revived: typeof data = deserialize(serialize(data));
+    const revived = z
+      .object({
+        at: z.date(),
+        big: z.bigint(),
+        lookup: z.map(z.number(), z.string()),
+        tags: z.set(z.string()),
+        url: z.instanceof(URL),
+      })
+      .parse(deserialize(serialize(data)));
 
     assert.deepStrictEqual(revived.at, data.at);
     assert.deepStrictEqual(revived.tags, data.tags);
@@ -37,7 +46,7 @@ describe("dehydrate/hydrate", () => {
 
     const data = { at: new Date("2020-01-01T00:00:00.000Z") };
     const wire: unknown = structuredClone(serialize(data));
-    const revived: typeof data = deserialize(wire);
+    const revived = z.object({ at: z.date() }).parse(deserialize(wire));
 
     assert.deepStrictEqual(revived.at, data.at);
   });

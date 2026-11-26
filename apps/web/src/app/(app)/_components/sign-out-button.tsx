@@ -28,7 +28,14 @@ export const SignOutButton = () => {
   };
 
   return (
-    <Button variant="ghost" size="sm" loading={signingOut} onClick={handleSignOut}>
+    <Button
+      variant="ghost"
+      size="sm"
+      loading={signingOut}
+      onClick={() => {
+        void handleSignOut();
+      }}
+    >
       Sign out
     </Button>
   );

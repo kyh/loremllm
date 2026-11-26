@@ -56,7 +56,7 @@ pnpm verify     # typecheck · lint · format · test
 - **No explicit return types.** Pin a contract with `satisfies` or a typed const (`const handler: StaticEveHandler = …; return handler;`). In `packages/transport`, check that `pnpm -F @loremllm/transport build` emits the same `dist/*.d.ts` signatures: an inferred type can silently change the published API.
 - **Tests use real implementations**: no module mocks, `mock.fn(impl)`, stubbed globals or fake responses; spies only observe (`mock.method(console, "info")`, `mock.fn()`). No fixed sleeps: await the operation. Test files are `<subject>.test.ts` beside their subject, and a package declares explicit `exports`, never a `./*` → `./src/*` wildcard.
 
-Two rules are off on purpose: `no-await-in-loop` (sequential awaits are deliberate: rate-limited source reads, ordered writes) and `anti-slop/require-safety-comment-for-type-assertion` (it demands the comment `no-comments` forbids). Prefer fixing code over `oxlint-disable` comments; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
+No rule is turned off, and lint is type-aware (`options.typeAware`, run by the `oxlint-tsgolint` devDependency), so every file it reads must sit in a tsconfig: the transport's tests and `packages/db/drizzle.config.ts` are typechecked for that reason. Sequential awaits are a recursive function or `for await`, never an `await` in a loop (`eachInOrder` in `packages/transport/src/shared.ts` streams chunks in order). Fix the code rather than adding an `oxlint-disable` comment; when a rule is genuinely wrong for a line, disable that line with a `-- reason`.
 
 Runtime — drive the real web UI with [agent-browser](https://github.com/vercel-labs/agent-browser):
 

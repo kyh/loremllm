@@ -7,7 +7,9 @@ import { auth } from "@repo/service/auth/auth";
  * in the web app rather than @repo/service — keeping the service package
  * transport-agnostic. React `cache` dedupes the lookup within a single request.
  */
-export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
+export const getSession = cache(
+  async () => await auth.api.getSession({ headers: await headers() }),
+);
 
 export const getOrganization = cache(
   async (query: {
@@ -15,7 +17,7 @@ export const getOrganization = cache(
     organizationSlug?: string | undefined;
     membersLimit?: string | number | undefined;
   }) =>
-    auth.api.getFullOrganization({
+    await auth.api.getFullOrganization({
       headers: await headers(),
       query,
     }),

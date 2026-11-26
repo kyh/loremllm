@@ -20,7 +20,7 @@ describe("buildOpenApiDocument", () => {
 
   test("is OpenAPI 3.1 with POST /api/chat", () => {
     assert.equal(document.openapi, "3.1.0");
-    assert.ok(document.paths["/api/chat"].post);
+    assert.notEqual(document.paths["/api/chat"].post, undefined);
   });
 
   test("documents exactly the fields the zod schemas accept", () => {
@@ -53,7 +53,7 @@ describe("buildOpenApiDocument", () => {
     const { responses } = document.paths["/api/chat"].post;
 
     for (const status of ["400", "403", "404", "500"] as const) {
-      assert.ok(responses[status].content["application/problem+json"]);
+      assert.notEqual(responses[status].content["application/problem+json"], undefined);
     }
   });
 });

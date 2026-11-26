@@ -1,15 +1,15 @@
-import { cacheLife } from "next/cache";
-
 import { buildSitemapEntries } from "@/lib/agent/sitemap-entries";
 
 import type { MetadataRoute } from "next";
 
-// oxlint-disable-next-line require-await -- a "use cache" function must be async
-const sitemap = async () => {
-  "use cache";
-  cacheLife("max");
+const sitemap = () => {
+  const builtAt = process.env.BUILT_AT;
 
-  return buildSitemapEntries(new Date()) satisfies MetadataRoute.Sitemap;
+  if (builtAt === undefined || builtAt === "") {
+    throw new Error("BUILT_AT is unset: next.config.ts stamps it on every build");
+  }
+
+  return buildSitemapEntries(new Date(builtAt)) satisfies MetadataRoute.Sitemap;
 };
 
 export default sitemap;

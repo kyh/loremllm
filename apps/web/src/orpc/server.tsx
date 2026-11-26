@@ -5,17 +5,18 @@ import { headers } from "next/headers";
 import { appRouter, createORPCContext } from "@repo/service";
 import { createRouterClient } from "@orpc/server";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 
-import type { FetchQueryOptions, QueryKey } from "@tanstack/react-query";
+import type { QueryExecuteOptions, QueryKey } from "@tanstack/react-query";
 import { getSession } from "@/lib/auth-server";
 import { createQueryClient } from "./query-client";
 
-const createContext = cache(async () =>
-  createORPCContext({
-    headers: new Headers(await headers()),
-    session: await getSession(),
-  }),
+const createContext = cache(
+  async () =>
+    await createORPCContext({
+      headers: new Headers(await headers()),
+      session: await getSession(),
+    }),
 );
 
 const getQueryClient = cache(createQueryClient);
@@ -36,7 +37,7 @@ export const HydrateClient = (props: { children: React.ReactNode }) => {
 };
 
 export const prefetch = <TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
-  queryOptions: FetchQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+  queryOptions: QueryExecuteOptions<TQueryFnData, TError, TData, TQueryFnData, TQueryKey>,
 ) => {
-  void getQueryClient().prefetchQuery(queryOptions);
+  void getQueryClient().query(queryOptions).catch(noop);
 };

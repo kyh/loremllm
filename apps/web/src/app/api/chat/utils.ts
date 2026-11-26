@@ -89,18 +89,24 @@ const parseToolFenceInfo = (infoString: string) => {
         continue;
       }
 
-      if (["name", "tool", "toolname"].includes(key) && !headerToolName) {
+      if (
+        ["name", "tool", "toolname"].includes(key) &&
+        (headerToolName === undefined || headerToolName === "")
+      ) {
         headerToolName = value;
-      } else if (["id", "toolcallid", "call", "callid"].includes(key) && !headerToolCallId) {
+      } else if (
+        ["id", "toolcallid", "call", "callid"].includes(key) &&
+        (headerToolCallId === undefined || headerToolCallId === "")
+      ) {
         headerToolCallId = value;
       }
 
       continue;
     }
 
-    if (!headerToolName) {
+    if (headerToolName === undefined || headerToolName === "") {
       headerToolName = token;
-    } else if (!headerToolCallId) {
+    } else if (headerToolCallId === undefined || headerToolCallId === "") {
       headerToolCallId = token;
     }
   }
@@ -130,15 +136,14 @@ const toolFenceData = z.record(z.string(), z.json());
 
 type ToolFenceData = z.infer<typeof toolFenceData>;
 
-const getStringField = (data: ToolFenceData, keys: string[]) => {
-  for (const key of keys) {
-    const value = stringValue.safeParse(data[key]);
+const isNonBlankString = (value: unknown): value is string => {
+  const parsed = stringValue.safeParse(value);
 
-    if (value.success && value.data.trim().length > 0) {
-      return value.data;
-    }
-  }
+  return parsed.success && parsed.data.trim().length > 0;
 };
+
+const getStringField = (data: ToolFenceData, keys: string[]) =>
+  keys.map((key) => data[key]).find(isNonBlankString);
 
 const parseToolCallChunk = (rawContent: string, fallbackId: string) => {
   const lines = rawContent.split("\n");
@@ -149,7 +154,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string) => {
 
   const [rawHeaderLine] = lines;
 
-  if (!rawHeaderLine) {
+  if (rawHeaderLine === undefined || rawHeaderLine === "") {
     return null;
   }
 
@@ -161,7 +166,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string) => {
   while (bodyLines.length > 0) {
     const lastLine = bodyLines.at(-1);
 
-    if (!lastLine || lastLine.trim() !== "```") {
+    if (lastLine === undefined || lastLine === "" || lastLine.trim() !== "```") {
       break;
     }
 
@@ -173,7 +178,7 @@ const parseToolCallChunk = (rawContent: string, fallbackId: string) => {
   let data: ToolFenceData = {};
 
   if (bodyContent.length) {
-    let parsedYaml;
+    let parsedYaml: unknown;
 
     try {
       parsedYaml = parseYaml(bodyContent);
@@ -310,7 +315,11 @@ export const createStreamChunks = (chunks: MarkdownChunk[], userQuery: string, o
 
       const finalState = chunk.state;
 
-      if (finalState === "output-error" || finalState === "output-denied" || chunk.errorText) {
+      if (
+        finalState === "output-error" ||
+        finalState === "output-denied" ||
+        (chunk.errorText !== undefined && chunk.errorText !== "")
+      ) {
         events.push({
           isError: true,
           result: chunk.errorText ?? "An unknown tool error occurred.",

@@ -5,34 +5,33 @@ import type { UIMessage, UIMessageChunk } from "ai";
 
 import { StaticChatTransport } from "./index";
 
-const createUserMessage = (text: string, id = "user-1") => ({
-  id,
-  parts: [{ text, type: "text" }],
-  role: "user",
-});
+const createUserMessage = (text: string, id = "user-1") =>
+  ({
+    id,
+    parts: [{ text, type: "text" }],
+    role: "user",
+  }) satisfies UIMessage;
+
+const isChunkOfType = <TYPE extends UIMessageChunk["type"]>(
+  chunk: UIMessageChunk | undefined,
+  type: TYPE,
+): chunk is Extract<UIMessageChunk, { type: TYPE }> => chunk?.type === type;
 
 const chunkOfType = <TYPE extends UIMessageChunk["type"]>(
   chunk: UIMessageChunk | undefined,
   type: TYPE,
 ) => {
-  if (chunk?.type !== type) {
+  if (!isChunkOfType(chunk, type)) {
     throw new Error(`Expected chunk of type "${type}", got "${chunk?.type}".`);
   }
 
-  return chunk as Extract<UIMessageChunk, { type: TYPE }>;
+  return chunk;
 };
 
 const readAllChunks = async (stream: ReadableStream<UIMessageChunk>) => {
-  const reader = stream.getReader();
   const chunks: UIMessageChunk[] = [];
 
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
+  for await (const value of stream) {
     chunks.push(value);
   }
 
@@ -350,6 +349,7 @@ describe("StaticChatTransport", () => {
             output: { result: "success" },
             state: "output-available",
             toolCallId: "call_dynamic",
+            toolName: "perform",
             type: "dynamic-tool",
           };
         },
@@ -374,7 +374,7 @@ describe("StaticChatTransport", () => {
 
       assert.partialDeepStrictEqual(inputChunk, {
         toolCallId: "call_dynamic",
-        toolName: "tool",
+        toolName: "perform",
       });
     });
 
@@ -653,8 +653,8 @@ describe("StaticChatTransport", () => {
       );
 
       assert.strictEqual(toolChunks.length, 2);
-      assert.strictEqual(toolChunks[0].type, "tool-input-available");
-      assert.strictEqual(toolChunks[1].type, "tool-output-available");
+      assert.strictEqual(toolChunks[0]?.type, "tool-input-available");
+      assert.strictEqual(toolChunks[1]?.type, "tool-output-available");
     });
 
     test("handles tool error state in progressive loading", async () => {
@@ -693,8 +693,8 @@ describe("StaticChatTransport", () => {
       );
 
       assert.strictEqual(toolChunks.length, 2);
-      assert.strictEqual(toolChunks[0].type, "tool-input-available");
-      assert.strictEqual(toolChunks[1].type, "tool-output-error");
+      assert.strictEqual(toolChunks[0]?.type, "tool-input-available");
+      assert.strictEqual(toolChunks[1]?.type, "tool-output-error");
 
       const errorChunk = chunkOfType(toolChunks[1], "tool-output-error");
       assert.strictEqual(errorChunk.toolCallId, "call_error_1");
@@ -1007,19 +1007,12 @@ describe("StaticChatTransport", () => {
         abortSignal: abortController.signal,
       });
 
-      const reader = stream.getReader();
       const chunks: UIMessageChunk[] = [];
       let chunkCount = 0;
       const maxChunks = 5;
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) {
-            break;
-          }
-
+        for await (const value of stream) {
           chunks.push(value);
           chunkCount += 1;
 
@@ -1569,8 +1562,8 @@ describe("StaticChatTransport", () => {
       );
 
       assert.strictEqual(toolChunks.length, 2);
-      assert.strictEqual(toolChunks[0].type, "tool-input-available");
-      assert.strictEqual(toolChunks[1].type, "tool-output-available");
+      assert.strictEqual(toolChunks[0]?.type, "tool-input-available");
+      assert.strictEqual(toolChunks[1]?.type, "tool-output-available");
 
       const outputChunk = chunkOfType(toolChunks[1], "tool-output-available");
       assert.deepEqual(outputChunk.output, {
@@ -1706,19 +1699,12 @@ describe("StaticChatTransport", () => {
         abortSignal: abortController.signal,
       });
 
-      const reader = stream.getReader();
       const chunks: UIMessageChunk[] = [];
       let chunkCount = 0;
       const maxChunks = 5;
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) {
-            break;
-          }
-
+        for await (const value of stream) {
           chunks.push(value);
           chunkCount += 1;
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { z } from "zod";
 
 import { PROBLEM_CONTENT_TYPE, problemResponse, readProblemDetail } from "./problem";
 
@@ -18,7 +19,7 @@ describe("problemResponse", () => {
   });
 
   test("falls back to a generic title for unmapped statuses", async () => {
-    const body = await problemResponse(418, "teapot").json();
+    const body = z.object({ title: z.string() }).parse(await problemResponse(418, "teapot").json());
     assert.equal(body.title, "Error");
   });
 });

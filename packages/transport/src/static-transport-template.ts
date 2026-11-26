@@ -1,8 +1,20 @@
 import type { UIMessage } from "ai";
 
+import { parseToolPart } from "./shared.ts";
+
 const INDENT = "  ";
 
-const formatYield = (part: UIMessage["parts"][number], indent: string) => {
+interface ToolInputPart {
+  input: unknown;
+  state: "input-available";
+  toolCallId: string;
+  toolName?: string;
+  type: string;
+}
+
+type TemplatePart = UIMessage["parts"][number] | ToolInputPart;
+
+const formatYield = (part: TemplatePart, indent: string) => {
   const json = JSON.stringify(part, null, 2);
 
   if (!json) {
@@ -25,36 +37,26 @@ const formatYield = (part: UIMessage["parts"][number], indent: string) => {
   return formatted;
 };
 
-export const buildStaticTransportTemplate = <UI_MESSAGE extends UIMessage = UIMessage>(
-  messages: UI_MESSAGE[],
-) => {
-  const allParts: UI_MESSAGE["parts"][number][] = [];
+export const buildStaticTransportTemplate = (messages: readonly UIMessage[]) => {
+  const allParts: TemplatePart[] = [];
 
   for (const message of messages) {
     const parts = Array.isArray(message.parts) ? message.parts : [];
-
-    const reconstructedParts: UI_MESSAGE["parts"][number][] = [];
 
     for (const part of parts) {
       const isToolPart = part.type.startsWith("tool-") || part.type === "dynamic-tool";
 
       if (isToolPart) {
-        const toolPart = part as {
-          type: `tool-${string}` | "dynamic-tool";
-          toolCallId: string;
-          toolName?: string;
-          state?: string;
-          input?: unknown;
-          output?: unknown;
-          errorText?: string;
-        };
+        const toolPart = parseToolPart(part);
 
         if (
           (toolPart.state === "output-available" || toolPart.state === "output-error") &&
           toolPart.input !== undefined
         ) {
-          const inputPart = (
-            toolPart.type === "dynamic-tool" && toolPart.toolName
+          allParts.push(
+            toolPart.type === "dynamic-tool" &&
+              toolPart.toolName !== undefined &&
+              toolPart.toolName !== ""
               ? {
                   input: toolPart.input,
                   state: "input-available",
@@ -67,17 +69,13 @@ export const buildStaticTransportTemplate = <UI_MESSAGE extends UIMessage = UIMe
                   state: "input-available",
                   toolCallId: toolPart.toolCallId,
                   type: toolPart.type,
-                }
-          ) as UI_MESSAGE["parts"][number];
-
-          reconstructedParts.push(inputPart);
+                },
+          );
         }
       }
 
-      reconstructedParts.push(part);
+      allParts.push(part);
     }
-
-    allParts.push(...reconstructedParts);
   }
 
   const indent = INDENT.repeat(2);

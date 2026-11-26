@@ -8,12 +8,13 @@ import type {
   UIDataTypes,
   UIMessage,
   UIMessageChunk,
+  UIMessagePart,
+  UITools,
 } from "ai";
-import { isDataUIPart } from "ai";
+import { z } from "zod";
 
-import { AbortTransportError } from "./abort-transport-error.ts";
-import type { DelayResolver } from "./shared.ts";
-import { resolveChunkDelay, segmentText, sleep } from "./shared.ts";
+import type { DelayResolver, ToolLikePart } from "./shared.ts";
+import { eachInOrder, parseToolPart, resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
 /**
  * Tool state values supported by the transport.
@@ -96,16 +97,22 @@ export interface StaticChatTransportInit<UI_MESSAGE extends UIMessage> {
 const generateMessageId = () =>
   `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
-interface ToolLikePart {
-  type: `tool-${string}` | "dynamic-tool";
-  toolCallId: string;
-  toolName?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
-  providerMetadata?: ProviderMetadata;
+type MockPart = UIMessagePart<UIDataTypes, UITools> | SpecialToolPart;
+
+interface StaticAssistantMessage {
+  id: string;
+  metadata?: unknown;
+  parts: MockPart[];
+  role: "assistant";
 }
+
+const isDataPart = (part: MockPart): part is DataUIPart<UIDataTypes> =>
+  part.type.startsWith("data-");
+
+const transientFlag = z.boolean().optional().catch(undefined);
+
+const unsupportedPart = (type: string) =>
+  new Error(`StaticChatTransport does not yet support streaming parts of type "${type}".`);
 
 interface ToolPartState {
   hasEmittedInput: boolean;
@@ -129,7 +136,7 @@ const pushToolChunks = (
   const toolState = toolPartStateMap.get(toolPart.toolCallId);
   const currentState = toolPart.state;
 
-  if (!toolState?.hasEmittedInput) {
+  if (toolState?.hasEmittedInput !== true) {
     chunks.push({
       input: toolPart.input ?? {},
       providerMetadata: toolPart.providerMetadata,
@@ -209,17 +216,16 @@ const createTextLikeChunks = (
 };
 
 const createDataChunks = (chunks: UIMessageChunk[], part: DataUIPart<UIDataTypes>) => {
-  const { transient } = part as DataUIPart<UIDataTypes> & { transient?: boolean };
   chunks.push({
     data: part.data,
     id: part.id,
-    transient,
+    transient: transientFlag.parse("transient" in part ? part.transient : undefined),
     type: part.type,
   });
 };
 
-const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
-  message: UI_MESSAGE,
+const createChunksFromMessage = (
+  message: StaticAssistantMessage,
   autoChunkText: boolean | RegExp,
   autoChunkReasoning: boolean | RegExp,
 ) => {
@@ -306,20 +312,28 @@ const createChunksFromMessage = <UI_MESSAGE extends UIMessage>(
         break;
       }
 
+      case "dynamic-tool": {
+        pushToolChunks(chunks, parseToolPart(part), toolPartStateMap);
+        break;
+      }
+
+      case "custom":
+      case "reasoning-file": {
+        throw unsupportedPart(part.type);
+      }
+
       default: {
-        if (part.type.startsWith("tool-") || part.type === "dynamic-tool") {
-          pushToolChunks(chunks, part as ToolLikePart, toolPartStateMap);
+        if (part.type.startsWith("tool-")) {
+          pushToolChunks(chunks, parseToolPart(part), toolPartStateMap);
           break;
         }
 
-        if (isDataUIPart(part)) {
+        if (isDataPart(part)) {
           createDataChunks(chunks, part);
           break;
         }
 
-        throw new Error(
-          `StaticChatTransport does not yet support streaming parts of type "${part.type}".`,
-        );
+        throw unsupportedPart(part.type);
       }
     }
   }
@@ -351,7 +365,7 @@ export class StaticChatTransport<
   private readonly chunkDelayMs?: ChunkDelayResolver;
   private readonly autoChunkText: boolean | RegExp;
   private readonly autoChunkReasoning: boolean | RegExp;
-  private readonly lastResponses = new Map<string, UI_MESSAGE>();
+  private readonly lastResponses = new Map<string, StaticAssistantMessage>();
 
   constructor(options: StaticChatTransportInit<UI_MESSAGE>) {
     this.mockResponseOption = options.mockResponse;
@@ -386,7 +400,7 @@ export class StaticChatTransport<
     return stream;
   }
 
-  reconnectToStream({ chatId }: { chatId: string }) {
+  async reconnectToStream({ chatId }: { chatId: string }) {
     const lastMessage = this.lastResponses.get(chatId);
 
     const stream: ReadableStream<UIMessageChunk> | null = lastMessage
@@ -395,7 +409,7 @@ export class StaticChatTransport<
         )
       : null;
 
-    return Promise.resolve(stream);
+    return await Promise.resolve(stream);
   }
 
   /**
@@ -403,7 +417,7 @@ export class StaticChatTransport<
    * @param chatId - If provided, clears only the cache for that chat. Otherwise clears all caches.
    */
   clearCache(chatId?: string) {
-    if (chatId) {
+    if (chatId !== undefined && chatId !== "") {
       this.lastResponses.delete(chatId);
     } else {
       this.lastResponses.clear();
@@ -411,24 +425,22 @@ export class StaticChatTransport<
   }
 
   protected async resolveMessages(context: StaticTransportContext<UI_MESSAGE>) {
-    const parts: UI_MESSAGE["parts"] = [];
+    const parts: MockPart[] = [];
     const generator = this.mockResponseOption(context);
 
     for await (const part of generator) {
-      parts.push(part as UI_MESSAGE["parts"][number]);
+      parts.push(part);
     }
 
     if (parts.length === 0) {
       throw new Error("StaticChatTransport: mockResponse must yield at least one part.");
     }
 
-    const messageId = context.messageId ?? generateMessageId();
-
-    const assistantMessage: UI_MESSAGE = {
-      id: messageId,
+    const assistantMessage: StaticAssistantMessage = {
+      id: context.messageId ?? generateMessageId(),
       parts,
       role: "assistant",
-    } as UI_MESSAGE;
+    };
 
     return assistantMessage;
   }
@@ -442,7 +454,8 @@ export class StaticChatTransport<
       aborted = true;
     };
 
-    const resolveDelay = (chunk: UIMessageChunk) => resolveChunkDelay(this.chunkDelayMs, chunk);
+    const resolveDelay = async (chunk: UIMessageChunk) =>
+      await resolveChunkDelay(this.chunkDelayMs, chunk);
 
     return new ReadableStream<UIMessageChunk>({
       start: async (controller) => {
@@ -455,9 +468,9 @@ export class StaticChatTransport<
         }
 
         try {
-          for (const chunk of chunks) {
+          await eachInOrder(chunks, async (chunk) => {
             if (isAborted()) {
-              throw new AbortTransportError();
+              throw new DOMException("The transport request was aborted.", "AbortError");
             }
 
             const isDeltaChunk = chunk.type === "text-delta" || chunk.type === "reasoning-delta";
@@ -472,20 +485,22 @@ export class StaticChatTransport<
             if (isDeltaChunk || isToolChunk || isDataChunk) {
               const delay = await resolveDelay(chunk);
 
-              if (delay && delay > 0) {
+              if (delay !== null && delay > 0) {
                 await sleep(delay);
 
                 if (isAborted()) {
-                  throw new AbortTransportError();
+                  throw new DOMException("The transport request was aborted.", "AbortError");
                 }
               }
             }
 
             controller.enqueue(chunk);
-          }
+
+            return "next";
+          });
 
           if (isAborted()) {
-            throw new AbortTransportError();
+            throw new DOMException("The transport request was aborted.", "AbortError");
           }
 
           controller.close();

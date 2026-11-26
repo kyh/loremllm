@@ -25,7 +25,7 @@ const NotFound = () => (
             >
               {item.label}
             </ProseLink>
-            {item.text ? ` — ${item.text}` : null}
+            {item.text !== undefined && item.text !== "" ? ` — ${item.text}` : null}
           </li>
         ))}
       </ul>

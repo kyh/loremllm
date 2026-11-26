@@ -16,7 +16,7 @@ const AUTH_REDIRECT_ORIGIN = "https://loremllm.invalid";
 export const safeNextPath = (nextPath?: string | string[]) => {
   const value = Array.isArray(nextPath) ? nextPath[0] : nextPath;
 
-  if (!value?.startsWith("/") || value.startsWith("//")) {
+  if (value?.startsWith("/") !== true || value.startsWith("//")) {
     return DEFAULT_AUTH_PATH;
   }
 

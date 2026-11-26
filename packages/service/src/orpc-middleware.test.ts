@@ -44,8 +44,10 @@ const signedIn = createRouterClient(appRouter, { context: { db, session } });
 
 describe("procedure middleware", () => {
   test("rejects unauthenticated callers before validating input", async (t) => {
-    const findMember = t.mock.method(db.query.member, "findFirst", () =>
-      Promise.resolve(membership),
+    const findMember = t.mock.method(
+      db.query.member,
+      "findFirst",
+      async () => await Promise.resolve(membership),
     );
 
     await assert.rejects(anonymous.collection.create({ name: "" }), { code: "UNAUTHORIZED" });
@@ -63,15 +65,19 @@ describe("procedure middleware", () => {
   });
 
   test("resolves the active organization before validating input", async (t) => {
-    const findMember = t.mock.method(db.query.member, "findFirst", () => Promise.resolve());
+    const findMember = t.mock.method(db.query.member, "findFirst", async () => {
+      await Promise.resolve();
+    });
 
     await assert.rejects(signedIn.collection.create({ name: "" }), { code: "FORBIDDEN" });
     assert.equal(findMember.mock.callCount(), 1);
   });
 
   test("falls back to the first membership and persists it as the active organization", async (t) => {
-    const findMember = t.mock.method(db.query.member, "findFirst", () =>
-      Promise.resolve(membership),
+    const findMember = t.mock.method(
+      db.query.member,
+      "findFirst",
+      async () => await Promise.resolve(membership),
     );
 
     const persisted: Partial<typeof sessionTable.$inferInsert>[] = [];
@@ -80,7 +86,11 @@ describe("procedure middleware", () => {
       set: (values: Partial<typeof sessionTable.$inferInsert>) => {
         persisted.push(values);
 
-        return { where: () => Promise.resolve() };
+        return {
+          where: async () => {
+            await Promise.resolve();
+          },
+        };
       },
     }));
 
@@ -100,7 +110,7 @@ describe("procedure middleware", () => {
   });
 
   test("rejects invalid input once the session and organization resolve", async (t) => {
-    t.mock.method(db.query.member, "findFirst", () => Promise.resolve(membership));
+    t.mock.method(db.query.member, "findFirst", async () => await Promise.resolve(membership));
 
     await assert.rejects(signedIn.collection.create({ name: "" }), { code: "BAD_REQUEST" });
     await assert.rejects(

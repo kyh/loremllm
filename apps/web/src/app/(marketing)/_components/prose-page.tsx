@@ -80,14 +80,14 @@ const withInlineMarks = (text: string) =>
 
 const ProseItem = ({ item }: { item: ProseListItem }) => (
   <li>
-    {item.href ? (
+    {item.href !== undefined && item.href !== "" ? (
       <ProseLink className={linkClassName} href={item.href}>
         {item.label}
       </ProseLink>
     ) : (
       <span className="text-foreground">{item.label}</span>
     )}
-    {item.text ? <> — {withInlineMarks(item.text)}</> : null}
+    {item.text !== undefined && item.text !== "" ? <> — {withInlineMarks(item.text)}</> : null}
   </li>
 );
 

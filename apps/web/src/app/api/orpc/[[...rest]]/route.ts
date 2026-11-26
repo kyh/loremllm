@@ -1,19 +1,22 @@
 import type { NextRequest } from "next/server";
 import { appRouter, createORPCContext } from "@repo/service";
-import { onError, ORPCError } from "@orpc/server";
+import { ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 
 // WARNING: no CORS headers here; credentialed CORS would let any page spend embeddings as its visitors.
 const handler = new RPCHandler(appRouter, {
   clientInterceptors: [
-    // oxlint-disable-next-line promise/prefer-await-to-callbacks -- an oRPC interceptor, not a Node-style callback
-    onError((error) => {
-      if (error instanceof ORPCError) {
-        return;
-      }
+    async (options) => {
+      try {
+        return await options.next();
+      } catch (error) {
+        if (!(error instanceof ORPCError)) {
+          console.error(">>> oRPC Error", error);
+        }
 
-      console.error(">>> oRPC Error", error);
-    }),
+        throw error;
+      }
+    },
   ],
 });
 

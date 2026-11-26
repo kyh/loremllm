@@ -6,8 +6,8 @@ import { POST } from "./route";
 
 const url = "https://app.kyh.io/api/orpc/organization/get";
 
-const post = (headers: Record<string, string>) =>
-  POST(
+const post = async (headers: Record<string, string>) =>
+  await POST(
     new NextRequest(url, {
       body: JSON.stringify({ json: { slug: "acme" } }),
       headers: { "content-type": "application/json", ...headers },

@@ -19,35 +19,48 @@ const main = async () => {
   let successCount = 0;
   let errorCount = 0;
 
-  for (let i = 0; i < interactions.length; i += BATCH_SIZE) {
-    const batch = interactions.slice(i, i + BATCH_SIZE);
+  const backfill = async (interaction: (typeof interactions)[number], index: number) => {
+    try {
+      console.log(`[${index + 1}/${interactions.length}] ${interaction.title}...`);
 
-    for (const interaction of batch) {
-      try {
-        console.log(`[${i + 1}/${interactions.length}] ${interaction.title}...`);
+      const vector = await generateEmbedding(interaction.input);
 
-        const vector = await generateEmbedding(interaction.input);
+      await db
+        .update(mockInteraction)
+        .set({
+          updatedAt: new Date(),
+          vector,
+        })
+        .where(eq(mockInteraction.id, interaction.id));
 
-        await db
-          .update(mockInteraction)
-          .set({
-            updatedAt: new Date(),
-            vector,
-          })
-          .where(eq(mockInteraction.id, interaction.id));
+      successCount += 1;
+      console.log(`   Done (${vector.length}d)`);
+    } catch (error) {
+      errorCount += 1;
+      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
-        successCount += 1;
-        console.log(`   Done (${vector.length}d)`);
-      } catch (error) {
-        errorCount += 1;
-        console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
-      }
+  const backfillFrom: (index: number) => Promise<void> = async (index) => {
+    const interaction = interactions[index];
+
+    if (interaction === undefined) {
+      return;
     }
 
-    if (i + BATCH_SIZE < interactions.length) {
+    await backfill(interaction, index);
+
+    const next = index + 1;
+    const batchEnds = next % BATCH_SIZE === 0;
+
+    if (batchEnds && next < interactions.length) {
       await sleep(DELAY_MS);
     }
-  }
+
+    await backfillFrom(next);
+  };
+
+  await backfillFrom(0);
 
   console.log(`\n${"=".repeat(40)}`);
   console.log("Backfill complete");

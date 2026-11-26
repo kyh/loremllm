@@ -19,8 +19,8 @@ const USER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password";
 
 const COLLECTION_PUBLIC_ID = "demo";
 
-const loadInteractionOutput = (filename: string) =>
-  fs.readFile(path.join(scriptDir, "interactions", filename), "utf-8");
+const loadInteractionOutput = async (filename: string) =>
+  await fs.readFile(path.join(scriptDir, "interactions", filename), "utf-8");
 
 const DEMO_INTERACTION_CONFIGS = [
   {
@@ -224,7 +224,7 @@ const main = async () => {
       console.log(`   Name: ${collection.name}\n`);
     }
 
-    if (env.AI_GATEWAY_API_KEY) {
+    if (env.AI_GATEWAY_API_KEY !== undefined && env.AI_GATEWAY_API_KEY !== "") {
       console.log("💬 Creating/updating interactions...\n");
 
       const existingInteractionMap = new Map(
@@ -235,14 +235,18 @@ const main = async () => {
       let skippedCount = 0;
       let errorCount = 0;
 
-      for (const [index, config] of DEMO_INTERACTION_CONFIGS.entries()) {
+      const seedInteraction = async (
+        config: (typeof DEMO_INTERACTION_CONFIGS)[number],
+        index: number,
+      ) => {
         const label = `[${index + 1}/${DEMO_INTERACTION_CONFIGS.length}]`;
 
         try {
           if (existingInteractionMap.has(config.input)) {
             skippedCount += 1;
             console.log(`   ⏭️  ${label} ${config.title} (already exists)`);
-            continue;
+
+            return;
           }
 
           const output = await loadInteractionOutput(config.outputFile);
@@ -262,7 +266,20 @@ const main = async () => {
           console.error(`   ❌ ${label} Failed to create: ${config.title}`);
           console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-      }
+      };
+
+      const seedFrom: (index: number) => Promise<void> = async (index) => {
+        const config = DEMO_INTERACTION_CONFIGS[index];
+
+        if (config === undefined) {
+          return;
+        }
+
+        await seedInteraction(config, index);
+        await seedFrom(index + 1);
+      };
+
+      await seedFrom(0);
 
       console.log(`\n${"=".repeat(50)}`);
       console.log("📊 Summary");
