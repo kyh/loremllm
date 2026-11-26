@@ -317,6 +317,11 @@ const createChunksFromMessage = (
         break;
       }
 
+      case "steering-message": {
+        chunks.push({ id: part.id, parts: part.parts, type: "steering-message" });
+        break;
+      }
+
       case "custom":
       case "reasoning-file": {
         throw unsupportedPart(part.type);

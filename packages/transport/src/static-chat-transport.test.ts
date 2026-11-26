@@ -1363,6 +1363,34 @@ describe("StaticChatTransport", () => {
       });
     });
 
+    test("streams a steering-message part as its own chunk", async () => {
+      const transport = new StaticChatTransport({
+        async *mockResponse() {
+          yield {
+            id: "steer-1",
+            parts: [{ text: "Make it shorter", type: "text" }],
+            type: "steering-message",
+          };
+        },
+      });
+
+      const chunks = await readAllChunks(
+        await transport.sendMessages({
+          ...createSendContext({ messages: [createUserMessage("Write a poem")] }),
+          abortSignal: undefined,
+        }),
+      );
+
+      assert.deepEqual(
+        chunks.find((chunk) => chunk.type === "steering-message"),
+        {
+          id: "steer-1",
+          parts: [{ text: "Make it shorter", type: "text" }],
+          type: "steering-message",
+        },
+      );
+    });
+
     test("handles source-document parts as useChat would process them", async () => {
       const transport = new StaticChatTransport({
         async *mockResponse() {
