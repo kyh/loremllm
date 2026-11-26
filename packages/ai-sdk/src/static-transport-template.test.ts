@@ -25,7 +25,7 @@ describe("buildStaticTransportTemplate", () => {
 
     const template = buildStaticTransportTemplate(messages);
 
-    assert.ok(template.includes('import { StaticChatTransport } from "@loremllm/transport";'));
+    assert.ok(template.includes('import { StaticChatTransport } from "@loremllm/ai-sdk";'));
     assert.ok(template.includes("chunkDelayMs: [50, 100],"));
     assert.ok(template.includes("async *mockResponse() {"));
     assert.ok(template.includes('"text": "Hi there"'));

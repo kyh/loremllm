@@ -8,8 +8,12 @@
     "paths": {
       "@/.source": ["./.source/index.ts"],
       "@/*": ["./src/*"],
-      "@loremllm/transport": ["../../packages/transport/src/index.ts"],
-      "@loremllm/transport/*": ["../../packages/transport/src/*.ts"]
+      "@loremllm/ai-sdk": ["../../packages/ai-sdk/src/index.ts"],
+      "@loremllm/ai-sdk/copy-messages-to-clipboard": [
+        "../../packages/ai-sdk/src/copy-messages-to-clipboard.ts"
+      ],
+      "@loremllm/ai-sdk/internal": ["../../packages/ai-sdk/src/shared.ts"],
+      "@loremllm/eve": ["../../packages/eve/src/index.ts"]
     },
     "plugins": [{ "name": "next" }],
     "module": "esnext"

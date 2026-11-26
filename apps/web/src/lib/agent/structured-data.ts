@@ -97,7 +97,8 @@ export const buildSoftwareApplication = () =>
       "Collections of input/output pairs matched by embedding similarity",
       "Streaming HTTP API in the AI SDK UI message format",
       "Lorem ipsum and markdown streaming with no account",
-      "@loremllm/transport chat transport for the Vercel AI SDK",
+      "@loremllm/ai-sdk chat transport for the Vercel AI SDK",
+      "@loremllm/eve static mock server for the eve agent framework",
       "eve-protocol host per collection",
     ],
     isAccessibleForFree: true,
@@ -173,17 +174,17 @@ export const buildWebPage = (page: ProsePage) =>
     url: absoluteUrl(page.path),
   }) satisfies JsonLdNode;
 
-/** `@loremllm/transport`, the npm package the docs document. It has no page of its own. */
+/** `@loremllm/ai-sdk`, the npm package the docs document. It has no page of its own. */
 export const buildTransportSourceCode = () =>
   ({
     "@id": TRANSPORT_ID,
     "@type": "SoftwareSourceCode",
-    codeRepository: `${siteConfig.repository}/tree/main/packages/transport`,
+    codeRepository: `${siteConfig.repository}/tree/main/packages/ai-sdk`,
     description:
       "A Vercel AI SDK chat transport that streams mocked responses in the browser, with no server.",
     isPartOf: { "@id": APPLICATION_ID },
     license: "https://opensource.org/licenses/MIT",
-    name: "@loremllm/transport",
+    name: "@loremllm/ai-sdk",
     programmingLanguage: "TypeScript",
     publisher: { "@id": ORGANIZATION_ID },
     runtimePlatform: "JavaScript",

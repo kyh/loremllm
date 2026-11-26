@@ -1,0 +1,58 @@
+{
+  "name": "@loremllm/eve",
+  "version": "0.8.0",
+  "description": "Static mock server for the eve agent framework: eve's session + NDJSON stream routes, driven by scripted message parts.",
+  "keywords": [
+    "agent",
+    "ai",
+    "eve",
+    "llm",
+    "mock",
+    "ndjson",
+    "streaming",
+    "testing"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyh/loremllm.git",
+    "directory": "packages/eve"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@loremllm/ai-sdk": "workspace:^",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "ai": "^7.0.181",
+    "eve": "^0.71.0",
+    "tsx": "^4.23.15",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "ai": "^6.0.0 || ^7.0.0"
+  }
+}

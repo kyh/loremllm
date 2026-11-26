@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai";
-import { StaticChatTransport } from "@loremllm/transport";
+import { StaticChatTransport } from "@loremllm/ai-sdk";
 
-import type { StaticTransportContext } from "@loremllm/transport";
+import type { StaticTransportContext } from "@loremllm/ai-sdk";
 
 export interface Demo {
   id: string;
@@ -16,7 +16,7 @@ export interface Demo {
 
 export const transportDemos: Demo[] = [
   {
-    code: `import { StaticChatTransport } from "@loremllm/transport";
+    code: `import { StaticChatTransport } from "@loremllm/ai-sdk";
 import { useChat } from "@ai-sdk/react";
 
 export function SimpleTextResponse() {
@@ -57,9 +57,9 @@ export function SimpleTextResponse() {
     }),
   },
   {
-    code: `import { StaticChatTransport } from "@loremllm/transport";
+    code: `import { StaticChatTransport } from "@loremllm/ai-sdk";
 import { useChat } from "@ai-sdk/react";
-import type { StaticTransportContext, UIMessage } from "@loremllm/transport";
+import type { StaticTransportContext, UIMessage } from "@loremllm/ai-sdk";
 
 export function ToolCallingDemo() {
   const { messages, sendMessage } = useChat({
@@ -184,7 +184,7 @@ export function ToolCallingDemo() {
     }),
   },
   {
-    code: `import { StaticChatTransport } from "@loremllm/transport";
+    code: `import { StaticChatTransport } from "@loremllm/ai-sdk";
 import { useChat } from "@ai-sdk/react";
 
 export function ReasoningDemo() {

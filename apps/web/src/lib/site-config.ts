@@ -9,12 +9,14 @@ export const siteConfig = {
   description: "Mock responses for LLMs",
   email: "kai@kyh.io",
   name: "LoremLLM",
-  npmPackage: "https://www.npmjs.com/package/@loremllm/transport",
+  npmPackage: "https://www.npmjs.com/package/@loremllm/ai-sdk",
+  npmEvePackage: "https://www.npmjs.com/package/@loremllm/eve",
   repository: "https://github.com/kyh/loremllm",
   /** Profiles that resolve to the same entity, for `Organization.sameAs`. */
   sameAs: [
     "https://github.com/kyh/loremllm",
-    "https://www.npmjs.com/package/@loremllm/transport",
+    "https://www.npmjs.com/package/@loremllm/ai-sdk",
+    "https://www.npmjs.com/package/@loremllm/eve",
     "https://x.com/kaiyuhsu",
   ],
   shortName: "LoremLLM",

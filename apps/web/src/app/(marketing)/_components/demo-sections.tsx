@@ -13,7 +13,7 @@ export const DemoSections = () => (
     <section className="flex flex-col justify-center gap-10">
       <div className="flex flex-col gap-2">
         <Link
-          href="https://github.com/kyh/loremllm/blob/main/packages/transport/README.md"
+          href="https://github.com/kyh/loremllm/blob/main/packages/ai-sdk/README.md"
           target="_blank"
         >
           <h2 className="text-heading flex items-center gap-1 text-xs uppercase">

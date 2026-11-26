@@ -3,11 +3,12 @@ import { once } from "node:events";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import { after, before, describe, test } from "node:test";
+import { StaticChatTransport } from "@loremllm/ai-sdk";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 
-import type { EveStreamEvent } from "./eve";
-import { createMemoryEveSessionStore, createStaticEveHandler } from "./eve";
+import type { EveStreamEvent } from "./index";
+import { createMemoryEveSessionStore, createStaticEveHandler } from "./index";
 
 const HOST = "https://mock.test";
 
@@ -873,8 +874,6 @@ const sharedMockResponse = async function* sharedMockResponse() {
 
 describe("type parity with StaticChatTransport", () => {
   test("accepts the same mockResponse function for both transports", async () => {
-    const { StaticChatTransport } = await import("./index");
-
     const transport = new StaticChatTransport<UIMessage>({ mockResponse: sharedMockResponse });
     const handler = createStaticEveHandler({ mockResponse: sharedMockResponse });
 
