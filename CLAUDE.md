@@ -17,7 +17,9 @@ LoremLLM - pnpm monorepo with Turbo. AI/LLM chat platform.
 - `packages/contract` - oRPC contract: zod inputs and output types, shared by server and clients
 - `packages/service` - oRPC implementation of the contract + better-auth
 - `packages/db` - Drizzle ORM + Turso/libSQL
-- `packages/transport` - Published npm package (@loremllm/transport) for AI SDK chat transport
+- `packages/ai-sdk` - Published npm package (@loremllm/ai-sdk): static chat transport for the AI SDK
+- `packages/eve` - Published npm package (@loremllm/eve): static eve-protocol mock server (depends on ai-sdk)
+- `packages/transport` - Deprecated `@loremllm/transport`: re-exports ai-sdk + eve, no source of its own
 - `packages/ui` - Shared React components (shadcn-based)
 
 ### Contract-first API
@@ -49,7 +51,7 @@ pnpm lint:fix         # oxlint --fix
 pnpm format           # oxfmt --check
 pnpm format:fix       # oxfmt --write
 pnpm typecheck        # TypeScript check
-pnpm test             # Run tests (packages/transport, packages/service, apps/web)
+pnpm test             # Run tests (packages/ai-sdk, packages/eve, packages/service, apps/web)
 pnpm db:push          # Push DB schema locally
 pnpm db:seed          # Seed local DB -> dev@loremllm.local / password
 pnpm db:push-remote   # Push DB schema to production

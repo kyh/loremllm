@@ -1,4 +1,4 @@
-import { createStaticEveHandler } from "@loremllm/transport/eve";
+import { createStaticEveHandler } from "@loremllm/eve";
 
 import { createDbEveSessionStore } from "../../eve-session-store";
 

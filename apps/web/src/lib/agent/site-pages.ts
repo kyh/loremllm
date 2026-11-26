@@ -138,7 +138,7 @@ curl -N -X POST ${siteConfig.url}/api/chat \\
       kind: "paragraph",
       text: `\`${siteConfig.url}/api/eve/<collectionId>\` is a host for the eve agent protocol. Point an eve client at it and every turn is answered with the collection's best match, e.g. \`POST /api/eve/<collectionId>/eve/v1/session\` with \`{"message":"Hello"}\`.`,
     },
-    { kind: "heading", text: "@loremllm/transport" },
+    { kind: "heading", text: "@loremllm/ai-sdk" },
     {
       kind: "paragraph",
       text: "For mocks that never leave the browser, install the transport and pass it to `useChat`. Its `mockResponse` async generator yields the parts the assistant message should contain; the transport chunks and streams them with configurable delays.",
@@ -146,7 +146,7 @@ curl -N -X POST ${siteConfig.url}/api/chat \\
     {
       kind: "code",
       language: "ts",
-      text: `import { StaticChatTransport } from "@loremllm/transport";
+      text: `import { StaticChatTransport } from "@loremllm/ai-sdk";
 import { useChat } from "@ai-sdk/react";
 
 const transport = new StaticChatTransport({
@@ -158,14 +158,33 @@ const transport = new StaticChatTransport({
 
 const { messages, sendMessage } = useChat({ transport });`,
     },
+    { kind: "heading", text: "@loremllm/eve" },
+    {
+      kind: "paragraph",
+      text: "The same scripted `mockResponse` generator, served over the eve agent protocol. `createStaticEveHandler` returns a `Request => Response` handler; mount it on any route and point `useEveAgent` at it.",
+    },
+    {
+      kind: "code",
+      language: "ts",
+      text: `import { createStaticEveHandler } from "@loremllm/eve";
+
+const handler = createStaticEveHandler({
+  async *mockResponse() {
+    yield { type: "text", text: "Hello! How can I help you today?" };
+  },
+});
+
+export { handler as GET, handler as OPTIONS, handler as POST };`,
+    },
     { kind: "heading", text: "Links" },
     {
       items: [
         { href: "/openapi.json", label: "OpenAPI 3.1", text: "the /api/chat contract" },
-        { href: siteConfig.npmPackage, label: "@loremllm/transport on npm" },
+        { href: siteConfig.npmPackage, label: "@loremllm/ai-sdk on npm" },
+        { href: siteConfig.npmEvePackage, label: "@loremllm/eve on npm" },
         {
-          href: `${siteConfig.repository}/blob/main/packages/transport/README.md`,
-          label: "Transport README",
+          href: `${siteConfig.repository}/blob/main/packages/ai-sdk/README.md`,
+          label: "AI SDK README",
           text: "every option, with examples",
         },
         { href: siteConfig.repository, label: "Source code", text: "the whole project, on GitHub" },
@@ -173,7 +192,7 @@ const { messages, sendMessage } = useChat({ transport });`,
       kind: "list",
     },
   ],
-  description: `${siteConfig.name} API reference: POST /api/chat request types, streaming format, errors, the eve endpoint and the @loremllm/transport npm package.`,
+  description: `${siteConfig.name} API reference: POST /api/chat request types, streaming format, errors, the eve endpoint and the @loremllm/ai-sdk and @loremllm/eve npm packages.`,
   heading: `${siteConfig.name} developer docs`,
   path: "/docs",
   sitemapPriority: 0.9,
@@ -189,7 +208,7 @@ export const aboutPage: ProsePage = {
     },
     {
       kind: "paragraph",
-      text: "The `@loremllm/transport` package plugs into the Vercel AI SDK's `useChat` and streams whatever message parts you describe — text, reasoning, tool calls — with realistic chunk timing and no network. The hosted platform does the same over HTTP: record input/output pairs in a collection, and the API answers each incoming question with the closest stored output, matched by embedding similarity.",
+      text: "The `@loremllm/ai-sdk` package plugs into the Vercel AI SDK's `useChat` and streams whatever message parts you describe — text, reasoning, tool calls — with realistic chunk timing and no network. The hosted platform does the same over HTTP: record input/output pairs in a collection, and the API answers each incoming question with the closest stored output, matched by embedding similarity.",
     },
     {
       kind: "paragraph",
@@ -865,7 +884,7 @@ const termsSections: ProseBlock[] = [
     "2.9 **Public API.** The Site's API, including `POST /api/chat` and the eve-protocol endpoints under `/api/eve`, is documented at [/docs](/docs) and in [/openapi.json](/openapi.json), and its lorem and markdown requests need no account. As an exception to Section 2.2, you may call the API from the software, websites, tests and demos you build, including commercial ones, as long as you follow Section 2.8. Chat and eve requests are answered only from public collections, except that you can test your own private collections while you are signed in. We may limit, throttle or block requests, and we may change the API or stop offering it at any time, as described in Section 2.3.",
   ),
   paragraph(
-    `2.10 **Open-Source Software.** The source code of ${product}, including the \`@loremllm/transport\` package, is published on [GitHub](${siteConfig.repository}) under the MIT License. Source code that we publish under an open-source license, such as the MIT License, is governed by that license, and nothing in these Terms limits your rights under it. These Terms govern the hosted Site.`,
+    `2.10 **Open-Source Software.** The source code of ${product}, including the \`@loremllm/ai-sdk\` and \`@loremllm/eve\` packages, is published on [GitHub](${siteConfig.repository}) under the MIT License. Source code that we publish under an open-source license, such as the MIT License, is governed by that license, and nothing in these Terms limits your rights under it. These Terms govern the hosted Site.`,
   ),
 
   heading("3. Privacy"),

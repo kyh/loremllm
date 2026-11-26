@@ -98,7 +98,7 @@ export const mockInteraction = snakeCase.table("mock_interaction", (t) => ({
  * Mock Eve Session
  * Server-side session state for the hosted eve-protocol endpoints
  * (/api/eve/[collectionId]). Holds the serialized session record
- * (event log + conversation history) that the @loremllm/transport/eve
+ * (event log + conversation history) that the @loremllm/eve
  * handler needs across requests — create/continue POSTs and stream GETs
  * can land on different serverless instances.
  */

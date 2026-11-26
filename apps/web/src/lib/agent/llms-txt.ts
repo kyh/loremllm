@@ -38,9 +38,14 @@ export const renderLlmsTxt = () => {
       },
       { href: "/openapi.json", label: "OpenAPI 3.1 spec", text: "the /api/chat contract" },
       {
-        href: `${siteConfig.repository}/blob/main/packages/transport/README.md`,
-        label: "@loremllm/transport README",
+        href: `${siteConfig.repository}/blob/main/packages/ai-sdk/README.md`,
+        label: "@loremllm/ai-sdk README",
         text: "the AI SDK chat transport, every option with examples",
+      },
+      {
+        href: `${siteConfig.repository}/blob/main/packages/eve/README.md`,
+        label: "@loremllm/eve README",
+        text: "the eve mock server, same scripted responses",
       },
     ]),
     "",
@@ -60,7 +65,8 @@ export const renderLlmsTxt = () => {
     "",
     renderList([
       { href: siteConfig.repository, label: "Source code", text: "the whole project, on GitHub" },
-      { href: siteConfig.npmPackage, label: "npm package", text: "@loremllm/transport" },
+      { href: siteConfig.npmPackage, label: "npm package", text: "@loremllm/ai-sdk" },
+      { href: siteConfig.npmEvePackage, label: "npm package", text: "@loremllm/eve" },
       {
         href: `${siteConfig.repository}/issues`,
         label: "Issue tracker",
