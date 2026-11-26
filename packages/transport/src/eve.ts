@@ -684,7 +684,8 @@ const createTurnEvents = (input: {
       case "file":
       case "reasoning-file":
       case "source-document":
-      case "source-url": {
+      case "source-url":
+      case "steering-message": {
         throw unsupportedEvePart(part.type);
       }
 

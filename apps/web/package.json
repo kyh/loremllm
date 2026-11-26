@@ -14,7 +14,7 @@
     "og:video": "tsx scripts/og-video.ts"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.130",
+    "@ai-sdk/react": "^4.0.186",
     "@loremllm/transport": "workspace:^",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
@@ -25,7 +25,7 @@
     "@repo/ui": "workspace:^",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "ai": "^7.0.127",
+    "ai": "^7.0.181",
     "better-auth": "catalog:",
     "cn": "catalog:",
     "geist": "^1.7.2",
@@ -44,7 +44,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "^4.0.21",
+    "@ai-sdk/provider": "^4.0.39",
     "@kyh/tsconfig": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/mdx": "^2.0.14",
