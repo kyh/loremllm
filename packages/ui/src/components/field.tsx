@@ -62,21 +62,18 @@ const fieldVariants = cva("group/field flex w-full gap-3 data-[invalid=true]:tex
   },
 });
 
-/* oxlint-disable jsx-a11y/prefer-tag-over-role -- <fieldset> changes default styling and form semantics */
 const Field = ({
   className,
   orientation = "vertical",
   ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof fieldVariants>) => (
-  <div
-    role="group"
+}: React.ComponentProps<"fieldset"> & VariantProps<typeof fieldVariants>) => (
+  <fieldset
     data-slot="field"
     data-orientation={orientation}
-    className={cn(fieldVariants({ orientation }), className)}
+    className={cn("min-w-0", fieldVariants({ orientation }), className)}
     {...props}
   />
 );
-/* oxlint-enable jsx-a11y/prefer-tag-over-role */
 
 const FieldContent = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div

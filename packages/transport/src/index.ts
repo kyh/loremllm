@@ -13,7 +13,6 @@ import type {
 } from "ai";
 import { z } from "zod";
 
-import { AbortTransportError } from "./abort-transport-error.ts";
 import type { DelayResolver, ToolLikePart } from "./shared.ts";
 import { eachInOrder, parseToolPart, resolveChunkDelay, segmentText, sleep } from "./shared.ts";
 
@@ -471,7 +470,7 @@ export class StaticChatTransport<
         try {
           await eachInOrder(chunks, async (chunk) => {
             if (isAborted()) {
-              throw new AbortTransportError();
+              throw new DOMException("The transport request was aborted.", "AbortError");
             }
 
             const isDeltaChunk = chunk.type === "text-delta" || chunk.type === "reasoning-delta";
@@ -490,7 +489,7 @@ export class StaticChatTransport<
                 await sleep(delay);
 
                 if (isAborted()) {
-                  throw new AbortTransportError();
+                  throw new DOMException("The transport request was aborted.", "AbortError");
                 }
               }
             }
@@ -501,7 +500,7 @@ export class StaticChatTransport<
           });
 
           if (isAborted()) {
-            throw new AbortTransportError();
+            throw new DOMException("The transport request was aborted.", "AbortError");
           }
 
           controller.close();

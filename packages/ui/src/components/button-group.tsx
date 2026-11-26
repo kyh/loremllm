@@ -22,21 +22,18 @@ const buttonGroupVariants = cva(
   },
 );
 
-/* oxlint-disable jsx-a11y/prefer-tag-over-role -- <fieldset> changes default styling and form semantics */
 const ButtonGroup = ({
   className,
   orientation,
   ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) => (
-  <div
-    role="group"
+}: React.ComponentProps<"fieldset"> & VariantProps<typeof buttonGroupVariants>) => (
+  <fieldset
     data-slot="button-group"
     data-orientation={orientation}
-    className={cn(buttonGroupVariants({ orientation }), className)}
+    className={cn("min-w-0", buttonGroupVariants({ orientation }), className)}
     {...props}
   />
 );
-/* oxlint-enable jsx-a11y/prefer-tag-over-role */
 
 const ButtonGroupText = ({
   className,

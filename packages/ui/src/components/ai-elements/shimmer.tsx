@@ -3,11 +3,23 @@
 import { cn } from "cn";
 import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { memo, useMemo } from "react";
-import type { CSSProperties, ElementType } from "react";
+import type { CSSProperties } from "react";
+
+const MOTION_TEXT_ELEMENTS = {
+  div: m.div,
+  h1: m.h1,
+  h2: m.h2,
+  h3: m.h3,
+  h4: m.h4,
+  h5: m.h5,
+  h6: m.h6,
+  p: m.p,
+  span: m.span,
+};
 
 export interface TextShimmerProps {
   children: string;
-  as?: ElementType;
+  as?: keyof typeof MOTION_TEXT_ELEMENTS;
   className?: string;
   duration?: number;
   spread?: number;
@@ -19,13 +31,13 @@ type ShimmerStyle = CSSProperties & {
 
 const ShimmerComponent = ({
   children,
-  as: Component = "p",
+  as = "p",
   className,
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
   const shouldReduceMotion = useReducedMotion();
-  const MotionComponent = useMemo(() => m.create(Component), [Component]);
+  const MotionComponent = MOTION_TEXT_ELEMENTS[as];
 
   const dynamicSpread = useMemo(() => (children?.length ?? 0) * spread, [children, spread]);
 
@@ -35,7 +47,6 @@ const ShimmerComponent = ({
       "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
   };
 
-  /* oxlint-disable react/static-components -- built from the `as` prop, memoized on it */
   return (
     <LazyMotion features={domAnimation} strict>
       <MotionComponent
@@ -57,7 +68,6 @@ const ShimmerComponent = ({
       </MotionComponent>
     </LazyMotion>
   );
-  /* oxlint-enable react/static-components */
 };
 
 export const Shimmer = memo(ShimmerComponent);

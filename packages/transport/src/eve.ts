@@ -1,4 +1,4 @@
-import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from "ai";
+import type { TextUIPart, UIDataTypes, UIMessage, UIMessagePart, UITools } from "ai";
 import { z } from "zod";
 
 import type { SpecialToolPart, StaticChatTransportInit, StaticTransportContext } from "./index.ts";
@@ -137,6 +137,24 @@ export type EveStreamEvent = (
 ) & { meta?: EveEventMeta };
 
 /**
+ * A message the handler keeps in a session's history: the user's text, or the
+ * parts `mockResponse` yielded for a turn, special tool parts included.
+ */
+export interface EveMessage<UI_MESSAGE extends UIMessage = UIMessage> {
+  id: string;
+  parts: (UI_MESSAGE["parts"][number] | TextUIPart | SpecialToolPart)[];
+  role: "assistant" | "user";
+}
+
+/** What `mockResponse` receives on the eve wire: the {@link EveMessage} history in place of the AI SDK's. */
+export interface EveTurnContext<UI_MESSAGE extends UIMessage = UIMessage> extends Omit<
+  StaticTransportContext<UI_MESSAGE>,
+  "messages"
+> {
+  messages: EveMessage<UI_MESSAGE>[];
+}
+
+/**
  * Everything the handler persists for one eve session. JSON-serializable so
  * stores can be backed by a database or KV in serverless deployments.
  */
@@ -145,8 +163,8 @@ export interface EveSessionRecord<UI_MESSAGE extends UIMessage = UIMessage> {
   continuationToken: string;
   /** Full NDJSON event log; the stream route serves slices of it (`startIndex` replay). */
   events: EveStreamEvent[];
-  /** Conversation history projected as `UIMessage`s, passed to `mockResponse` as context. */
-  messages: UI_MESSAGE[];
+  /** Conversation history, passed to `mockResponse` as context. */
+  messages: EveMessage<UI_MESSAGE>[];
   /** Session-monotonic counter for the `sequence` field on emitted events. */
   nextSequence: number;
   /** Number of completed turns; used to mint stable per-turn ids. */
@@ -190,16 +208,15 @@ const storedUiMessage = z.looseObject({
   role: z.string(),
 });
 
-const UI_MESSAGE_ROLES = {
+const EVE_MESSAGE_ROLES = {
   assistant: true,
-  system: true,
   user: true,
-} satisfies Record<UIMessage["role"], true>;
+} satisfies Record<EveMessage["role"], true>;
 
-const isStoredUiMessage = (
+const isStoredEveMessage = (
   message: z.infer<typeof storedUiMessage>,
-): message is UIMessage & z.infer<typeof storedUiMessage> =>
-  Object.hasOwn(UI_MESSAGE_ROLES, message.role);
+): message is EveMessage & z.infer<typeof storedUiMessage> =>
+  Object.hasOwn(EVE_MESSAGE_ROLES, message.role);
 
 const storedEveSessionRecord = z.looseObject({
   continuationToken: z.string(),
@@ -232,25 +249,19 @@ const isStoredEveStreamEvent = (
 ): event is EveStreamEvent & z.infer<typeof storedEveStreamEvent> =>
   Object.hasOwn(EVE_STREAM_EVENT_TYPES, event.type);
 
-interface BuiltUiMessage {
-  id: string;
-  parts: unknown[];
-  role: string;
-}
-
 export const parseEveSessionRecord = (value: JsonValue) => {
   const result = storedEveSessionRecord.safeParse(value);
 
   const valid =
     result.success &&
     result.data.events.every(isStoredEveStreamEvent) &&
-    result.data.messages.every(isStoredUiMessage);
+    result.data.messages.every(isStoredEveMessage);
 
   const record: EveSessionRecord | undefined = valid
     ? {
         continuationToken: result.data.continuationToken,
         events: result.data.events.filter(isStoredEveStreamEvent),
-        messages: result.data.messages.filter(isStoredUiMessage),
+        messages: result.data.messages.filter(isStoredEveMessage),
         nextSequence: result.data.nextSequence,
         turnCount: result.data.turnCount,
       }
@@ -276,7 +287,9 @@ export interface StaticEveHandlerInit<UI_MESSAGE extends UIMessage = UIMessage> 
    * and `step-start`. Parts with no eve representation (`file`, `source-*`,
    * `data-*`) throw so the issue is flagged instead of silently dropped.
    */
-  mockResponse: StaticChatTransportInit<UI_MESSAGE>["mockResponse"];
+  mockResponse: (
+    context: EveTurnContext<UI_MESSAGE>,
+  ) => ReturnType<StaticChatTransportInit<UI_MESSAGE>["mockResponse"]>;
   /** See {@link EveChunkDelayResolver}. */
   chunkDelayMs?: EveChunkDelayResolver;
   /**
@@ -767,10 +780,6 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
   const at = () => now().toISOString();
   const cors = init.cors ?? true;
 
-  const asUiMessage = (message: BuiltUiMessage) =>
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/require-safety-comment-for-type-assertion -- UI_MESSAGE is the caller's type parameter: nothing at runtime describes its metadata, data or tool types, so a message the handler builds can only be asserted to it
-    message as UI_MESSAGE;
-
   const corsHeaders = () => {
     const headers: Record<string, string> =
       cors === false
@@ -811,15 +820,15 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     const deliveryId = generateId("dlv");
     const isFirstTurn = record.turnCount === 0;
 
-    const userUiMessage = asUiMessage({
+    const userUiMessage: EveMessage<UI_MESSAGE> = {
       id: `${turnId}:user`,
       parts: [{ text: userMessage.text, type: "text" }],
       role: "user",
-    });
+    };
 
     const contextMessages = [...record.messages, userUiMessage];
 
-    const context: StaticTransportContext<UI_MESSAGE> = {
+    const context: EveTurnContext<UI_MESSAGE> = {
       id: sessionId,
       messageId: undefined,
       messages: contextMessages,
@@ -874,13 +883,11 @@ export const createStaticEveHandler = <UI_MESSAGE extends UIMessage = UIMessage>
     record.messages.push(userUiMessage);
 
     if (assistantParts.length > 0) {
-      record.messages.push(
-        asUiMessage({
-          id: `${turnId}:assistant`,
-          parts: assistantParts,
-          role: "assistant",
-        }),
-      );
+      record.messages.push({
+        id: `${turnId}:assistant`,
+        parts: assistantParts,
+        role: "assistant",
+      });
     }
 
     await sessionStore.set(sessionId, record);

@@ -15,7 +15,6 @@ import type {
   RefObject,
 } from "react";
 import {
-  Children,
   createContext,
   Fragment,
   useCallback,
@@ -70,6 +69,7 @@ import {
   SelectValue,
 } from "@repo/ui/components/select";
 import { cn } from "cn";
+import { countRenderedNodes } from "@repo/ui/lib/renders-content";
 
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string })[];
@@ -312,23 +312,27 @@ export const PromptInputProvider = ({
 
 const LocalAttachmentsContext = createContext<AttachmentsContext | null>(null);
 
+const BASE64_CHUNK_BYTES = 0x80_00;
+
+const blobToDataUrl = async (blob: Blob) => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+
+  const binary = Array.from({ length: Math.ceil(bytes.length / BASE64_CHUNK_BYTES) }, (_, index) =>
+    String.fromCodePoint(
+      ...bytes.subarray(index * BASE64_CHUNK_BYTES, (index + 1) * BASE64_CHUNK_BYTES),
+    ),
+  ).join("");
+
+  const mediaType = blob.type === "" ? "application/octet-stream" : blob.type;
+
+  return `data:${mediaType};base64,${btoa(binary)}`;
+};
+
 const convertBlobUrlToDataUrl = async (url: string) => {
   try {
     const response = await fetch(url);
-    const blob = await response.blob();
 
-    // oxlint-disable-next-line promise/avoid-new -- FileReader has no promise form
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.addEventListener("loadend", () => {
-        const { result } = reader;
-        resolve(result === null || result instanceof ArrayBuffer ? null : result);
-      });
-      reader.addEventListener("error", () => {
-        resolve(null);
-      });
-      reader.readAsDataURL(blob);
-    });
+    return await blobToDataUrl(await response.blob());
   } catch {
     return null;
   }
@@ -956,8 +960,7 @@ export const PromptInputButton = ({
   size,
   ...props
 }: PromptInputButtonProps) => {
-  // oxlint-disable-next-line react/no-react-children -- counts JSX children as React sees them (nested arrays flattened)
-  const newSize = size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
+  const newSize = size ?? (countRenderedNodes(props.children) > 1 ? "sm" : "icon-sm");
 
   return (
     <InputGroupButton

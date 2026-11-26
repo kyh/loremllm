@@ -17,10 +17,11 @@ export type DelayResolver<CHUNK> =
 type DelayFunction<CHUNK> = Exclude<DelayResolver<CHUNK>, number | [number, number]>;
 
 export const sleep = async (ms: number) => {
-  // oxlint-disable-next-line promise/avoid-new -- a timer has no promise form
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
+  const { promise, resolve } = Promise.withResolvers<undefined>();
+
+  setTimeout(resolve, ms);
+
+  await promise;
 };
 
 const toolPartSchema = z.object({

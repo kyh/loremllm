@@ -1,10 +1,10 @@
 "use client";
 
-import type { ComponentProps, HTMLAttributes } from "react";
-import type { BundledLanguage, ShikiTransformer } from "shiki";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
+import type { BundledLanguage, ThemedToken, TokensResult } from "shiki";
+import { createContext, Fragment, useContext, useEffect, useMemo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { codeToHtml } from "shiki";
+import { codeToTokens } from "shiki";
 
 import { Button } from "@repo/ui/components/button";
 import { cn } from "cn";
@@ -24,43 +24,83 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-const lineNumberTransformer: ShikiTransformer = {
-  line(node, line) {
-    node.children.unshift({
-      children: [{ type: "text", value: String(line) }],
-      properties: {
-        className: [
-          "inline-block",
-          "min-w-10",
-          "mr-4",
-          "text-right",
-          "select-none",
-          "text-muted-foreground",
-        ],
-      },
-      tagName: "span",
-      type: "element",
-    });
-  },
-  name: "line-numbers",
+const FONT_STYLE_ITALIC = 1;
+const FONT_STYLE_BOLD = 2;
+const FONT_STYLE_UNDERLINE = 4;
+const FONT_STYLE_STRIKETHROUGH = 8;
+
+const hasFontStyle = (fontStyle: number | undefined, flag: number) =>
+  fontStyle !== undefined && fontStyle > 0 && Math.floor(fontStyle / flag) % 2 === 1;
+
+const tokenStyle = (token: ThemedToken) => {
+  const decorations = [
+    hasFontStyle(token.fontStyle, FONT_STYLE_UNDERLINE) ? "underline" : "",
+    hasFontStyle(token.fontStyle, FONT_STYLE_STRIKETHROUGH) ? "line-through" : "",
+  ].filter((decoration) => decoration !== "");
+
+  const style: CSSProperties = {
+    color: token.color,
+    fontStyle: hasFontStyle(token.fontStyle, FONT_STYLE_ITALIC) ? "italic" : undefined,
+    fontWeight: hasFontStyle(token.fontStyle, FONT_STYLE_BOLD) ? "bold" : undefined,
+    textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
+  };
+
+  return style;
 };
 
-const highlightCode = async (code: string, language: BundledLanguage, showLineNumbers = false) => {
-  const transformers: ShikiTransformer[] = showLineNumbers ? [lineNumberTransformer] : [];
+const lineOffsets = (code: string) => {
+  const offsets: number[] = [];
+  let next = 0;
 
-  return await Promise.all([
-    codeToHtml(code, {
-      lang: language,
-      theme: "one-light",
-      transformers,
-    }),
-    codeToHtml(code, {
-      lang: language,
-      theme: "one-dark-pro",
-      transformers,
-    }),
+  for (const line of code.split("\n")) {
+    offsets.push(next);
+    next += line.length + 1;
+  }
+
+  return offsets;
+};
+
+const HighlightedCode = ({
+  code,
+  result,
+  showLineNumbers,
+}: {
+  code: string;
+  result: TokensResult;
+  showLineNumbers: boolean;
+}) => {
+  const offsets = lineOffsets(code);
+
+  return (
+    <pre style={{ backgroundColor: result.bg, color: result.fg }}>
+      <code>
+        {result.tokens.map((line, index) => (
+          <Fragment key={offsets[index] ?? code.length}>
+            {index > 0 && "\n"}
+            <span className="line">
+              {showLineNumbers && (
+                <span className="text-muted-foreground mr-4 inline-block min-w-10 text-right select-none">
+                  {index + 1}
+                </span>
+              )}
+              {line.map((token) => (
+                <span key={token.offset} style={tokenStyle(token)}>
+                  {token.content}
+                </span>
+              ))}
+            </span>
+          </Fragment>
+        ))}
+      </code>
+    </pre>
+  );
+};
+
+const highlightCode = async (code: string, language: BundledLanguage) =>
+  await Promise.all([
+    codeToTokens(code, { lang: language, theme: "one-light" }),
+    codeToTokens(code, { lang: language, theme: "one-dark-pro" }),
   ]);
-};
 
 export const CodeBlock = ({
   code,
@@ -70,19 +110,22 @@ export const CodeBlock = ({
   children,
   ...props
 }: CodeBlockProps) => {
-  const [html, setHtml] = useState<string>("");
-  const [darkHtml, setDarkHtml] = useState<string>("");
+  const [highlighted, setHighlighted] = useState<{
+    code: string;
+    dark: TokensResult;
+    light: TokensResult;
+  } | null>(null);
+
   const contextValue = useMemo(() => ({ code }), [code]);
 
   useEffect(() => {
     let cancelled = false;
 
     const highlight = async () => {
-      const [light, dark] = await highlightCode(code, language, showLineNumbers);
+      const [light, dark] = await highlightCode(code, language);
 
       if (!cancelled) {
-        setHtml(light);
-        setDarkHtml(dark);
+        setHighlighted({ code, dark, light });
       }
     };
 
@@ -91,9 +134,8 @@ export const CodeBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [code, language, showLineNumbers]);
+  }, [code, language]);
 
-  /* oxlint-disable react/no-danger -- Shiki escapes source code and returns trusted highlight markup */
   return (
     <CodeBlockContext.Provider value={contextValue}>
       <div
@@ -104,14 +146,24 @@ export const CodeBlock = ({
         {...props}
       >
         <div className="relative">
-          <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! overflow-hidden dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-          <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden overflow-hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm"
-            dangerouslySetInnerHTML={{ __html: darkHtml }}
-          />
+          <div className="[&>pre]:bg-background! [&>pre]:text-foreground! overflow-hidden dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm">
+            {highlighted && (
+              <HighlightedCode
+                code={highlighted.code}
+                result={highlighted.light}
+                showLineNumbers={showLineNumbers}
+              />
+            )}
+          </div>
+          <div className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden overflow-hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:text-sm">
+            {highlighted && (
+              <HighlightedCode
+                code={highlighted.code}
+                result={highlighted.dark}
+                showLineNumbers={showLineNumbers}
+              />
+            )}
+          </div>
           {rendersContent(children) && (
             <div className="absolute top-2 right-2 flex items-center gap-2">{children}</div>
           )}
@@ -119,7 +171,6 @@ export const CodeBlock = ({
       </div>
     </CodeBlockContext.Provider>
   );
-  /* oxlint-enable react/no-danger */
 };
 
 export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {

@@ -203,7 +203,7 @@ export const MessageBranchContent = ({ children, ...props }: MessageBranchConten
   ));
 };
 
-export type MessageBranchSelectorProps = HTMLAttributes<HTMLDivElement> & {
+export type MessageBranchSelectorProps = ComponentProps<typeof ButtonGroup> & {
   from: UIMessage["role"];
 };
 
