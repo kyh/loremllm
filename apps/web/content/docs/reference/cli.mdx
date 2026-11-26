@@ -1,0 +1,42 @@
+---
+title: CLI
+description: Every loremllm command and flag.
+---
+
+| Command                                | Description                                     |
+| -------------------------------------- | ----------------------------------------------- |
+| `loremllm init`                        | Create `loremllm.config.ts`                     |
+| `loremllm login`                       | Open a browser to authenticate, and save a key  |
+| `loremllm dev`                         | Run the local server                            |
+| `loremllm push [mock...]`              | Upload mocks and recordings                     |
+| `loremllm pull [mock...]`              | Download hosted mocks                           |
+| `loremllm record -- <command>`         | Run a command through the recording proxy       |
+| `loremllm test <mock> <prompt>`        | Send one prompt, print the match and the stream |
+| `loremllm logs <mock>`                 | Tail the request inspector                      |
+| `loremllm keys create --scope <scope>` | Create a project key                            |
+
+## loremllm dev
+
+| Flag         | Default              | Description                           |
+| ------------ | -------------------- | ------------------------------------- |
+| `--port`     | `4010`               | Port                                  |
+| `--config`   | `loremllm.config.ts` | Config path                           |
+| `--latency`  | mock setting         | `none`, `fast` or `real`              |
+| `--strict`   | off                  | Exit non-zero on an unmatched request |
+| `--no-watch` |                      | Don't reload on change                |
+
+## loremllm record
+
+| Flag         | Default  | Description                       |
+| ------------ | -------- | --------------------------------- |
+| `--mock`     | required | Mock to save recordings under     |
+| `--provider` | `openai` | `openai`, `anthropic` or `mcp`    |
+| `--mode`     | `auto`   | `record`, `replay` or `auto`      |
+| `--prune`    | off      | Delete recordings no request used |
+
+## Environment
+
+| Variable           | Description                                   |
+| ------------------ | --------------------------------------------- |
+| `LOREMLLM_KEY`     | Project key, used instead of `loremllm login` |
+| `LOREMLLM_API_URL` | API base, for self-hosted installs            |

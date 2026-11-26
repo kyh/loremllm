@@ -1,0 +1,31 @@
+---
+title: Request inspector
+description: See every request your code made, which scenario answered it, and what streamed back.
+---
+
+Open a mock's **Requests** tab to see its traffic live.
+
+Each request shows:
+
+- the endpoint format, model and client SDK
+- the normalised messages, tools and settings
+- every scenario above the match, with each condition marked pass or fail
+- the matched scenario and its rendered reply
+- every chunk, with its time offset
+- usage, cost and total duration
+
+## Filters
+
+Filter by scenario, status, conversation id, header or text in the prompt. **Unmatched** lists requests that hit no scenario, which is the fastest way to find prompts you forgot to mock.
+
+## From a request to a scenario
+
+**Create scenario** on any request pre-fills a scenario that matches its prompt, so a surprise request becomes a mocked one in two clicks.
+
+## Locally
+
+The local server serves the same inspector at `http://localhost:4010/_inspect`, and `loremllm logs <mock>` tails it in the terminal.
+
+## Retention
+
+Requests are kept for 7 days on the free plan and 30 days on team plans.

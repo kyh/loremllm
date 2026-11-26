@@ -1,0 +1,44 @@
+---
+title: REST API
+description: Manage projects, mocks and requests over HTTP.
+---
+
+Base URL: `https://api.loremllm.com/v1`. Authenticate with a [project key](/docs/platform/api-keys).
+
+## Mocks
+
+| Method   | Route                                    | Description                              |
+| -------- | ---------------------------------------- | ---------------------------------------- |
+| `GET`    | `/mocks`                                 | List mocks in the key's project          |
+| `POST`   | `/mocks`                                 | Create a mock                            |
+| `GET`    | `/mocks/:mock`                           | Get a mock and its scenarios             |
+| `PUT`    | `/mocks/:mock`                           | Replace a mock, publishing a new version |
+| `PATCH`  | `/mocks/:mock`                           | Update fields, publishing a new version  |
+| `DELETE` | `/mocks/:mock`                           | Delete a mock                            |
+| `GET`    | `/mocks/:mock/versions`                  | List versions                            |
+| `POST`   | `/mocks/:mock/versions/:version/restore` | Roll back                                |
+
+## Requests
+
+| Method | Route                       | Description                                                              |
+| ------ | --------------------------- | ------------------------------------------------------------------------ |
+| `GET`  | `/mocks/:mock/requests`     | List requests. Filter with `scenario`, `status`, `conversation`, `since` |
+| `GET`  | `/mocks/:mock/requests/:id` | One request with its match trace and chunks                              |
+
+## Conversations
+
+| Method   | Route                            | Description                       |
+| -------- | -------------------------------- | --------------------------------- |
+| `DELETE` | `/mocks/:mock/conversations/:id` | Reset turn counters and sequences |
+| `DELETE` | `/mocks/:mock/conversations`     | Reset every conversation          |
+
+## Example
+
+```bash
+curl https://api.loremllm.com/v1/mocks \
+  -H "authorization: Bearer $LOREMLLM_KEY" \
+  -H "content-type: application/json" \
+  -d '{"slug":"support-bot","model":"gpt-4.1","scenarios":[{"reply":{"type":"lorem","sentences":2}}]}'
+```
+
+The full contract is in [/openapi.json](/openapi.json).

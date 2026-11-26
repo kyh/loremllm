@@ -1,0 +1,86 @@
+---
+title: Quickstart
+description: Create a mock, give it a scenario and stream from it in five minutes.
+---
+
+## 1. Create a project
+
+Sign up at [loremllm.com](/auth/register). Your first project is created for you. Every project has a slug, like `acme`, and holds any number of mocks.
+
+## 2. Create a mock
+
+In the dashboard, choose **New mock** and name it `support-bot`. Or define it in code with the CLI:
+
+```bash
+npm install -D loremllm
+npx loremllm init
+```
+
+`init` writes a `loremllm.config.ts`:
+
+```ts title="loremllm.config.ts"
+import { defineConfig, mock, lorem, text, toolCall } from "loremllm";
+
+export default defineConfig({
+  project: "acme",
+  mocks: [
+    mock("support-bot", {
+      model: "gpt-4.1",
+      scenarios: [
+        {
+          when: { prompt: /refund/i },
+          reply: [toolCall("lookupOrder", { id: "A-1042" })],
+        },
+        {
+          when: { toolResult: "lookupOrder" },
+          reply: text("Done. $48 is on its way back to your card."),
+        },
+        { reply: lorem({ sentences: 2 }) },
+      ],
+    }),
+  ],
+});
+```
+
+Push it:
+
+```bash
+npx loremllm login
+npx loremllm push
+```
+
+## 3. Point your client at it
+
+Every mock has a base URL:
+
+```
+https://api.loremllm.com/m/support-bot
+```
+
+Use it in place of your provider's URL. Any key works for a public mock. Private mocks need a [project key](/docs/platform/api-keys).
+
+```ts
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  baseURL: "https://api.loremllm.com/m/support-bot/v1",
+  apiKey: process.env.LOREMLLM_KEY,
+});
+```
+
+```bash
+curl -N https://api.loremllm.com/m/support-bot/v1/chat/completions \
+  -H "authorization: Bearer $LOREMLLM_KEY" \
+  -H "content-type: application/json" \
+  -d '{"model":"gpt-4.1","stream":true,"messages":[{"role":"user","content":"Refund order A-1042"}]}'
+```
+
+## 4. Watch it answer
+
+Open the mock's **Requests** tab. Each call shows the request, the scenario that matched it, and every chunk that streamed back. See [Request inspector](/docs/platform/request-inspector).
+
+## Next
+
+- Learn how [matching](/docs/mocks/matching) picks a scenario.
+- Run the same mock with no network using the [local server](/docs/getting-started/local-development).
+- Write your first [agent test](/docs/guides/testing-agents).

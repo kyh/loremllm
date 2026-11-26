@@ -1,0 +1,26 @@
+---
+title: Errors
+description: Problem responses LoremLLM itself returns, as opposed to errors a scenario scripts.
+---
+
+Scripted errors from `error(...)` use each provider's own error shape. Errors from LoremLLM itself are `application/problem+json` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)):
+
+```json
+{
+  "type": "https://www.loremllm.com/docs/reference/errors#no-scenario-matched",
+  "title": "No scenario matched",
+  "status": 404,
+  "detail": "No scenario in support-bot matched the prompt \"cancel my order\"."
+}
+```
+
+| Type                    | Status | Meaning                                                    |
+| ----------------------- | ------ | ---------------------------------------------------------- |
+| `invalid-request`       | 400    | The body isn't valid for this endpoint                     |
+| `unauthorized`          | 401    | A private mock was called without a valid key              |
+| `forbidden`             | 403    | The key lacks the scope, or the mock is in another project |
+| `mock-not-found`        | 404    | No mock has this slug                                      |
+| `no-scenario-matched`   | 404    | The mock has no fallback and nothing matched               |
+| `reply-schema-mismatch` | 422    | A `json` reply doesn't fit the request's schema            |
+| `loremllm-rate-limit`   | 429    | A [platform limit](/docs/platform/limits) was hit          |
+| `internal`              | 500    | Something broke on our side                                |

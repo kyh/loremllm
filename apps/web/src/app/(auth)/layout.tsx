@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Logo } from "@repo/ui/components/logo";
 
-/** Forms, not content: kept out of search results (links on them are still followed). */
+import { StreamPreview } from "@/components/marketing/stream-preview";
+import { BrandMark } from "@/components/marketing/landing-sections";
+import { Smoke } from "@/components/marketing/smoke";
+
 export const metadata: Metadata = {
   description: "Sign in to or create a LoremLLM account.",
   robots: { follow: true, index: false },
@@ -14,24 +16,30 @@ interface LayoutProps {
 }
 
 const Layout = (props: LayoutProps) => (
-  <div className="relative container grid min-h-dvh flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
-    <div className="bg-muted relative hidden h-full flex-col px-8 py-4 text-white md:py-10 lg:flex dark:border-r">
-      <div className="absolute inset-0 bg-zinc-900" />
-      <Link className="relative z-20 flex items-center" href="/">
-        <Logo />
+  <div className="grid min-h-dvh grid-cols-1 gap-2 p-2 lg:grid-cols-2">
+    <div className="bg-muted relative hidden flex-col justify-between overflow-hidden rounded-3xl p-8 lg:flex">
+      <Smoke ground="muted" />
+      <Link href="/" className="text-foreground relative text-base font-medium">
+        <BrandMark />
       </Link>
-      <div className="relative z-20 mt-auto">
-        <blockquote className="space-y-2">
-          <p className="text-lg">
-            &ldquo;Aenean consectetur a enim ac posuere. Pellentesque vehicula semper blandit.
-            Aliquam maximus ligula quis risus porta, sit amet pulvinar mi elementum. Lorem ipsum
-            dolor sit amet, consectetur adipiscing elit.&rdquo;
+      <div className="relative flex flex-col gap-6">
+        <StreamPreview className="rounded-2xl" />
+        <div>
+          <p className="text-foreground text-2xl font-medium tracking-tight">
+            Mock any LLM in seconds
           </p>
-          <footer className="text-sm">Lorem Ipsum</footer>
-        </blockquote>
+          <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+            Scripted streams, tool calls and failures behind one base URL.
+          </p>
+        </div>
       </div>
     </div>
-    <div className="lg:p-8">{props.children}</div>
+    <div className="flex flex-col items-center justify-center p-6 lg:p-8">
+      <Link href="/" className="text-foreground mb-10 text-base font-medium lg:hidden">
+        <BrandMark />
+      </Link>
+      {props.children}
+    </div>
   </div>
 );
 

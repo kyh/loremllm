@@ -1,0 +1,50 @@
+---
+title: "@loremllm/mcp"
+description: A fake MCP server you configure in code. Run it over stdio or HTTP.
+---
+
+```bash
+npm install -D @loremllm/mcp
+```
+
+```ts title="mock-mcp.ts"
+import { createMockMcpServer } from "@loremllm/mcp";
+import { json, error } from "loremllm";
+import { z } from "zod";
+
+const server = createMockMcpServer({
+  name: "orders",
+  tools: {
+    lookupOrder: {
+      description: "Find an order by id",
+      input: z.object({ id: z.string() }),
+      scenarios: [
+        { when: { args: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
+        { reply: error("tool", { message: "Order not found" }) },
+      ],
+    },
+  },
+  resources: [
+    { uri: "docs://refund-policy", name: "Refund policy", text: "Refunds within 30 days." },
+  ],
+});
+
+await server.stdio();
+```
+
+## Transports
+
+| Method                    | Serves                                               |
+| ------------------------- | ---------------------------------------------------- |
+| `server.stdio()`          | stdio, for clients that spawn a command              |
+| `server.listen({ port })` | Streamable HTTP at `http://localhost:<port>/mcp`     |
+| `server.handler`          | A `(Request) => Response` function to mount anywhere |
+| `server.client()`         | An in-memory client transport, for tests             |
+
+## Assertions
+
+```ts
+server.calls; // [{ tool: "lookupOrder", args: { id: "A-1042" }, result: { ... } }]
+```
+
+The same definition can be pushed to the hosted API as a mock's `mcp` block. See the [MCP endpoint](/docs/endpoints/mcp).

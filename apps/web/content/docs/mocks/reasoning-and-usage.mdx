@@ -1,0 +1,35 @@
+---
+title: Reasoning and usage
+description: Stream thinking blocks, and report token usage and cost on every response.
+---
+
+## Reasoning
+
+```ts
+reply: [
+  reasoning("The user wants a refund. I should look up the order first."),
+  toolCall("lookupOrder", { id: "A-1042" }),
+];
+```
+
+Reasoning streams in each format's native shape: OpenAI reasoning summaries, Anthropic `thinking` blocks with a signature, and AI SDK `reasoning` parts. Clients that hide reasoning will hide it here too.
+
+## Usage
+
+Every response reports token usage. By default LoremLLM counts tokens in the request and the reply with the tokenizer for the reported model.
+
+Override it when a test needs exact numbers:
+
+```ts
+reply: [text("Done."), usage({ input: 1200, output: 18, cachedInput: 1000 })];
+```
+
+## Cost
+
+Usage includes a cost estimate based on the reported model's public price list. It appears in the inspector and in the AI SDK finish part's metadata. Set `pricing` on a mock to use your own rates:
+
+```ts
+mock("support-bot", { model: "gpt-4.1", pricing: { inputPerMillion: 2, outputPerMillion: 8 } });
+```
+
+Use it to test budget limits and cost dashboards without spending anything.

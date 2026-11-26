@@ -1,6 +1,16 @@
-import { Logo } from "@repo/ui/components/logo";
-
 import { JsonLd } from "@/components/json-ld";
+import { HomeOutline } from "@/components/marketing/home-outline";
+import {
+  AgentTests,
+  Capabilities,
+  Faq,
+  Features,
+  Hero,
+  Packages,
+  Scenarios,
+  Steps,
+} from "@/components/marketing/landing-sections";
+import { MarketingShell } from "@/components/marketing/marketing-shell";
 import {
   canonicalAlternates,
   homeOpenGraphVideos,
@@ -12,10 +22,6 @@ import { siteConfig } from "@/lib/site-config";
 
 import type { Metadata } from "next";
 
-import { DemoSections } from "./_components/demo-sections";
-import { HomeOutline } from "./_components/home-outline";
-import { SiteFooter } from "./_components/site-footer";
-
 export const metadata: Metadata = {
   alternates: canonicalAlternates("/"),
   openGraph: { ...pageOpenGraph("/"), videos: homeOpenGraphVideos },
@@ -24,16 +30,18 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <main className="flex min-h-dvh flex-col gap-10 px-8 pt-8">
+  <MarketingShell>
     <JsonLd node={buildHomeGraph()} />
-    <header className="flex flex-col gap-5">
-      <Logo />
-      <p>LoremLLM is a collection of tools that help developers mock LLM responses.</p>
-    </header>
     <HomeOutline />
-    <DemoSections />
-    <SiteFooter pageLinkDisplay="crawler-only" />
-  </main>
+    <Hero />
+    <Scenarios />
+    <Steps />
+    <Features />
+    <AgentTests />
+    <Capabilities />
+    <Packages />
+    <Faq />
+  </MarketingShell>
 );
 
 export default Page;

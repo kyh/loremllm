@@ -1,0 +1,28 @@
+---
+title: eve
+description: Host a mock over the eve agent protocol.
+---
+
+Every mock serves the eve protocol:
+
+```
+https://api.loremllm.com/m/<mock>/eve
+```
+
+## Starting a session
+
+```bash
+curl -N -X POST https://api.loremllm.com/m/support-bot/eve/v1/session \
+  -H "content-type: application/json" \
+  -d '{"message":"Refund order A-1042"}'
+```
+
+The response streams eve events: `session.started`, `turn.started`, message and tool events, then `turn.completed`. Send follow-up turns to `POST /eve/v1/session/:id/turn`. Each turn is matched against the mock's scenarios, with the eve session id as the [conversation id](/docs/mocks/conversations).
+
+## Failures
+
+`error(...)` replies map to `turn.failed`, and a mock that throws ends the session with `session.failed`, so you can test how your eve client recovers.
+
+## Self-hosting
+
+[@loremllm/eve](/docs/packages/eve) exposes the same handler as a function, `createStaticEveHandler`, that you can mount in any server that speaks `Request` and `Response`.

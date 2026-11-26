@@ -1,0 +1,43 @@
+---
+title: Error injection
+description: Rate limits, timeouts, malformed chunks and cut-off streams, on demand.
+---
+
+Real providers fail in ways that are hard to reproduce. A mock fails exactly when you ask it to.
+
+```ts
+{ when: { header: { "x-mock-fail": "rate" } }, reply: error(429, { retryAfter: 2 }) }
+```
+
+## Error types
+
+| Reply                                                        | What the client sees                                                  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `error(429, { retryAfter })`                                 | Rate limit with a `retry-after` header, in the provider's error shape |
+| `error(400 \| 401 \| 403 \| 404 \| 500 \| 503, { message })` | That status, in the provider's error shape                            |
+| `error("overloaded")`                                        | Anthropic `overloaded_error` (529), or a 503 on other formats         |
+| `error("timeout", { afterMs })`                              | The connection stays open, then closes without a response             |
+| `error("cut", { afterChunks })`                              | The stream starts, then ends without a finish event                   |
+| `error("malformed", { afterChunks })`                        | A chunk that isn't valid JSON                                         |
+| `error("content-filter")`                                    | A refusal with `finish_reason: "content_filter"`                      |
+| `error("length")`                                            | A reply that stops early with `finish_reason: "length"`               |
+
+## Mid-stream failures
+
+`afterChunks` lets the stream start normally and fail partway, which is where retry and resume logic usually breaks:
+
+```ts
+reply: [text("Here is a long answer that will never finish"), error("cut", { afterChunks: 3 })];
+```
+
+## Flaky on purpose
+
+`oneOf` with weights fails a share of requests, seeded so it fails the same requests on every run:
+
+```ts
+reply: oneOf([text("OK"), 9], [error(503), 1]);
+```
+
+## Error format
+
+Errors match each endpoint's real error body, so SDK error classes like `OpenAI.RateLimitError` and `Anthropic.RateLimitError` are raised as usual.

@@ -1,0 +1,14 @@
+{
+  "title": "Mocks",
+  "pages": [
+    "scenarios",
+    "matching",
+    "replies",
+    "streaming",
+    "tool-calls",
+    "conversations",
+    "structured-output",
+    "reasoning-and-usage",
+    "errors"
+  ]
+}

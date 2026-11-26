@@ -1,0 +1,35 @@
+---
+title: Playground endpoint
+description: A public endpoint that streams lorem ipsum or your markdown, with no account and no key.
+---
+
+`POST https://www.loremllm.com/api/chat` needs no mock at all. It is handy for a quick demo, a tutorial or a UI that needs any stream right now.
+
+The body has a `type` of `"lorem"`, `"markdown"` or `"chat"`. The response is an AI SDK UI message stream.
+
+```bash
+# generated lorem ipsum
+curl -N -X POST https://www.loremllm.com/api/chat \
+  -H "content-type: application/json" \
+  -d '{"type":"lorem","units":"sentences","count":3}'
+
+# your markdown, streamed word by word
+curl -N -X POST https://www.loremllm.com/api/chat \
+  -H "content-type: application/json" \
+  -d '{"type":"markdown","markdown":"# Hello\n\nStreamed word by word."}'
+
+# best semantic match from a public mock
+curl -N -X POST https://www.loremllm.com/api/chat \
+  -H "content-type: application/json" \
+  -d '{"type":"chat","collectionId":"<publicId>","messages":[{"role":"user","parts":[{"type":"text","text":"Hello"}]}]}'
+```
+
+## Request types
+
+| Type       | Fields                                                                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lorem`    | Optional `units` (`words`, `sentences`, `paragraphs`), `count`, sentence and paragraph bounds, `suffix`, and a custom `words` vocabulary                                     |
+| `markdown` | Required `markdown`, streamed back as-is in word-sized chunks                                                                                                                |
+| `chat`     | Required `collectionId` and AI SDK `messages`. The last user message is matched semantically. The finish part's metadata carries the matched item's id, title and similarity |
+
+The full contract is in [/openapi.json](/openapi.json). Errors are `application/problem+json`, see [Errors](/docs/reference/errors).

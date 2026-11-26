@@ -1,0 +1,51 @@
+---
+title: Vercel AI SDK
+description: A UI message stream endpoint for useChat, plus provider routes for generateText and streamText.
+---
+
+There are two ways to use a mock with the AI SDK.
+
+## useChat
+
+Every mock serves an AI SDK UI message stream at:
+
+```
+POST https://api.loremllm.com/m/<mock>/api/chat
+```
+
+Point `useChat` at it with the default transport:
+
+```tsx
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+
+const { messages, sendMessage } = useChat({
+  transport: new DefaultChatTransport({
+    api: "https://api.loremllm.com/m/support-bot/api/chat",
+  }),
+});
+```
+
+The stream carries text, reasoning, tool input and output parts, sources and message metadata. [Resolved tool calls](/docs/mocks/tool-calls) render as finished tool parts. The finish part's metadata includes `scenario`, `usage` and `cost`.
+
+CORS is open on this route, so browser apps on any origin can call it.
+
+## generateText and streamText
+
+The AI SDK's OpenAI and Anthropic providers work with a custom base URL:
+
+```ts
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText } from "ai";
+
+const loremllm = createOpenAI({
+  baseURL: "https://api.loremllm.com/m/support-bot/v1",
+  apiKey: process.env.LOREMLLM_KEY,
+});
+
+const result = streamText({ model: loremllm("gpt-4.1"), prompt: "Refund order A-1042" });
+```
+
+## No network at all
+
+[@loremllm/ai-sdk](/docs/packages/ai-sdk) gives you a chat transport and a language model that run the mock in the browser or in your test process.

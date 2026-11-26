@@ -1,0 +1,34 @@
+---
+title: Overview
+description: Every LoremLLM package, what it mocks or records, and when to reach for it.
+---
+
+The hosted API covers most needs. Packages run the same mocks inside your process, with no network, and record real traffic into new mocks.
+
+| Package                                           | Use it to                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------- |
+| [`loremllm`](/docs/packages/cli)                  | Define mocks in code, run the local server, push and pull           |
+| [`@loremllm/ai-sdk`](/docs/packages/ai-sdk)       | Stream mocks into `useChat`, or use one as an AI SDK language model |
+| [`@loremllm/eve`](/docs/packages/eve)             | Host a mock over the eve agent protocol                             |
+| [`@loremllm/openai`](/docs/packages/openai)       | Run a mock behind the OpenAI SDK, in process                        |
+| [`@loremllm/anthropic`](/docs/packages/anthropic) | Run a mock behind the Anthropic SDK, in process                     |
+| [`@loremllm/mcp`](/docs/packages/mcp)             | Run a fake MCP server over stdio or HTTP                            |
+| [`@loremllm/record`](/docs/packages/record)       | Record real LLM and MCP traffic, replay it as a mock                |
+| [`@loremllm/test`](/docs/packages/test)           | Set up scenarios in tests and assert on what your code did          |
+
+## Shared building blocks
+
+Every package accepts the same mock definition. Reply builders like `text`, `toolCall` and `error` come from `loremllm` and work everywhere:
+
+```ts
+import { mock, text, toolCall } from "loremllm";
+
+export const supportBot = mock("support-bot", {
+  scenarios: [
+    { when: { prompt: /refund/i }, reply: toolCall("lookupOrder", { id: "A-1042" }) },
+    { reply: text("How can I help?") },
+  ],
+});
+```
+
+Pass `supportBot` to `@loremllm/openai`, `@loremllm/ai-sdk` or `@loremllm/test`, or push it to the hosted API with the CLI. Or pass a slug like `"support-bot"` and the package pulls the hosted mock for you.

@@ -6,7 +6,7 @@
     "jsx": "preserve",
     "allowImportingTsExtensions": true,
     "paths": {
-      "@/.source": ["./.source/index.ts"],
+      "@/.source/*": ["./.source/*"],
       "@/*": ["./src/*"],
       "@loremllm/ai-sdk": ["../../packages/ai-sdk/src/index.ts"],
       "@loremllm/ai-sdk/copy-messages-to-clipboard": [

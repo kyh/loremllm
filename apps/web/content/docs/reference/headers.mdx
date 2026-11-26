@@ -1,0 +1,25 @@
+---
+title: Headers
+description: Request headers that control a mock, and response headers that explain it.
+---
+
+## Request headers
+
+| Header                    | Effect                                                |
+| ------------------------- | ----------------------------------------------------- |
+| `x-loremllm-conversation` | Sets the [conversation id](/docs/mocks/conversations) |
+| `x-loremllm-latency`      | `none`, `fast` or `real` stream timing                |
+| `x-loremllm-seed`         | Overrides the seed for random replies                 |
+| `x-loremllm-version`      | Pins a mock version                                   |
+| `x-loremllm-scenario`     | Forces a scenario by name, skipping matching          |
+
+Any other header can be matched with `when: { header }`.
+
+## Response headers
+
+| Header                  | Value                                                                   |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `x-loremllm-scenario`   | Name or index of the matched scenario                                   |
+| `x-loremllm-request-id` | Id to look up in the inspector                                          |
+| `x-loremllm-version`    | Mock version that answered                                              |
+| `x-loremllm-limit`      | Present only when a platform limit, not a scenario, caused the response |

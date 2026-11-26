@@ -1,0 +1,4 @@
+{
+  "title": "Packages",
+  "pages": ["index", "cli", "ai-sdk", "eve", "openai", "anthropic", "mcp", "record", "test"]
+}

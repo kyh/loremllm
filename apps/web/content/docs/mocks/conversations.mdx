@@ -1,0 +1,48 @@
+---
+title: Conversations
+description: Match on turns and play replies in order across a conversation.
+---
+
+Many agent bugs only show up on the second or third turn. Conversations let a mock change its answer as a chat goes on.
+
+## Conversation id
+
+LoremLLM groups requests into a conversation by, in order:
+
+1. the `x-loremllm-conversation` header
+2. the AI SDK chat `id`, or the eve session id
+3. a hash of the system prompt and first user message
+
+Send the header in tests when you want full control.
+
+## Turn matching
+
+```ts
+scenarios: [
+  { when: { turn: 1 }, reply: text("What's your order number?") },
+  { when: { turn: 2, prompt: /A-\d+/ }, reply: toolCall("lookupOrder", { id: "{{match.0}}" }) },
+];
+```
+
+A turn is one user message. Tool results don't start a new turn.
+
+## Sequences
+
+`sequence` returns its next item each time the scenario matches in the same conversation:
+
+```ts
+{
+  when: { prompt: "joke" },
+  reply: sequence(
+    text("Why did the mock cross the road?"),
+    text("To get to the other endpoint."),
+    text("I'm out of jokes."),
+  ),
+}
+```
+
+After the last item the sequence repeats the last one. Use `sequence(..., { loop: true })` to start over.
+
+## Resetting
+
+Conversation state lives for 24 hours. Reset it with `DELETE /v1/mocks/:mock/conversations/:id` from the [REST API](/docs/reference/rest-api), or `llm.reset()` in [@loremllm/test](/docs/packages/test).

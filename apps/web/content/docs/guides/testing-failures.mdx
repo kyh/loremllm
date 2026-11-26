@@ -1,0 +1,50 @@
+---
+title: Testing failures
+description: Prove your retries, timeouts and fallbacks work before production finds out.
+---
+
+## Retries on rate limits
+
+```ts
+test("retries after a 429", async () => {
+  const llm = await mockLLM();
+  llm.on({ turn: 1 }).reply(sequence(error(429, { retryAfter: 1 }), text("OK")));
+
+  const answer = await agent.run("Hello", { baseURL: `${llm.url}/v1` });
+
+  expect(answer).toBe("OK");
+  expect(llm).toHaveRequestCount(2);
+});
+```
+
+## Streams that die halfway
+
+```ts
+llm
+  .on(/report/)
+  .reply([text("Here is part one of the report and"), error("cut", { afterChunks: 4 })]);
+```
+
+Check that the UI shows a retry action and doesn't save a half answer as final.
+
+## Timeouts
+
+```ts
+llm.on(/slow/).reply(error("timeout", { afterMs: 30_000 }));
+```
+
+Run with fake timers to keep the test fast.
+
+## Bad tool calls
+
+Models sometimes call a tool that doesn't exist, or with arguments that don't fit its schema:
+
+```ts
+llm.on(/refund/).toolCall("refundd", { id: 42 });
+```
+
+Your agent should return a tool error to the model rather than crash.
+
+## Refusals and length limits
+
+`error("content-filter")` and `error("length")` cover the two finish reasons UIs most often forget.

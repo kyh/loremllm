@@ -1,0 +1,53 @@
+---
+title: Local development
+description: Run your mocks on your machine with one command. Same scenarios, zero network.
+---
+
+The CLI runs a local LoremLLM server from your `loremllm.config.ts`. It serves every endpoint the hosted API does.
+
+```bash
+npx loremllm dev
+```
+
+```
+LoremLLM dev server
+  support-bot   http://localhost:4010/m/support-bot
+  docs-agent    http://localhost:4010/m/docs-agent
+  inspector     http://localhost:4010/_inspect
+Watching loremllm.config.ts
+```
+
+Point your client at `http://localhost:4010/m/<slug>`. Edit the config and the server reloads.
+
+## Pulling hosted mocks
+
+Mocks you built in the dashboard can run locally too:
+
+```bash
+npx loremllm pull
+```
+
+`pull` writes them to `loremllm/mocks/*.json`. The dev server loads both the config file and that folder.
+
+## Options
+
+| Flag         | Default              | What it does                                     |
+| ------------ | -------------------- | ------------------------------------------------ |
+| `--port`     | `4010`               | Port to listen on                                |
+| `--config`   | `loremllm.config.ts` | Config file to load                              |
+| `--no-watch` |                      | Disable reload on change                         |
+| `--latency`  | mock setting         | Override stream timing: `none`, `fast` or `real` |
+| `--strict`   |                      | Exit non-zero when a request matches no scenario |
+
+`--latency none` streams every chunk immediately. Use it in CI.
+
+## Environment variable
+
+Most clients read a base URL from the environment. Set it once:
+
+```bash
+OPENAI_BASE_URL=http://localhost:4010/m/support-bot/v1
+ANTHROPIC_BASE_URL=http://localhost:4010/m/support-bot
+```
+
+See the [CLI reference](/docs/reference/cli) for every command.

@@ -1,0 +1,22 @@
+---
+title: "@loremllm/anthropic"
+description: Run a mock behind the Anthropic SDK, in process.
+---
+
+```bash
+npm install -D @loremllm/anthropic
+```
+
+```ts
+import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicMock } from "@loremllm/anthropic";
+import { supportBot } from "./mocks";
+
+const mock = createAnthropicMock(supportBot);
+
+const anthropic = new Anthropic({ apiKey: "test", fetch: mock.fetch });
+```
+
+It supports the Messages API with streaming, tool use, extended thinking and token counting, the same as the [Anthropic endpoint](/docs/endpoints/anthropic).
+
+`mock.requests` and `mock.reset()` work as in [@loremllm/openai](/docs/packages/openai).

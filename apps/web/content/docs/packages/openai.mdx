@@ -1,0 +1,42 @@
+---
+title: "@loremllm/openai"
+description: Run a mock behind the OpenAI SDK, in process.
+---
+
+```bash
+npm install -D @loremllm/openai
+```
+
+`createOpenAIMock` returns a `fetch` that answers OpenAI requests from a mock. Pass it to the SDK and nothing touches the network.
+
+```ts
+import OpenAI from "openai";
+import { createOpenAIMock } from "@loremllm/openai";
+import { supportBot } from "./mocks";
+
+const mock = createOpenAIMock(supportBot);
+
+const openai = new OpenAI({ apiKey: "test", fetch: mock.fetch });
+```
+
+It supports every route the [OpenAI endpoint](/docs/endpoints/openai) does: Chat Completions, Responses, Embeddings and Models.
+
+## Inspecting calls
+
+```ts
+mock.requests; // every request, parsed
+mock.requests.at(-1)?.scenario; // "refund"
+mock.reset(); // clear requests and conversation state
+```
+
+## Hosted mocks
+
+Pass a slug and a key to load a hosted mock once at startup:
+
+```ts
+const mock = await createOpenAIMock("support-bot", { key: process.env.LOREMLLM_KEY });
+```
+
+## With other libraries
+
+Anything built on the OpenAI SDK accepts a custom `fetch`, including LangChain's `ChatOpenAI` and the AI SDK's `createOpenAI`.
