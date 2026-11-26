@@ -8,9 +8,9 @@ import { EMAIL_OFF_WARNING, emailModeOf, sendEmail } from "./send-email";
 
 const FROM = "LoremLLM <hello@loremllm.example>";
 
-const RESET = {
-  subject: "Reset your password",
-  text: "Click the link to reset your password: http://localhost:3000/reset?token=abc",
+const CODE = {
+  subject: "Your sign-in code",
+  text: "Your sign-in code is 482913. It expires in 5 minutes.",
   to: "dev@loremllm.local",
 };
 
@@ -55,7 +55,7 @@ describe("sendEmail", () => {
     t.after(() => server.close());
     const { port } = z.object({ port: z.number() }).parse(server.address());
 
-    const outcome = await sendEmail(RESET, {
+    const outcome = await sendEmail(CODE, {
       apiKey: "re_test",
       endpoint: `http://127.0.0.1:${port}/emails`,
       from: FROM,
@@ -65,26 +65,26 @@ describe("sendEmail", () => {
     assert.equal(outcome, "sent");
     assert.equal(received.length, 1);
     assert.equal(received[0]?.authorization, "Bearer re_test");
-    assert.deepEqual(JSON.parse(received[0]?.body ?? ""), { ...RESET, from: FROM });
+    assert.deepEqual(JSON.parse(received[0]?.body ?? ""), { ...CODE, from: FROM });
   });
 
-  test("writes the mail, link included, to the log outside production", async (t) => {
+  test("writes the mail, code included, to the log outside production", async (t) => {
     const info = t.mock.method(console, "info");
 
-    assert.equal(await sendEmail(RESET, { kind: "log" }), "logged");
+    assert.equal(await sendEmail(CODE, { kind: "log" }), "logged");
     const logged = JSON.stringify(info.mock.calls);
     assert.ok(logged.includes("dev@loremllm.local"));
-    assert.ok(logged.includes("token=abc"));
+    assert.ok(logged.includes("482913"));
   });
 
-  test("logs neither the link nor the address in production without a key", async (t) => {
+  test("logs neither the code nor the address in production without a key", async (t) => {
     const info = t.mock.method(console, "info");
     const warn = t.mock.method(console, "warn");
 
-    assert.equal(await sendEmail(RESET, { kind: "off" }), "off");
+    assert.equal(await sendEmail(CODE, { kind: "off" }), "off");
     assert.equal(info.mock.callCount(), 0);
     const warned = JSON.stringify(warn.mock.calls);
-    assert.ok(!warned.includes("token=abc"));
+    assert.ok(!warned.includes("482913"));
     assert.ok(!warned.includes("dev@loremllm.local"));
     assert.match(EMAIL_OFF_WARNING, /RESEND_API_KEY/u);
   });

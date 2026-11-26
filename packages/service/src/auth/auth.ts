@@ -5,7 +5,8 @@ import { session as sessionSchema, user as userSchema } from "@repo/db/drizzle-s
 import { betterAuth } from "better-auth";
 // WARNING: not `better-auth/adapters/drizzle`, which reads `db._.fullSchema`, gone in drizzle 1.0.
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
-import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
+import { APIError, createAuthMiddleware, formCsrfMiddleware } from "better-auth/api";
+import { admin, emailOTP, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
 import { EMAIL_MODE, EMAIL_OFF_WARNING, sendEmail } from "../email/send-email";
 import { env } from "../env";
@@ -71,6 +72,20 @@ const backfillActiveOrganization = async (userId: string, organizationId: string
   }
 };
 
+// WARNING: better-auth checks no origin on a code's sign-in and answers success when its sender throws.
+const guardSignInCodes = createAuthMiddleware(async (ctx) => {
+  if (ctx.path === "/sign-in/email-otp") {
+    await formCsrfMiddleware(ctx);
+  }
+
+  if (ctx.path === "/email-otp/send-verification-otp" && !sendsEmail) {
+    throw APIError.from("SERVICE_UNAVAILABLE", {
+      code: "EMAIL_DISABLED",
+      message: "Sign-in by email is unavailable: this site sends no email.",
+    });
+  }
+});
+
 export const auth = betterAuth({
   advanced: {
     defaultCookieAttributes: {
@@ -82,6 +97,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),
+  hooks: { before: guardSignInCodes },
   databaseHooks: {
     session: {
       create: {
@@ -97,18 +113,6 @@ export const auth = betterAuth({
       },
     },
   },
-  emailAndPassword: {
-    enabled: true,
-    sendResetPassword: sendsEmail
-      ? async ({ user, url }) => {
-          await sendEmail({
-            subject: "Reset your password",
-            text: `Click the link to reset your password: ${url}`,
-            to: user.email,
-          });
-        }
-      : undefined,
-  },
   plugins: [
     oAuthProxy({
       currentURL: baseUrl,
@@ -119,6 +123,19 @@ export const auth = betterAuth({
           : baseUrl,
     }),
     organization(),
+    emailOTP({
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type !== "sign-in" || !sendsEmail) {
+          return;
+        }
+
+        await sendEmail({
+          subject: "Your sign-in code",
+          text: `Your sign-in code is ${otp}. It expires in 5 minutes. If you didn't ask for it, ignore this email.`,
+          to: email,
+        });
+      },
+    }),
     admin(),
     ...(emulatorUrl !== undefined && emulatorUrl !== ""
       ? [

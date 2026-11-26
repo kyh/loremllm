@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "TURSO_DATABASE_URL=http://127.0.0.1:8080 node --import tsx --test 'src/**/*.test.ts'",
     "seed": "pnpm with-env tsx scripts/seed.ts",
+    "sign-in-code": "pnpm --silent with-env tsx scripts/sign-in-code.ts",
     "seed:remote": "dotenv -e ../../.env.production.local -- tsx scripts/seed.ts",
     "with-env": "dotenv -e ../../.env --",
     "backfill:vectors": "pnpm with-env tsx scripts/backfill-vectors.ts"

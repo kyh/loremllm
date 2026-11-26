@@ -16,7 +16,7 @@ interface PageProps {
 const Form = async ({ searchParams }: PageProps) => {
   const { next } = await searchParams;
 
-  return <AuthForm type="register" nextPath={safeNextPath(next)} />;
+  return <AuthForm nextPath={safeNextPath(next)} />;
 };
 
 const Page = ({ searchParams }: PageProps) => (

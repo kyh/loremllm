@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { styleText } from "node:util";
 import { createORPCClient } from "@orpc/client";
@@ -10,7 +11,6 @@ const BASE_URL = (
 ).replace(/\/$/u, "");
 
 const EMAIL = "dev@loremllm.local";
-const PASSWORD = "password";
 
 const deadline = () => AbortSignal.timeout(15_000);
 
@@ -89,9 +89,14 @@ const waitForServer = async () => {
   await pollHealth(performance.now(), 0, "no response at all");
 };
 
+const mintSignInCode = () =>
+  execFileSync("pnpm", ["sign-in-code", EMAIL], { encoding: "utf-8" }).trim();
+
 const signIn = async () => {
-  const response = await fetch(url("/api/auth/sign-in/email"), {
-    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  const otp = mintSignInCode();
+
+  const response = await fetch(url("/api/auth/sign-in/email-otp"), {
+    body: JSON.stringify({ email: EMAIL, otp }),
     headers: { ...BROWSER_HEADERS, "content-type": "application/json" },
     method: "POST",
     signal: deadline(),

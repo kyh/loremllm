@@ -10,6 +10,7 @@
     "db:push": "pnpm -F db push",
     "db:push-remote": "pnpm -F db push:remote",
     "db:seed": "pnpm -F @repo/service seed",
+    "sign-in-code": "pnpm --silent -F @repo/service sign-in-code",
     "db:start": "pnpm -F db db",
     "dev": "turbo watch db studio dev --continue",
     "dev:web": "turbo watch dev --filter=@repo/web --continue",
