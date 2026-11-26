@@ -54,6 +54,7 @@ yarn-error.log*
 .branches
 .temp
 local.*
+turso-dev.log
 .superset
 
 # claude
