@@ -1,0 +1,62 @@
+---
+title: Tool calls
+description: Script tool calls, their arguments and results, across multi-turn agent loops.
+---
+
+`toolCall(name, args, result?)` streams a tool call with the arguments you give.
+
+```ts
+reply: toolCall("lookupOrder", { id: "A-1042" });
+```
+
+## Two kinds of tool flows
+
+**Client-executed tools.** This is how the OpenAI and Anthropic APIs work. The mock ends its response with the tool call (`finish_reason: "tool_calls"`, `stop_reason: "tool_use"`). Your agent runs the tool and sends the result back in the next request. A second scenario matches that result:
+
+```ts
+scenarios: [
+  { when: { prompt: /refund/i }, reply: toolCall("lookupOrder", { id: "A-1042" }) },
+  {
+    when: { toolResult: "lookupOrder" },
+    reply: toolCall("refund", { id: "A-1042", amount: "{{toolResult.total}}" }),
+  },
+  { when: { toolResult: "refund" }, reply: text("Done. $48 is on its way back.") },
+];
+```
+
+This tests your real tool code. The mock only decides what the model asks for.
+
+**Resolved tools.** Pass a `result` and the mock streams the call and its output together. Use this for UI work, where you want a tool card to render without running anything:
+
+```ts
+reply: [
+  toolCall("getWeather", { city: "Lisbon" }, { tempC: 21, sky: "clear" }),
+  text("It's 21°C and clear in Lisbon."),
+];
+```
+
+Resolved results stream as AI SDK `tool-output-available` parts. On provider endpoints, which have no way to carry a result, `result` is ignored.
+
+## Parallel calls
+
+An array of tool calls in one reply streams them as parallel calls in one message:
+
+```ts
+reply: [toolCall("getWeather", { city: "Lisbon" }), toolCall("getWeather", { city: "Porto" })];
+```
+
+## Arguments from the request
+
+Arguments are templates, so they can read regex groups, earlier tool results and headers:
+
+```ts
+toolCall("getWeather", { city: "{{match.city}}" });
+```
+
+## Tool errors
+
+`toolCall(name, args, { error: "Order not found" })` streams a failed tool result for resolved flows.
+
+## MCP
+
+The same tool definitions can be served as a fake MCP server. See [MCP endpoint](/docs/endpoints/mcp) and [@loremllm/mcp](/docs/packages/mcp).

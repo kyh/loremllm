@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "index",
+    "---Get started---",
+    "...getting-started",
+    "---Mocks---",
+    "...mocks",
+    "---Endpoints---",
+    "...endpoints",
+    "---Packages---",
+    "...packages",
+    "---Guides---",
+    "...guides",
+    "---Platform---",
+    "...platform",
+    "---Reference---",
+    "...reference"
+  ]
+}

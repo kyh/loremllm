@@ -189,11 +189,11 @@ export const aboutPage: ProsePage = {
     },
     {
       kind: "paragraph",
-      text: "The `@loremllm/transport` package plugs into the Vercel AI SDK's `useChat` and streams whatever message parts you describe — text, reasoning, tool calls — with realistic chunk timing and no network. The hosted platform does the same over HTTP: record input/output pairs in a collection, and the API answers each incoming question with the closest stored output, matched by embedding similarity.",
+      text: "Today it is a mock LLM API. You describe a mock: which requests it should recognise and what it should answer, from plain text to reasoning, tool calls, structured output and failures. LoremLLM serves that mock behind OpenAI, Anthropic, Vercel AI SDK, MCP and eve compatible endpoints, so your code talks to it the way it talks to a real provider. You change a base URL, nothing else.",
     },
     {
       kind: "paragraph",
-      text: "It is useful for prototyping an AI product before the backend is ready, for deterministic end-to-end tests, for demos where you need to control exactly what appears on screen, and for teaching without an API bill.",
+      text: "It is built for deterministic tests of agent code, for failures you can trigger on demand, for prototyping chat UIs before the backend exists, and for demos that never go off script. The same mocks run in the hosted API, on a local server, or inside your test process through the npm packages.",
     },
     {
       kind: "paragraph",
@@ -205,7 +205,7 @@ export const aboutPage: ProsePage = {
         {
           href: "/docs",
           label: "Developer docs",
-          text: "the API and the transport, with examples",
+          text: "mocks, endpoints, packages and guides",
         },
         {
           href: "/auth/register",

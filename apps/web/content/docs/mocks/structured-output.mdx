@@ -1,0 +1,35 @@
+---
+title: Structured output
+description: Return JSON that fits the schema the request asked for.
+---
+
+When a request asks for structured output (OpenAI `response_format`, Anthropic tool-forced output, AI SDK `generateObject` or `streamObject`), reply with `json`.
+
+## A fixed value
+
+```ts
+{
+  when: { schema: "invoice" },
+  reply: json({ number: "INV-001", total: 48, currency: "USD" }),
+}
+```
+
+The value is checked against the request's schema. If it doesn't fit, the mock answers with a `reply-schema-mismatch` problem so the bug shows up in your mock, not in production.
+
+## Generated from the schema
+
+```ts
+reply: json({ schema: true });
+```
+
+LoremLLM builds a value that fits the request's JSON schema: required fields filled, enums respected, string formats like `email` and `date-time` honoured. Values are seeded, so the same request gets the same object.
+
+Mix fixed and generated fields:
+
+```ts
+reply: json({ schema: true, values: { currency: "USD" } });
+```
+
+## Streaming objects
+
+Streamed structured output arrives as partial JSON, chunked by key, so `streamObject` and partial parsers see the object grow realistically.

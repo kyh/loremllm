@@ -1,0 +1,75 @@
+---
+title: "@loremllm/ai-sdk"
+description: A chat transport for useChat and a language model for generateText and streamText, both backed by a mock.
+---
+
+```bash
+npm install @loremllm/ai-sdk
+```
+
+## Chat transport
+
+`StaticChatTransport` plugs into `useChat` and streams the parts you yield. Nothing leaves the browser.
+
+```tsx
+import { useChat } from "@ai-sdk/react";
+import { StaticChatTransport } from "@loremllm/ai-sdk";
+
+const transport = new StaticChatTransport({
+  chunkDelayMs: [20, 50],
+  async *mockResponse({ messages }) {
+    yield { type: "reasoning", text: "Checking the weather tool." };
+    yield {
+      type: "tool-getWeather",
+      toolCallId: "call_1",
+      state: "output-available",
+      input: { city: "Lisbon" },
+      output: { tempC: 21, sky: "clear" },
+    };
+    yield { type: "text", text: "It's 21°C and clear in Lisbon." };
+  },
+});
+
+const { messages, sendMessage } = useChat({ transport });
+```
+
+### Options
+
+| Option                  | What it does                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `mockResponse(context)` | Async generator that yields UI message parts. `context` has `id`, `messages`, `trigger`, `messageId` and `requestMetadata` |
+| `chunkDelayMs`          | A number, a `[min, max]` range, or a function per chunk                                                                    |
+| `autoChunkText`         | Split text by word (`true`), not at all (`false`), or by a RegExp                                                          |
+| `autoChunkReasoning`    | The same, for reasoning parts                                                                                              |
+
+## From a mock definition
+
+Skip the generator and use scenarios:
+
+```ts
+import { mockTransport } from "@loremllm/ai-sdk";
+import { supportBot } from "./mocks";
+
+const transport = mockTransport(supportBot);
+```
+
+## Language model
+
+`mockModel` is an AI SDK `LanguageModel`, so `generateText`, `streamText`, `generateObject` and agents run against a mock:
+
+```ts
+import { streamText } from "ai";
+import { mockModel } from "@loremllm/ai-sdk";
+
+const result = streamText({
+  model: mockModel(supportBot),
+  prompt: "Refund order A-1042",
+  tools: { lookupOrder, refund },
+});
+```
+
+Tools passed to `streamText` run for real. The mock decides which ones the model calls.
+
+## Copy as test fixture
+
+`copyMessagesToClipboard(messages)` (from `@loremllm/ai-sdk/copy-messages-to-clipboard`) copies a live chat as a ready-to-paste `mockResponse`, so a conversation you saw in the browser becomes a fixture.

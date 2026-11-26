@@ -1,5 +1,7 @@
 import { siteConfig } from "@/lib/site-config";
 
+import type { ProseListItem } from "./site-pages";
+
 import { pageLinks, renderList, termsLink } from "./markdown";
 import {
   agentEndpoints,
@@ -16,7 +18,7 @@ import {
  * The when-to-use guidance is deliberately in the pre-H2 block rather than
  * under its own `##` — the spec reserves H2 sections for link lists.
  */
-export const renderLlmsTxt = () => {
+export const renderLlmsTxt = (docsPages: ProseListItem[] = []) => {
   const lines = [
     `# ${siteConfig.name}`,
     "",
@@ -36,6 +38,7 @@ export const renderLlmsTxt = () => {
         label: "API reference",
         text: "POST /api/chat request types, streaming format, errors, eve endpoint",
       },
+      ...docsPages,
       { href: "/openapi.json", label: "OpenAPI 3.1 spec", text: "the /api/chat contract" },
       {
         href: `${siteConfig.repository}/blob/main/packages/transport/README.md`,

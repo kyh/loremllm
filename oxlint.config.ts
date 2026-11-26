@@ -13,6 +13,7 @@ export default defineConfig({
     ...(core.ignorePatterns ?? []),
     "dist-electron",
     ".wxt",
+    ".source",
     ".claude",
     ".codex",
     ".superset",

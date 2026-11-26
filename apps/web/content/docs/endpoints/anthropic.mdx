@@ -1,0 +1,42 @@
+---
+title: Anthropic
+description: The Messages API, compatible with the Anthropic SDK.
+---
+
+Base URL: `https://api.loremllm.com/m/<mock>`
+
+```ts
+import Anthropic from "@anthropic-ai/sdk";
+
+const anthropic = new Anthropic({
+  baseURL: "https://api.loremllm.com/m/support-bot",
+  apiKey: process.env.LOREMLLM_KEY,
+});
+```
+
+## Routes
+
+| Route                            | Notes                                                                |
+| -------------------------------- | -------------------------------------------------------------------- |
+| `POST /v1/messages`              | Streaming and non-streaming, tools, `tool_choice`, extended thinking |
+| `POST /v1/messages/count_tokens` | Counts with the reported model's tokenizer                           |
+
+## What maps to what
+
+| Request                | Used for                                             |
+| ---------------------- | ---------------------------------------------------- |
+| last `user` text block | `prompt` matching                                    |
+| `system`               | `system` matching                                    |
+| `tools`                | `tools` matching                                     |
+| `tool_result` blocks   | `toolResult` matching                                |
+| `thinking` enabled     | `reasoning(...)` parts are sent as `thinking` blocks |
+
+## Responses
+
+The stream uses Anthropic's events: `message_start`, `content_block_start`, `content_block_delta` (`text_delta`, `input_json_delta`, `thinking_delta`), `content_block_stop`, `message_delta` with `stop_reason` and usage, and `message_stop`.
+
+`error("overloaded")` returns a 529 `overloaded_error`, the error Anthropic clients most often need to handle.
+
+## Without a server
+
+[@loremllm/anthropic](/docs/packages/anthropic) runs the same mock in process.

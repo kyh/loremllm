@@ -1,0 +1,68 @@
+---
+title: Replies
+description: The parts a mock can stream back, from plain text to tool calls, and how to combine them.
+---
+
+A reply is one part or an array of parts. Parts stream in order.
+
+```ts
+reply: [
+  reasoning("They want a refund. Look up the order first."),
+  toolCall("lookupOrder", { id: "A-1042" }),
+];
+```
+
+## Parts
+
+| Builder                         | Streams                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `text(string)`                  | Assistant text                                                             |
+| `template(string)`              | Text with `{{placeholders}}` filled from the request                       |
+| `markdown(string)`              | Text, chunked on markdown boundaries so lists and code blocks arrive whole |
+| `lorem(options)`                | Generated filler text                                                      |
+| `reasoning(string)`             | A thinking or reasoning block                                              |
+| `toolCall(name, args, result?)` | A tool call, and its result when given                                     |
+| `json(value \| { schema })`     | Structured output                                                          |
+| `usage(tokens)`                 | Token usage and cost for this response                                     |
+| `delay(ms)`                     | A pause in the stream                                                      |
+| `error(status, options?)`       | A provider-shaped failure                                                  |
+| `sequence(...replies)`          | A different reply on each turn                                             |
+| `oneOf(...replies)`             | A random reply, seeded so runs stay reproducible                           |
+
+## Text
+
+```ts
+text("Your order shipped yesterday.");
+```
+
+## Templates
+
+Templates read from the request:
+
+```ts
+template("Hi {{user.name}}, you asked: {{lastUserMessage}}");
+```
+
+| Placeholder           | Value                                                                       |
+| --------------------- | --------------------------------------------------------------------------- |
+| `{{lastUserMessage}}` | Text of the last user message                                               |
+| `{{turn}}`            | Conversation turn number                                                    |
+| `{{model}}`           | Requested model name                                                        |
+| `{{match.<group>}}`   | A named group from a RegExp condition                                       |
+| `{{header.<name>}}`   | A request header                                                            |
+| `{{metadata.<key>}}`  | A request metadata field, like OpenAI `metadata` or AI SDK message metadata |
+| `{{faker.<path>}}`    | Fake data, like `{{faker.person.fullName}}`                                 |
+
+## Lorem
+
+```ts
+lorem({ words: 40 });
+lorem({ sentences: [2, 4] });
+lorem({ paragraphs: 3, vocabulary: ["mock", "stream", "token"] });
+```
+
+A range like `[2, 4]` picks a length between the two, seeded by the request so the same request gets the same text.
+
+## Seeds
+
+Anything random (lorem, `oneOf`, faker, jitter) uses a seed built from the mock, the scenario and the conversation. Set `seed` on a mock to change it, or send `x-loremllm-seed` to override it per request.

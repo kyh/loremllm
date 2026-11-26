@@ -6,7 +6,7 @@
     "jsx": "preserve",
     "allowImportingTsExtensions": true,
     "paths": {
-      "@/.source": ["./.source/index.ts"],
+      "@/.source/*": ["./.source/*"],
       "@/*": ["./src/*"],
       "@loremllm/transport": ["../../packages/transport/src/index.ts"],
       "@loremllm/transport/*": ["../../packages/transport/src/*.ts"]

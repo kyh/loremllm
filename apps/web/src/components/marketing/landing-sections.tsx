@@ -80,12 +80,12 @@ export const LandingNav = () => (
           <BrandMark />
         </Link>
         <div className="hidden items-center gap-6 text-sm lg:flex">
-          <a href="#features" className={linkClass}>
+          <Link href="/#features" className={linkClass}>
             Features
-          </a>
-          <a href="#packages" className={linkClass}>
+          </Link>
+          <Link href="/#packages" className={linkClass}>
             Packages
-          </a>
+          </Link>
           <Link href="/docs" className={linkClass}>
             Docs
           </Link>
@@ -300,15 +300,22 @@ export const Packages = () => (
       <SectionHeading
         title="Packages"
         subtitle="Mock and record from wherever your code runs."
-        link={{ href: siteConfig.npmPackage, label: "View on npm" }}
+        link={{ href: "/docs/packages", label: "All packages" }}
       />
       <ul className="divide-muted border-muted mt-12 divide-y border-y">
         {packages.map((item) => (
-          <li key={item.name} className="grid grid-cols-1 gap-2 py-4 md:grid-cols-12 md:gap-6">
-            <span className="text-foreground font-mono text-sm md:col-span-4">{item.name}</span>
-            <span className="text-muted-foreground text-sm text-pretty md:col-span-8">
-              {item.description}
-            </span>
+          <li key={item.name}>
+            <Link
+              href={item.href}
+              className="group grid grid-cols-1 gap-2 py-4 md:grid-cols-12 md:gap-6"
+            >
+              <span className="text-foreground group-hover:text-muted-foreground font-mono text-sm duration-300 md:col-span-4">
+                {item.name}
+              </span>
+              <span className="text-muted-foreground text-sm text-pretty md:col-span-8">
+                {item.description}
+              </span>
+            </Link>
           </li>
         ))}
       </ul>

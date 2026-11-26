@@ -1,0 +1,32 @@
+---
+title: Running in CI
+description: Run mock-backed tests offline in GitHub Actions or any CI.
+---
+
+Mock-backed tests need no secrets and no network. Run them like any other unit test.
+
+## In-process packages
+
+If your tests use [@loremllm/test](/docs/packages/test), [@loremllm/openai](/docs/packages/openai) or [@loremllm/ai-sdk](/docs/packages/ai-sdk), there is nothing to set up.
+
+## Local server
+
+For end-to-end tests that drive your real app, start the local server before the app:
+
+```yaml title=".github/workflows/e2e.yml"
+- run: npx loremllm dev --latency none --strict &
+- run: npx wait-on http://localhost:4010/healthz
+- run: pnpm test:e2e
+  env:
+    OPENAI_BASE_URL: http://localhost:4010/m/support-bot/v1
+```
+
+`--strict` fails the job when the app sends a prompt no scenario expects.
+
+## Hosted mocks in CI
+
+Commit `loremllm/mocks/*.json` from `loremllm pull` so CI runs the same mocks without a key. Or set `LOREMLLM_KEY` as a secret and let packages pull at startup.
+
+## Replays
+
+Tests that use [@loremllm/record](/docs/packages/record) should run with `mode: "replay"` in CI. A missing recording then fails the build instead of calling a real provider.

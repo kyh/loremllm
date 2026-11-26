@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import Link from "next/link";
 
 import { JsonLd } from "@/components/json-ld";
 import { ProseLink } from "@/components/prose-link";
@@ -16,8 +15,8 @@ import { buildProsePageGraph } from "@/lib/agent/structured-data";
 import type { ProseBlock, ProseListItem, ProsePage } from "@/lib/agent/site-pages";
 import type { Metadata } from "next";
 
-import { HoverText } from "./hover-text";
-import { SiteFooter } from "./site-footer";
+import { wrapperClass } from "./landing-sections";
+import { MarketingShell } from "./marketing-shell";
 
 /**
  * Renders a `ProsePage` — the same definition the Markdown representation is
@@ -37,14 +36,18 @@ export const prosePageMetadata = (page: ProsePage) =>
     twitter: pageTwitter(page.title, page.description, prosePageImage(page)),
   }) satisfies Metadata;
 
-const linkClassName = "underline underline-offset-4";
+const linkClassName =
+  "text-foreground underline decoration-muted-foreground/50 underline-offset-4 hover:text-muted-foreground duration-300";
 
 const withInlineMarks = (text: string) =>
   parseInlineMarks(text).map((mark, index) => {
     switch (mark.kind) {
       case "code": {
         return (
-          <code key={index} className="bg-muted rounded px-1 py-0.5">
+          <code
+            key={index}
+            className="bg-muted text-foreground rounded px-1 py-0.5 font-mono text-[0.9em]"
+          >
             {mark.text}
           </code>
         );
@@ -52,7 +55,7 @@ const withInlineMarks = (text: string) =>
 
       case "strong": {
         return (
-          <strong key={index} className="font-semibold">
+          <strong key={index} className="text-foreground font-medium">
             {mark.text}
           </strong>
         );
@@ -95,14 +98,17 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
   switch (block.kind) {
     case "heading": {
       return (
-        <h2 id={headingId(block.text)} className="text-heading mt-4 scroll-mt-4 text-xs uppercase">
+        <h2
+          id={headingId(block.text)}
+          className="text-foreground mt-8 scroll-mt-20 text-xl font-medium tracking-tight"
+        >
           {block.text}
         </h2>
       );
     }
 
     case "subheading": {
-      return <h3 className="text-heading mt-2 text-xs">{block.text}</h3>;
+      return <h3 className="text-foreground mt-4 text-base font-medium">{block.text}</h3>;
     }
 
     case "list": {
@@ -128,11 +134,15 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
     case "table": {
       return (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-xl border-collapse text-left text-xs">
+          <table className="w-full min-w-xl border-collapse text-left text-sm">
             <thead>
               <tr>
                 {block.columns.map((column) => (
-                  <th key={column} scope="col" className="border p-2 align-top font-semibold">
+                  <th
+                    key={column}
+                    scope="col"
+                    className="border-muted text-foreground border p-2 align-top font-medium"
+                  >
                     {withInlineMarks(column)}
                   </th>
                 ))}
@@ -142,7 +152,7 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
               {block.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="border p-2 align-top">
+                    <td key={cellIndex} className="border-muted border p-2 align-top">
                       {withInlineMarks(cell)}
                     </td>
                   ))}
@@ -156,7 +166,7 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
 
     case "code": {
       return (
-        <pre className="bg-muted overflow-x-auto rounded p-4 text-xs">
+        <pre className="bg-muted text-foreground overflow-x-auto rounded-2xl p-6 font-mono text-xs leading-relaxed">
           <code>{block.text}</code>
         </pre>
       );
@@ -175,21 +185,22 @@ const ProseBlockView = ({ block }: { block: ProseBlock }) => {
 };
 
 export const ProsePageView = ({ page }: { page: ProsePage }) => (
-  <div className="flex min-h-dvh flex-col gap-10 px-8 pt-8">
+  <MarketingShell>
     <JsonLd node={buildProsePageGraph(page)} />
-    <nav className="text-sm">
-      <HoverText asChild>
-        <Link href="/">[LoremLLM]</Link>
-      </HoverText>
-    </nav>
-    <main className="flex max-w-3xl flex-col gap-4">
-      <h1 className="text-2xl">{page.heading}</h1>
-      <div className="flex flex-col gap-4 border-t pt-4 leading-relaxed">
+    <div className={wrapperClass}>
+      <header className="pt-32 pb-12">
+        <h1 className="text-foreground text-4xl font-medium tracking-tight text-balance md:text-5xl lg:text-6xl">
+          {page.heading}
+        </h1>
+        <p className="text-muted-foreground mt-4 max-w-xl text-base text-pretty">
+          {page.description}
+        </p>
+      </header>
+      <article className="border-muted text-muted-foreground flex max-w-2xl flex-col gap-4 border-t pt-8 pb-24 text-base leading-relaxed">
         {page.blocks.map((block, index) => (
           <ProseBlockView key={index} block={block} />
         ))}
-      </div>
-    </main>
-    <SiteFooter pageLinkDisplay="visible" />
-  </div>
+      </article>
+    </div>
+  </MarketingShell>
 );

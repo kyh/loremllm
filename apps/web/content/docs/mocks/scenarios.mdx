@@ -1,0 +1,49 @@
+---
+title: Scenarios
+description: The ordered list of rules that decides what a mock answers.
+---
+
+A mock is a list of scenarios. Each scenario has an optional `when` and a required `reply`.
+
+```ts
+mock("support-bot", {
+  scenarios: [
+    {
+      name: "refund",
+      when: { prompt: /refund/i },
+      reply: toolCall("lookupOrder", { id: "A-1042" }),
+    },
+    { name: "rate limited", when: { header: { "x-mock-fail": "rate" } }, reply: error(429) },
+    { name: "fallback", reply: lorem({ sentences: 2 }) },
+  ],
+});
+```
+
+## Order
+
+Scenarios are checked from top to bottom. The first one whose `when` matches is used and the rest are skipped. Put specific scenarios first and a catch-all last.
+
+## Names
+
+`name` is optional. It shows up in the [inspector](/docs/platform/request-inspector), in the `x-loremllm-scenario` response header, and in test assertions like `expect(llm).toHaveMatched("refund")`.
+
+## Fallback
+
+A scenario without `when` matches every request. Without a fallback, an unmatched request gets a `404` [problem response](/docs/reference/errors). That is often what you want in tests: an unexpected prompt should fail loudly. Use `--strict` on the [local server](/docs/getting-started/local-development) to make it exit, too.
+
+## Per-scenario settings
+
+A scenario can override the mock's stream settings and model name:
+
+```ts
+{
+  when: { prompt: "slow" },
+  stream: { firstTokenMs: 4000 },
+  model: "gpt-4.1-mini",
+  reply: text("Sorry for the wait."),
+}
+```
+
+## Editing in the dashboard
+
+The dashboard edits the same structure. Drag scenarios to reorder them, and use **Test** to send a prompt and see which scenario matches before you save.

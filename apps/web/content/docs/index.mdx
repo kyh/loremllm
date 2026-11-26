@@ -1,0 +1,53 @@
+---
+title: Introduction
+description: LoremLLM is a mock LLM API. Script completions, streams, tool calls and MCP servers, then point your code at them.
+---
+
+LoremLLM gives you a fake model that behaves exactly like a real one, except it says what you tell it to.
+
+You describe a **mock**: which requests it should recognise and what it should answer. LoremLLM serves that mock behind OpenAI, Anthropic, Vercel AI SDK, MCP and eve compatible endpoints. Your app talks to it the same way it talks to a provider. You change a base URL, nothing else.
+
+```ts
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  baseURL: "https://api.loremllm.com/m/support-bot/v1",
+  apiKey: process.env.LOREMLLM_KEY,
+});
+
+const stream = await openai.chat.completions.create({
+  model: "gpt-4.1",
+  messages: [{ role: "user", content: "Refund order A-1042" }],
+  stream: true,
+});
+```
+
+That call streams back the reply you scripted for "refund": a `lookupOrder` tool call, then a `refund` tool call, then the final answer. It does the same thing on every run.
+
+## Why mock a model
+
+- **Deterministic tests.** Agent code branches on what the model says. A mock says the same thing every time, so your tests stop flaking.
+- **Failures on demand.** Rate limits, timeouts, malformed chunks and streams that die halfway are rare against a real provider. A mock gives you each one whenever you ask.
+- **Build before the backend exists.** Front-end work on a chat UI needs realistic streams, tool calls and reasoning. You don't need a prompt that works yet.
+- **No bill, no key, no latency.** CI runs offline. Demos never go off script.
+
+## How it fits together
+
+<Cards>
+  <Card title="Quickstart" href="/docs/getting-started/quickstart">
+    Create a mock and stream from it in five minutes.
+  </Card>
+  <Card title="Concepts" href="/docs/getting-started/concepts">
+    Projects, mocks, scenarios and replies.
+  </Card>
+  <Card title="Endpoints" href="/docs/endpoints/openai">
+    Every provider format a mock speaks.
+  </Card>
+  <Card title="Packages" href="/docs/packages">
+    Mock and record from inside your code.
+  </Card>
+</Cards>
+
+## What LoremLLM is not
+
+LoremLLM never runs a language model and never calls one, except when you explicitly [record](/docs/guides/record-and-replay) real traffic. If you need novel answers, use a real provider. If you need the same answer every time, use LoremLLM.

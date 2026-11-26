@@ -5,11 +5,20 @@ import { Toaster } from "@repo/ui/components/sonner";
 import { TooltipProvider } from "@repo/ui/components/tooltip";
 import { cn } from "cn";
 import { GeistMono } from "geist/font/mono";
+import localFont from "next/font/local";
 
 import { ogImage, siteConfig } from "@/lib/site-config";
 import { ORPCReactProvider } from "@/orpc/react";
 
 import "./styles/globals.css";
+
+const inter = localFont({
+  src: [
+    { path: "./fonts/Inter-Regular.woff2", style: "normal", weight: "400" },
+    { path: "./fonts/Inter-Medium.woff2", style: "normal", weight: "500" },
+  ],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   description: siteConfig.description,
@@ -66,10 +75,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { color: "white", media: "(prefers-color-scheme: light)" },
-    { color: "black", media: "(prefers-color-scheme: dark)" },
-  ],
+  colorScheme: "dark",
+  themeColor: "#17181b",
 };
 
 interface LayoutProps {
@@ -77,9 +84,15 @@ interface LayoutProps {
 }
 
 const RootLayout = (props: LayoutProps) => (
-  <html lang="en" suppressHydrationWarning>
-    <body className={cn(GeistMono.variable, "text-foreground bg-background font-mono antialiased")}>
-      <ThemeProvider>
+  <html lang="en" className="dark" suppressHydrationWarning>
+    <body
+      className={cn(
+        inter.variable,
+        GeistMono.variable,
+        "text-foreground bg-background selection:bg-foreground selection:text-background font-sans antialiased",
+      )}
+    >
+      <ThemeProvider forcedTheme="dark" defaultTheme="dark" enableSystem={false}>
         <TooltipProvider>
           <ORPCReactProvider>{props.children}</ORPCReactProvider>
           <Toaster />

@@ -1,0 +1,65 @@
+---
+title: MCP
+description: Serve fake MCP tools, resources and prompts from a mock.
+---
+
+Every mock is also an MCP server, over Streamable HTTP:
+
+```
+https://api.loremllm.com/m/<mock>/mcp
+```
+
+Add it to any MCP client:
+
+```json title="mcp.json"
+{
+  "mcpServers": {
+    "support": { "url": "https://api.loremllm.com/m/support-bot/mcp" }
+  }
+}
+```
+
+## Defining the server
+
+```ts
+mock("support-bot", {
+  mcp: {
+    tools: {
+      lookupOrder: {
+        description: "Find an order by id",
+        input: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+        scenarios: [
+          { when: { args: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
+          { reply: error("tool", { message: "Order not found" }) },
+        ],
+      },
+    },
+    resources: [
+      { uri: "docs://refund-policy", name: "Refund policy", text: "Refunds within 30 days." },
+    ],
+    prompts: [
+      {
+        name: "triage",
+        description: "Triage a ticket",
+        messages: [{ role: "user", text: "Triage: {{args.ticket}}" }],
+      },
+    ],
+  },
+});
+```
+
+Tool `scenarios` work like mock scenarios, but match on `args` instead of prompts. Tool input schemas also accept Zod in config files.
+
+## What it supports
+
+- `tools/list` and `tools/call`, with text, JSON and error results
+- `resources/list`, `resources/read` and resource templates
+- `prompts/list` and `prompts/get`
+- `notifications/progress` for slow tools, via `delay(ms)`
+- session ids and server-sent notifications
+
+## Testing an MCP client
+
+Point your agent's MCP client at the mock, and its model at the same mock's OpenAI or Anthropic endpoint. You control both the tool list your agent sees and what each tool returns.
+
+For a local or stdio server, use [@loremllm/mcp](/docs/packages/mcp).

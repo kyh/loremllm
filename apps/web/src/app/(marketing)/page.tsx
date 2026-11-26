@@ -1,7 +1,16 @@
-import localFont from "next/font/local";
-import { cn } from "cn";
-
 import { JsonLd } from "@/components/json-ld";
+import { HomeOutline } from "@/components/marketing/home-outline";
+import {
+  AgentTests,
+  Capabilities,
+  Faq,
+  Features,
+  Hero,
+  Packages,
+  Scenarios,
+  Steps,
+} from "@/components/marketing/landing-sections";
+import { MarketingShell } from "@/components/marketing/marketing-shell";
 import {
   canonicalAlternates,
   homeOpenGraphVideos,
@@ -13,28 +22,6 @@ import { siteConfig } from "@/lib/site-config";
 
 import type { Metadata } from "next";
 
-import { HomeOutline } from "./_components/home-outline";
-import { LandingFooter } from "./_components/landing/landing-footer";
-import {
-  AgentTests,
-  Capabilities,
-  Faq,
-  Features,
-  Hero,
-  LandingNav,
-  Packages,
-  Scenarios,
-  Steps,
-} from "./_components/landing/landing-sections";
-
-const inter = localFont({
-  src: [
-    { path: "./_components/landing/fonts/Inter-Regular.woff2", style: "normal", weight: "400" },
-    { path: "./_components/landing/fonts/Inter-Medium.woff2", style: "normal", weight: "500" },
-  ],
-  variable: "--font-landing",
-});
-
 export const metadata: Metadata = {
   alternates: canonicalAlternates("/"),
   openGraph: { ...pageOpenGraph("/"), videos: homeOpenGraphVideos },
@@ -43,22 +30,18 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <div className={cn(inter.variable, "landing flex min-h-dvh flex-col")}>
+  <MarketingShell>
     <JsonLd node={buildHomeGraph()} />
-    <LandingNav />
-    <main className="grow">
-      <HomeOutline />
-      <Hero />
-      <Scenarios />
-      <Steps />
-      <Features />
-      <AgentTests />
-      <Capabilities />
-      <Packages />
-      <Faq />
-    </main>
-    <LandingFooter />
-  </div>
+    <HomeOutline />
+    <Hero />
+    <Scenarios />
+    <Steps />
+    <Features />
+    <AgentTests />
+    <Capabilities />
+    <Packages />
+    <Faq />
+  </MarketingShell>
 );
 
 export default Page;

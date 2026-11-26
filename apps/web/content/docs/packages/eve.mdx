@@ -1,0 +1,44 @@
+---
+title: "@loremllm/eve"
+description: Serve scripted turns over the eve agent protocol from any server.
+---
+
+```bash
+npm install @loremllm/eve
+```
+
+`createStaticEveHandler` returns a `(request: Request) => Promise<Response>` function. Mount it in a Next.js route handler, Hono, Bun, a service worker, or a stubbed `fetch` in tests.
+
+```ts title="app/api/eve/[[...eve]]/route.ts"
+import { createStaticEveHandler } from "@loremllm/eve";
+
+const handler = createStaticEveHandler({
+  chunkDelayMs: [20, 50],
+  async *mockResponse({ message }) {
+    yield { type: "text", text: `You said: ${message.text}` };
+  },
+});
+
+export { handler as GET, handler as POST };
+```
+
+`mockResponse` takes the same parts as [@loremllm/ai-sdk](/docs/packages/ai-sdk), so one generator can back both.
+
+## Options
+
+| Option                                | What it does                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `mockResponse(context)`               | Yields parts for each turn: `text`, `reasoning`, `tool-*`, `dynamic-tool`, `step-start`    |
+| `chunkDelayMs`                        | Delay between events                                                                       |
+| `autoChunkText`, `autoChunkReasoning` | How text and reasoning split into `message.appended` events                                |
+| `sessionStore`                        | Where sessions live. Defaults to `createMemoryEveSessionStore()`                           |
+| `cors`                                | `true` (default) allows any origin, `false` sends no CORS headers, `{ origin }` allows one |
+| `generateSessionId`, `now`            | Make ids and timestamps deterministic in tests                                             |
+
+## From a mock definition
+
+```ts
+import { mockEveHandler } from "@loremllm/eve";
+
+const handler = mockEveHandler(supportBot);
+```

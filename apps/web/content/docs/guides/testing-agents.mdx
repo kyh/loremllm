@@ -1,0 +1,61 @@
+---
+title: Testing agents
+description: Write fast, deterministic tests for code that calls a model and its tools.
+---
+
+An agent is a loop: send messages, read the model's answer, run any tools it asks for, repeat. The model is the only part you can't control. Replace it with a mock and the rest is normal code you can test.
+
+## What to test
+
+Test your code, not the model:
+
+- Does the agent run the tool the model asked for, with the right arguments?
+- Does it send the tool result back correctly?
+- Does it stop when the model gives a final answer?
+- Does it handle a refusal, a malformed tool call, a rate limit?
+
+## A full example
+
+```ts title="agent.test.ts"
+import { mockLLM } from "@loremllm/test";
+import { createSupportAgent } from "./agent";
+import { payments } from "./payments";
+
+test("refunds a delivered order", async () => {
+  const llm = await mockLLM();
+
+  llm.on(/refund/i).toolCall("lookupOrder", { id: "A-1042" });
+  llm.on({ toolResult: "lookupOrder" }).toolCall("refund", { id: "A-1042", amount: 48 });
+  llm.on({ toolResult: "refund" }).reply("Done. $48 is on its way back.");
+
+  const agent = createSupportAgent({ baseURL: `${llm.url}/v1` });
+  const answer = await agent.run("Refund order A-1042");
+
+  expect(answer).toBe("Done. $48 is on its way back.");
+  expect(llm).toHaveReceivedToolResult("lookupOrder", { status: "delivered" });
+  expect(payments.refunds).toEqual([{ id: "A-1042", amount: 48 }]);
+});
+
+test("does not refund an undelivered order", async () => {
+  const llm = await mockLLM();
+  llm.on(/refund/i).toolCall("refund", { id: "A-9999", amount: 10 });
+
+  await createSupportAgent({ baseURL: `${llm.url}/v1` }).run("Refund order A-9999");
+
+  expect(payments.refunds).toEqual([]);
+});
+```
+
+The real `lookupOrder` and `refund` tools run. Only the model is fake.
+
+## Make the agent take a base URL
+
+The one change most agents need is a way to set the model's base URL or `fetch`. Read it from an option or an environment variable, so tests and the [local server](/docs/getting-started/local-development) can swap it.
+
+## Keep scenarios close to tests
+
+Inline scenarios with `llm.on()` keep each test readable. Shared mocks in `loremllm.config.ts` suit flows reused across many tests, and the same mock can back your UI in development.
+
+## Fail on surprises
+
+Leave out the fallback scenario in tests. An unexpected prompt then fails with `no-scenario-matched`, which is usually a real bug in how your agent builds messages.

@@ -1,0 +1,32 @@
+---
+title: API keys
+description: Project keys for private mocks, the CLI and the REST API.
+---
+
+Create keys under **Settings → API keys**. A key looks like `lm_live_...` and belongs to one project.
+
+## Using a key
+
+Send it the way your client already sends a provider key:
+
+| Endpoint                 | Header                                                |
+| ------------------------ | ----------------------------------------------------- |
+| OpenAI, AI SDK, MCP, eve | `Authorization: Bearer lm_live_...`                   |
+| Anthropic                | `x-api-key: lm_live_...`                              |
+| REST API, CLI            | `Authorization: Bearer lm_live_...` or `LOREMLLM_KEY` |
+
+Public mocks accept any key, so you can leave your real provider key in place by accident without it ever being used. LoremLLM never stores keys it doesn't recognise.
+
+## Scopes
+
+| Scope           | Allows                        |
+| --------------- | ----------------------------- |
+| `mocks:call`    | Calling private mocks         |
+| `mocks:write`   | Pushing and editing mocks     |
+| `requests:read` | Reading the request inspector |
+
+CI usually needs `mocks:call` only.
+
+## Rotating
+
+Create a new key, update your secrets, then revoke the old key. Revoked keys stop working within a minute.

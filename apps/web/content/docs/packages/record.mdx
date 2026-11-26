@@ -1,0 +1,52 @@
+---
+title: "@loremllm/record"
+description: Record real LLM and MCP traffic once, then replay it as a mock forever.
+---
+
+```bash
+npm install -D @loremllm/record
+```
+
+Writing scenarios by hand is fine for a few prompts. For a real agent run with dozens of calls, record it.
+
+## Recording fetch
+
+```ts
+import OpenAI from "openai";
+import { recordFetch } from "@loremllm/record";
+
+const openai = new OpenAI({
+  fetch: recordFetch({
+    mock: "support-bot",
+    mode: process.env.CI ? "replay" : "auto",
+  }),
+});
+```
+
+| Mode     | What happens                                                                   |
+| -------- | ------------------------------------------------------------------------------ |
+| `record` | Every request goes to the real provider. Each request and response is saved    |
+| `replay` | Requests are answered from saved recordings. A request with no recording fails |
+| `auto`   | Replay when a recording exists, record when it doesn't                         |
+
+Recordings are saved to `loremllm/recordings/<mock>/*.json`, one file per conversation, so they diff cleanly in review. `loremllm push` turns them into scenarios on the hosted mock.
+
+## Matching recordings
+
+A recording is replayed when the request's messages, tools and model match. Volatile fields such as timestamps and ids are ignored. Configure what counts with `match: { ignore: ["metadata.requestId"] }`.
+
+## Redaction
+
+API keys and `authorization` headers are never saved. Add your own rules with `redact: [/sk-[a-z0-9]+/gi, "user.email"]`.
+
+## MCP traffic
+
+`recordMcp({ mock, command: "npx", args: ["my-mcp-server"] })` wraps a real MCP server and saves every tool call and result as an MCP mock.
+
+## From the CLI
+
+```bash
+npx loremllm record --mock support-bot --provider openai -- pnpm test
+```
+
+This starts a recording proxy, sets `OPENAI_BASE_URL` for the command, and saves what it sees. See the [record and replay guide](/docs/guides/record-and-replay).

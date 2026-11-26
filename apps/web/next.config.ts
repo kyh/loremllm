@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { createMDX } from "fumadocs-mdx/next";
 
 type ImageConfig = NonNullable<NextConfig["images"]>;
 
@@ -49,4 +50,6 @@ const config: NextConfig = {
   transpilePackages,
 };
 
-export default config;
+const withMDX = createMDX();
+
+export default withMDX(config);

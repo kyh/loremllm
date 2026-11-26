@@ -140,41 +140,50 @@ export const steps: Step[] = [
 export interface Package {
   name: string;
   description: string;
+  href: string;
 }
 
 export const packages: Package[] = [
   {
     description:
-      "Chat transport for the Vercel AI SDK. Stream scripted messages into useChat with no network.",
-    name: "@loremllm/transport",
+      "Chat transport and language model for the Vercel AI SDK. Stream mocks into useChat with no network.",
+    name: "@loremllm/ai-sdk",
+    href: "/docs/packages/ai-sdk",
   },
   {
-    description: "Host a mock collection over the eve agent protocol.",
-    name: "@loremllm/transport/eve",
+    description: "Serve scripted turns over the eve agent protocol from any server.",
+    name: "@loremllm/eve",
+    href: "/docs/packages/eve",
   },
   {
     description: "Mock fetch for the OpenAI SDK. Chat completions, responses and tool calls.",
     name: "@loremllm/openai",
+    href: "/docs/packages/openai",
   },
   {
     description: "Mock fetch for the Anthropic SDK. Messages, streaming and tool use.",
     name: "@loremllm/anthropic",
+    href: "/docs/packages/anthropic",
   },
   {
     description: "A fake MCP server you configure in code. Tools, resources and prompts.",
     name: "@loremllm/mcp",
+    href: "/docs/packages/mcp",
   },
   {
     description: "Record real LLM and MCP traffic, then replay it as a mock.",
     name: "@loremllm/record",
+    href: "/docs/packages/record",
   },
   {
     description: "Vitest and Jest helpers. Scenario setup and matchers like toHaveCalledTool.",
     name: "@loremllm/test",
+    href: "/docs/packages/test",
   },
   {
     description: "Run mocks locally, pull them from your project and record from the terminal.",
     name: "loremllm",
+    href: "/docs/packages/cli",
   },
 ];
 

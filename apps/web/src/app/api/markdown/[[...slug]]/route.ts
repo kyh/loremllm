@@ -5,14 +5,23 @@ import {
   renderProsePageMarkdown,
 } from "@/lib/agent/markdown";
 import { findPageByPath } from "@/lib/agent/site-pages";
+import { getLLMText, source } from "@/lib/source";
 
 interface MarkdownParams {
   params: Promise<{ slug?: string[] }>;
 }
 
-const buildBody = (segments: string[]) => {
+const buildBody = async (segments: string[]) => {
   if (segments.length === 0) {
     return { body: renderHomeMarkdown(), status: 200 };
+  }
+
+  if (segments[0] === "docs") {
+    const docsPage = source.getPage(segments.slice(1));
+
+    if (docsPage) {
+      return { body: await getLLMText(docsPage), status: 200 };
+    }
   }
 
   const pathname = `/${segments.join("/")}`;
@@ -27,7 +36,7 @@ const buildBody = (segments: string[]) => {
 
 export const GET = async (_request: Request, { params }: MarkdownParams) => {
   const { slug = [] } = await params;
-  const { body, status } = buildBody(slug);
+  const { body, status } = await buildBody(slug);
 
   return new Response(body, {
     headers: {

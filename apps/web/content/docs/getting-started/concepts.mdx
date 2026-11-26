@@ -1,0 +1,52 @@
+---
+title: Concepts
+description: Projects, mocks, scenarios, replies and conversations, and how a request flows through them.
+---
+
+## Project
+
+A project groups mocks, keys and members. Its slug appears in the dashboard and in config files. Most teams have one project per product.
+
+## Mock
+
+A mock is one fake model. It has:
+
+- a **slug**, which becomes its URL: `https://api.loremllm.com/m/<slug>`
+- a **model name** it reports back, like `gpt-4.1` or `claude-sonnet-4-5`
+- **stream settings**: time to first token, chunk size and chunk delay
+- an ordered list of **scenarios**
+- a **visibility**: public mocks answer any key, private mocks need a project key
+
+One mock serves every [endpoint format](/docs/endpoints/openai) at once. The same scenarios answer an OpenAI request, an Anthropic request and an AI SDK `useChat` request.
+
+## Scenario
+
+A scenario pairs a **match** with a **reply**. Scenarios are checked top to bottom and the first match wins. A scenario with no `when` matches everything, so put it last as a fallback.
+
+```ts
+{
+  when: { prompt: /weather in (?<city>\w+)/i },
+  reply: toolCall("getWeather", { city: "{{match.city}}" }),
+}
+```
+
+See [Matching](/docs/mocks/matching).
+
+## Reply
+
+A reply is what the mock streams back. It is a single part or a list of parts: text, templates, lorem, reasoning, tool calls, JSON, usage and errors. See [Replies](/docs/mocks/replies).
+
+## Conversation
+
+Requests that share a conversation id belong to one conversation. Scenarios can match on the turn number, and a `sequence` reply plays its items in order across turns. See [Conversations](/docs/mocks/conversations).
+
+## Request lifecycle
+
+1. Your client sends a provider-shaped request to the mock's URL.
+2. LoremLLM normalises it into messages, tools and settings.
+3. Scenarios are checked in order. The first match is chosen.
+4. The reply is rendered: templates filled in, lorem generated, JSON validated.
+5. The result is encoded in the request's format and streamed with the mock's timing.
+6. The request, match and chunks are saved to the [inspector](/docs/platform/request-inspector).
+
+If nothing matches, the mock answers `404` with a `no-scenario-matched` problem. See [Errors](/docs/reference/errors).

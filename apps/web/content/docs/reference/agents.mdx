@@ -1,0 +1,18 @@
+---
+title: For agents
+description: Machine-readable surfaces for coding agents reading these docs.
+---
+
+Coding agents can read everything here without scraping HTML.
+
+| Surface                        | What it returns                                      |
+| ------------------------------ | ---------------------------------------------------- |
+| [/llms.txt](/llms.txt)         | An overview of LoremLLM and links to every docs page |
+| `Accept: text/markdown`        | Any page, including every docs page, as Markdown     |
+| `<page>.md`                    | The same, by URL, like `/docs/mocks/matching.md`     |
+| [/openapi.json](/openapi.json) | OpenAPI 3.1 for the public HTTP API                  |
+| [/sitemap.xml](/sitemap.xml)   | Every indexable URL                                  |
+
+```bash
+curl -H "accept: text/markdown" https://www.loremllm.com/docs/mocks/matching
+```

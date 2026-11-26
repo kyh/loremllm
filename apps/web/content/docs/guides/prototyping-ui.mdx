@@ -1,0 +1,43 @@
+---
+title: Prototyping chat UIs
+description: Build streaming, tool and reasoning UI before the backend exists.
+---
+
+A chat UI has many states: waiting for the first token, streaming text, a tool card loading, a tool card done, reasoning collapsed, an error. A mock lets you see each one on demand.
+
+## Start with the transport
+
+```tsx
+import { useChat } from "@ai-sdk/react";
+import { mockTransport } from "@loremllm/ai-sdk";
+import { lorem, markdown, mock, reasoning, text, toolCall } from "loremllm";
+
+const demo = mock("demo", {
+  stream: { firstTokenMs: 600, chunkDelayMs: [20, 60] },
+  scenarios: [
+    {
+      when: { prompt: "weather" },
+      reply: [
+        reasoning("I should call the weather tool."),
+        toolCall("getWeather", { city: "Lisbon" }, { tempC: 21, sky: "clear" }),
+        text("It's 21°C and clear in Lisbon."),
+      ],
+    },
+    {
+      when: { prompt: "table" },
+      reply: markdown("| Plan | Price |\n| --- | --- |\n| Free | $0 |"),
+    },
+    { reply: lorem({ paragraphs: 2 }) },
+  ],
+});
+
+const { messages, sendMessage } = useChat({ transport: mockTransport(demo) });
+```
+
+## Switch to the real backend
+
+When your API is ready, swap the transport for `DefaultChatTransport`. Keep the mock for Storybook and visual tests.
+
+## Share a demo
+
+Push the mock and point a deployed preview at `https://api.loremllm.com/m/demo/api/chat`. Designers and PMs see the same stream you do, and a sales demo never goes off script.

@@ -1,0 +1,29 @@
+---
+title: Record and replay
+description: Capture a real agent run once, then replay it in tests without a key.
+---
+
+1. **Record.** Run your test suite or app against the real provider through the recorder:
+
+   ```bash
+   OPENAI_API_KEY=sk-... npx loremllm record --mock support-bot --provider openai -- pnpm test
+   ```
+
+2. **Review.** Recordings land in `loremllm/recordings/support-bot/`. Each file is one conversation: the requests, and the chunks that came back, with their timing.
+
+3. **Replay.** Run the same command without a key:
+
+   ```bash
+   npx loremllm dev
+   OPENAI_BASE_URL=http://localhost:4010/m/support-bot/v1 pnpm test
+   ```
+
+4. **Promote.** `npx loremllm push` turns recordings into scenarios on the hosted mock, where you can edit them in the dashboard.
+
+## Keeping recordings fresh
+
+Recordings drift as your prompts change. Run in `auto` mode locally, so new prompts record and old ones replay, and in `replay` mode in CI so drift fails loudly. `loremllm record --prune` deletes recordings no test used.
+
+## Original timing
+
+Replays keep the recorded chunk timing by default. Use `--latency none` for speed, or `real` to keep the provider's real feel for demos.

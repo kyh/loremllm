@@ -1,0 +1,48 @@
+---
+title: OpenAI
+description: Chat Completions, Responses, Embeddings and Models, compatible with the OpenAI SDK.
+---
+
+Base URL: `https://api.loremllm.com/m/<mock>/v1`
+
+```ts
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  baseURL: "https://api.loremllm.com/m/support-bot/v1",
+  apiKey: process.env.LOREMLLM_KEY,
+});
+```
+
+## Routes
+
+| Route                       | Notes                                                                         |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `POST /v1/chat/completions` | Streaming and non-streaming, tools, `response_format`, `n`                    |
+| `POST /v1/responses`        | Streaming events, function tools, reasoning summaries, `previous_response_id` |
+| `POST /v1/embeddings`       | Deterministic vectors: the same input always gets the same embedding          |
+| `GET /v1/models`            | Lists the mock's model name                                                   |
+
+## What maps to what
+
+| Request                         | Used for                                       |
+| ------------------------------- | ---------------------------------------------- |
+| last `user` message             | `prompt` matching                              |
+| `system` / `developer` messages | `system` matching                              |
+| `tools`                         | `tools` matching                               |
+| `tool` role messages            | `toolResult` matching                          |
+| `response_format.json_schema`   | `schema` matching and `json({ schema: true })` |
+| `model`                         | `model` matching, echoed back in the response  |
+| `metadata`, `user`              | `{{metadata.*}}` in templates                  |
+
+## Responses
+
+Chunks follow OpenAI's format exactly: `chat.completion.chunk` objects with `delta.content`, `delta.tool_calls` and a final chunk with `finish_reason` and, when `stream_options.include_usage` is set, `usage`. Reasoning streams as `reasoning` summary events on the Responses API.
+
+## Errors
+
+Errors use OpenAI's body, `{ "error": { "message", "type", "code" } }`, so the SDK raises its usual error classes.
+
+## Without a server
+
+[@loremllm/openai](/docs/packages/openai) gives you a `fetch` you pass to the SDK, so the same mock runs in process.

@@ -1,0 +1,63 @@
+---
+title: "@loremllm/test"
+description: Scenario setup and matchers for Vitest and Jest.
+---
+
+```bash
+npm install -D @loremllm/test
+```
+
+```ts title="vitest.setup.ts"
+import "@loremllm/test/vitest";
+```
+
+For Jest, import `@loremllm/test/jest`.
+
+## mockLLM
+
+`mockLLM` starts an in-process mock server and returns its URL:
+
+```ts
+import { mockLLM } from "@loremllm/test";
+
+test("refunds a delivered order", async () => {
+  const llm = await mockLLM("support-bot");
+
+  llm
+    .on(/refund/i)
+    .toolCall("lookupOrder", { id: "A-1042" })
+    .toolCall("refund", { id: "A-1042", amount: 48 })
+    .reply("Done. $48 is on its way back.");
+
+  await agent.run("Refund order A-1042", { baseURL: llm.url });
+
+  expect(llm).toHaveCalledTool("refund", { amount: 48 });
+  expect(payments.refunds).toHaveLength(1);
+});
+```
+
+`mockLLM` takes a hosted slug, a mock definition, or nothing for an empty mock. Scenarios added with `llm.on()` take priority over the mock's own and are cleared after each test.
+
+| Property       | What it is                                                                             |
+| -------------- | -------------------------------------------------------------------------------------- |
+| `llm.url`      | Base URL. Add `/v1` for OpenAI clients                                                 |
+| `llm.fetch`    | A `fetch` for SDKs, if you'd rather not use a URL                                      |
+| `llm.on(when)` | Add a scenario. Chain `.reply()`, `.toolCall()`, `.reasoning()`, `.json()`, `.error()` |
+| `llm.requests` | Every request this test made                                                           |
+| `llm.reset()`  | Clear requests, scenarios and conversation state                                       |
+
+## Matchers
+
+| Matcher                                   | Passes when                                            |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `toHaveBeenPrompted(match)`               | Some request's last user message matched               |
+| `toHaveCalledTool(name, args?)`           | The mock asked for this tool, with these args if given |
+| `toHaveReceivedToolResult(name, result?)` | Your code sent this tool result back                   |
+| `toHaveMatched(scenario)`                 | This named scenario answered a request                 |
+| `toHaveRequestCount(n)`                   | Exactly `n` requests were made                         |
+
+Matchers print the full request log when they fail, so you can see what your agent actually did.
+
+## Timing
+
+Tests run with `latency: "none"` by default. Pass `mockLLM(slug, { latency: "real" })` to test loading states and timeouts.

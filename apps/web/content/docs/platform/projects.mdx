@@ -1,0 +1,37 @@
+---
+title: Projects and mocks
+description: Organise mocks in projects, edit scenarios in the dashboard and control who can call them.
+---
+
+## Projects
+
+A project holds mocks, keys and members. Create more from the project switcher in the dashboard. A project slug is unique across LoremLLM and appears in config files as `project`.
+
+## Creating a mock
+
+**New mock** asks for a slug and a starting point:
+
+- **Blank**: one fallback scenario that streams lorem
+- **From a template**: support agent, RAG answerer, coding agent, structured extraction
+- **From recordings**: upload files from [@loremllm/record](/docs/packages/record)
+
+## Editing scenarios
+
+The scenario editor shows each scenario as a row: its conditions on the left, its reply on the right. Drag rows to reorder. **Test** sends a prompt to the draft and shows which scenario matched and what streamed, before you publish.
+
+## Versions
+
+Every publish creates a version. Requests use the latest version unless they pin one with `x-loremllm-version: 12` or a URL like `/m/support-bot@12`. Roll back from the version list.
+
+## Visibility
+
+| Visibility | Who can call it              |
+| ---------- | ---------------------------- |
+| Public     | Anyone, with any key or none |
+| Private    | Requests with a project key  |
+
+Public mocks suit demos and tutorials. Use private mocks for anything that reveals your prompts or tool names.
+
+## Editing in code
+
+Mocks pushed with `loremllm push` are marked **Managed by config**. The dashboard shows them read-only so a push never overwrites a dashboard edit.
