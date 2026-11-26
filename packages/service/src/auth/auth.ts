@@ -5,7 +5,7 @@ import { session as sessionSchema, user as userSchema } from "@repo/db/drizzle-s
 import { betterAuth } from "better-auth";
 // WARNING: not `better-auth/adapters/drizzle`, which reads `db._.fullSchema`, gone in drizzle 1.0.
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, formCsrfMiddleware } from "better-auth/api";
 import { admin, emailOTP, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
 import { EMAIL_MODE, EMAIL_OFF_WARNING, sendEmail } from "../email/send-email";
@@ -72,16 +72,18 @@ const backfillActiveOrganization = async (userId: string, organizationId: string
   }
 };
 
-// WARNING: better-auth logs what a sender throws and answers success, so a refusal must come before it.
-const refuseCodesWithoutMail = createAuthMiddleware(async (ctx) => {
-  if (ctx.path === "/email-otp/send-verification-otp") {
+// WARNING: better-auth checks no origin on a code's sign-in and answers success when its sender throws.
+const guardSignInCodes = createAuthMiddleware(async (ctx) => {
+  if (ctx.path === "/sign-in/email-otp") {
+    await formCsrfMiddleware(ctx);
+  }
+
+  if (ctx.path === "/email-otp/send-verification-otp" && !sendsEmail) {
     throw APIError.from("SERVICE_UNAVAILABLE", {
       code: "EMAIL_DISABLED",
       message: "Sign-in by email is unavailable: this site sends no email.",
     });
   }
-
-  await Promise.resolve();
 });
 
 export const auth = betterAuth({
@@ -95,7 +97,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),
-  hooks: sendsEmail ? undefined : { before: refuseCodesWithoutMail },
+  hooks: { before: guardSignInCodes },
   databaseHooks: {
     session: {
       create: {
