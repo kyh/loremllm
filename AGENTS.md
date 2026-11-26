@@ -7,10 +7,9 @@ One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/contract` 
 ## Quickstart (headless)
 
 ```sh
-pnpm install
-pnpm bootstrap                  # .env (fresh BETTER_AUTH_SECRET), local Turso on :8080 if none answers, schema, seed
-pnpm dev:web                    # http://localhost:3000
-pnpm smoke                      # health → seeded sign-in → collection lifecycle over oRPC → dashboard render
+pnpm install && pnpm bootstrap --yes   # .env (.env.example, fresh BETTER_AUTH_SECRET), local Turso on :8080 if none answers, schema, seed
+pnpm dev:web                           # http://localhost:3000
+pnpm smoke                             # health → seeded sign-in → collection lifecycle over oRPC → dashboard render
 ```
 
 You need the `turso` CLI on PATH, and it is not a package dependency. Install it first (`brew install tursodatabase/tap/turso`, or `curl -sSfL https://get.tur.so/install.sh | bash`); bootstrap stops and says so without it. Given that binary, `turso dev` just writes a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. Bootstrap is idempotent and starts `turso dev` detached (log in `packages/db/turso-dev.log`, PID printed); `pnpm db:start` runs it in the foreground instead. By hand, the steps are `cp .env.example .env` (set `BETTER_AUTH_SECRET`), `pnpm db:start`, `pnpm db:push`, `pnpm db:seed`. `pnpm bootstrap --dry-run` prints them; `SMOKE_URL` points `pnpm smoke` at a deployment.
