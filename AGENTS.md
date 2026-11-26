@@ -48,6 +48,8 @@ Static gate (mirrors `.github/workflows/ci.yml`, which also runs `pnpm build` �
 pnpm verify     # typecheck · lint · format · test
 ```
 
+CI's `smoke` job is the runtime gate: it starts libSQL, runs `pnpm db:push` and `pnpm db:seed` on a fresh database, builds, starts `next start` and runs `pnpm smoke` against it, so it signs in with a code `pnpm sign-in-code` mints in that database and needs no secret.
+
 `pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/ai-sdk`, `packages/eve`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s modes, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
 **Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, `landmines`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. Landmines means:
