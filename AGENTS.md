@@ -7,10 +7,9 @@ One pnpm/Turbo monorepo: `apps/web` (Next.js App Router) on `packages/contract` 
 ## Quickstart (headless)
 
 ```sh
-pnpm install
-pnpm bootstrap                  # .env (fresh BETTER_AUTH_SECRET), local Turso on :8080 if none answers, schema, seed
-pnpm dev:web                    # http://localhost:3000
-pnpm smoke                      # health → seeded sign-in → collection lifecycle over oRPC → dashboard render
+pnpm install && pnpm bootstrap --yes   # .env (.env.example, fresh BETTER_AUTH_SECRET), local Turso on :8080 if none answers, schema, seed
+pnpm dev:web                           # http://localhost:3000
+pnpm smoke                             # health → seeded sign-in → collection lifecycle over oRPC → dashboard render
 ```
 
 You need the `turso` CLI on PATH, and it is not a package dependency. Install it first (`brew install tursodatabase/tap/turso`, or `curl -sSfL https://get.tur.so/install.sh | bash`); bootstrap stops and says so without it. Given that binary, `turso dev` just writes a SQLite file, so the data and auth layer come up anywhere Node runs — including a cloud sandbox. Bootstrap is idempotent and starts `turso dev` detached (log in `packages/db/turso-dev.log`, PID printed); `pnpm db:start` runs it in the foreground instead. By hand, the steps are `cp .env.example .env` (set `BETTER_AUTH_SECRET`), `pnpm db:start`, `pnpm db:push`, `pnpm db:seed`. `pnpm bootstrap --dry-run` prints them; `SMOKE_URL` points `pnpm smoke` at a deployment.
@@ -49,7 +48,7 @@ Static gate (mirrors `.github/workflows/ci.yml`, which also runs `pnpm build` �
 pnpm verify     # typecheck · lint · format · test
 ```
 
-`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s no-key path, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
+`pnpm test` runs Node's built-in test runner (`node --import tsx --test`) over `packages/transport`, `apps/web`'s `lib` helpers, `/api/orpc` Origin check and query-client serializer, and a few `packages/service` guards (auth schema, session cookie, `sendEmail`'s modes, `slugify`, which middleware runs before input validation, the active-organization fallback, and who may query a private collection) — nothing else has tests. A green `verify` says nothing about the rest of `apps/web` or `packages/service` behaviour; exercise those at runtime.
 
 **Lint is a clean gate.** `oxlint.config.ts` extends the ultracite presets (`ultracite/oxlint/core`, `react`, `anti-slop`, `landmines`, with `next` scoped to `apps/web`); every rule is an error and `lint` fails on the first one. Landmines means:
 
@@ -123,7 +122,7 @@ There is no mobile, desktop, or extension target. Everything this repo ships can
 - **Org scoping lives in `requireActiveOrganization`** (the session's active organization), not in input schemas — don't re-declare it as procedure input.
 - **`cacheComponents` and `partialPrefetching` are on** (`apps/web/next.config.ts`): a `<Link>` prefetches its route's static App Shell. Request data (the session, `searchParams`, `connection()`) is read only inside `<Suspense>` — `(app)/layout.tsx` checks the session there (the real gate); `src/proxy.ts` first 307s a `/dashboard` request with no session cookie to `/auth/login?next=…` (optimistic, cookie presence only). No route segment config (`dynamic`, `revalidate`); cache static output with `"use cache"`.
 - **The legal pages are claims about the code.** `/privacy` and `/terms` (`apps/web/src/lib/agent/site-pages.ts`) follow General Legal's templates (GDPR-enhanced privacy policy, website terms of use, JAMS arbitration) with each clause resolved to what this product does: a change to what the code collects, stores or sends changes the copy in the same commit.
-- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
+- Config degrades gracefully: a missing key disables its feature rather than crashing boot (`packages/service/src/env.ts`). Without `RESEND_API_KEY`, mail is logged, links included, outside production only; a production deployment sends and logs nothing, warns once at boot, and refuses password reset up front (`packages/service/src/email/send-email.ts`): a live reset link in production logs would hand the account to anyone who reads them. Anything added there must also be listed in `turbo.json` `globalEnv` — turbo runs in strict env mode and strips unlisted vars.
 
 ## Map
 

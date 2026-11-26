@@ -57,7 +57,7 @@ const createEnv = () => {
   const env = fs
     .readFileSync(path.join(ROOT_DIR, ".env.example"), "utf-8")
     .replace(
-      /^BETTER_AUTH_SECRET=""$/mu,
+      /^BETTER_AUTH_SECRET=.*$/mu,
       `BETTER_AUTH_SECRET="${randomBytes(32).toString("base64")}"`,
     );
 
