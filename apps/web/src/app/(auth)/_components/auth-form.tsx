@@ -215,7 +215,11 @@ export const RequestPasswordResetForm = () => {
         email: value.email,
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(ctx.error.message);
+            toast.error(
+              ctx.error.code === "RESET_PASSWORD_DISABLED"
+                ? "Password reset is unavailable: this site sends no email."
+                : ctx.error.message,
+            );
           },
           onSuccess: () => {
             setSent(true);

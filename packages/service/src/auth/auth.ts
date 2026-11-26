@@ -7,7 +7,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { admin, genericOAuth, oAuthProxy, organization } from "better-auth/plugins";
 
-import { sendEmail } from "../email/send-email";
+import { EMAIL_MODE, EMAIL_OFF_WARNING, sendEmail } from "../email/send-email";
 import { env } from "../env";
 import { FALLBACK_ORGANIZATION_SLUG, slugify } from "./utils";
 
@@ -24,6 +24,12 @@ const resolveBaseUrl = () => {
 };
 
 export const baseUrl = resolveBaseUrl();
+
+const sendsEmail = EMAIL_MODE.kind !== "off";
+
+if (!sendsEmail) {
+  console.warn(`[email] ${EMAIL_OFF_WARNING}`);
+}
 
 export const trustedOrigins = [baseUrl];
 
@@ -93,13 +99,15 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    sendResetPassword: async ({ user, url }) => {
-      await sendEmail({
-        subject: "Reset your password",
-        text: `Click the link to reset your password: ${url}`,
-        to: user.email,
-      });
-    },
+    sendResetPassword: sendsEmail
+      ? async ({ user, url }) => {
+          await sendEmail({
+            subject: "Reset your password",
+            text: `Click the link to reset your password: ${url}`,
+            to: user.email,
+          });
+        }
+      : undefined,
   },
   plugins: [
     oAuthProxy({
