@@ -62,6 +62,7 @@ Runtime — drive the real web UI with [agent-browser](https://github.com/vercel
 
 ```sh
 agent-browser open http://localhost:3000/auth/login
+agent-browser wait '[data-test="email-input"]' # the form streams in under <Suspense>
 agent-browser snapshot                        # accessibility tree with @eN refs
 agent-browser fill @e8 dev@loremllm.local     # email  (also has data-test="email-input")
 agent-browser fill @e9 password               # password
