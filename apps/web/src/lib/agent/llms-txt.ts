@@ -47,7 +47,7 @@ export const renderLlmsTxt = () => {
     "## Pages",
     "",
     renderList([
-      { href: "/", label: "Home", text: "overview and live demos" },
+      { href: "/", label: "Home", text: "overview, features and packages" },
       ...pageLinks,
       termsLink,
     ]),

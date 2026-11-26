@@ -1,4 +1,5 @@
-import { Logo } from "@repo/ui/components/logo";
+import localFont from "next/font/local";
+import { cn } from "cn";
 
 import { JsonLd } from "@/components/json-ld";
 import {
@@ -12,9 +13,27 @@ import { siteConfig } from "@/lib/site-config";
 
 import type { Metadata } from "next";
 
-import { DemoSections } from "./_components/demo-sections";
 import { HomeOutline } from "./_components/home-outline";
-import { SiteFooter } from "./_components/site-footer";
+import { LandingFooter } from "./_components/landing/landing-footer";
+import {
+  AgentTests,
+  Capabilities,
+  Faq,
+  Features,
+  Hero,
+  LandingNav,
+  Packages,
+  Scenarios,
+  Steps,
+} from "./_components/landing/landing-sections";
+
+const inter = localFont({
+  src: [
+    { path: "./_components/landing/fonts/Inter-Regular.woff2", style: "normal", weight: "400" },
+    { path: "./_components/landing/fonts/Inter-Medium.woff2", style: "normal", weight: "500" },
+  ],
+  variable: "--font-landing",
+});
 
 export const metadata: Metadata = {
   alternates: canonicalAlternates("/"),
@@ -24,16 +43,22 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <main className="flex min-h-dvh flex-col gap-10 px-8 pt-8">
+  <div className={cn(inter.variable, "landing flex min-h-dvh flex-col")}>
     <JsonLd node={buildHomeGraph()} />
-    <header className="flex flex-col gap-5">
-      <Logo />
-      <p>LoremLLM is a collection of tools that help developers mock LLM responses.</p>
-    </header>
-    <HomeOutline />
-    <DemoSections />
-    <SiteFooter pageLinkDisplay="crawler-only" />
-  </main>
+    <LandingNav />
+    <main className="grow">
+      <HomeOutline />
+      <Hero />
+      <Scenarios />
+      <Steps />
+      <Features />
+      <AgentTests />
+      <Capabilities />
+      <Packages />
+      <Faq />
+    </main>
+    <LandingFooter />
+  </div>
 );
 
 export default Page;

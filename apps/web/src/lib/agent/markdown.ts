@@ -141,7 +141,7 @@ export const renderHomeMarkdown = () =>
  * recovery paths.
  */
 export const notFoundRecoveryLinks: ProseListItem[] = [
-  { href: "/", label: "Home", text: "what LoremLLM is, with live demos" },
+  { href: "/", label: "Home", text: "what LoremLLM is, its features and packages" },
   { href: "/docs", label: "Docs", text: "the API reference" },
   { href: "/llms.txt", label: "/llms.txt", text: "site overview for agents" },
   { href: "/openapi.json", label: "/openapi.json", text: "the OpenAPI description of the API" },

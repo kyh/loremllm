@@ -90,3 +90,29 @@
     transform: scaleX(var(--anim));
   }
 }
+
+.landing {
+  --background: oklch(0.19 0.005 260);
+  --foreground: oklch(0.95 0.0099 87.5);
+  --muted: oklch(0.26 0.005 260);
+  --muted-foreground: oklch(0.7 0.008 87.5);
+  --radius: 0.625rem;
+  --font-sans: var(--font-landing), Inter, sans-serif;
+  color-scheme: dark;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.landing ::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+body:has(.landing)::after {
+  display: none;
+}
+
+body:has(.landing) {
+  background: oklch(0.19 0.005 260);
+}
