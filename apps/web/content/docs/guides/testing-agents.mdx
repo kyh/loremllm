@@ -17,16 +17,16 @@ Test your code, not the model:
 ## A full example
 
 ```ts title="agent.test.ts"
-import { mockLLM } from "@loremllm/test";
+import { mockLLM, text, toolCall } from "@loremllm/test";
 import { createSupportAgent } from "./agent";
 import { payments } from "./payments";
 
 test("refunds a delivered order", async () => {
-  const llm = await mockLLM();
+  await using llm = await mockLLM();
 
-  llm.on(/refund/i).toolCall("lookupOrder", { id: "A-1042" });
-  llm.on({ toolResult: "lookupOrder" }).toolCall("refund", { id: "A-1042", amount: 48 });
-  llm.on({ toolResult: "refund" }).reply("Done. $48 is on its way back.");
+  llm.on(/refund/i).replyOnce(toolCall("lookupOrder", { id: "A-1042" }));
+  llm.on({ toolResult: "lookupOrder" }).replyOnce(toolCall("refund", { id: "A-1042", amount: 48 }));
+  llm.on({ toolResult: "refund" }).reply(text("Done. $48 is on its way back."));
 
   const agent = createSupportAgent({ baseURL: `${llm.url}/v1` });
   const answer = await agent.run("Refund order A-1042");
@@ -37,11 +37,12 @@ test("refunds a delivered order", async () => {
 });
 
 test("does not refund an undelivered order", async () => {
-  const llm = await mockLLM();
-  llm.on(/refund/i).toolCall("refund", { id: "A-9999", amount: 10 });
+  await using llm = await mockLLM();
+  llm.on(/refund/i).reply(toolCall("refund", { id: "A-9999", amount: 10 }));
 
   await createSupportAgent({ baseURL: `${llm.url}/v1` }).run("Refund order A-9999");
 
+  expect(llm).toHaveRequestedTool("refund");
   expect(payments.refunds).toEqual([]);
 });
 ```

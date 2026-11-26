@@ -1,50 +1,78 @@
 ---
 title: "@loremllm/mcp"
-description: A fake MCP server you configure in code. Run it over stdio or HTTP.
+description: A fake MCP server built on the official SDK. Run it over stdio, HTTP or in memory.
 ---
 
 ```bash
-npm install -D @loremllm/mcp
+npm install -D @loremllm/mcp @modelcontextprotocol/sdk
 ```
 
+`createMockMcpServer` returns an `McpServer` from `@modelcontextprotocol/sdk`, already populated from scenarios. Every transport the SDK ships works with it, and you can still call `registerTool` for anything a scenario can't express.
+
 ```ts title="mock-mcp.ts"
-import { createMockMcpServer } from "@loremllm/mcp";
-import { json, error } from "loremllm";
+import { createMockMcpServer, json, toolError } from "@loremllm/mcp";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 const server = createMockMcpServer({
   name: "orders",
+  version: "1.0.0",
   tools: {
     lookupOrder: {
       description: "Find an order by id",
-      input: z.object({ id: z.string() }),
+      inputSchema: { id: z.string() },
       scenarios: [
-        { when: { args: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
-        { reply: error("tool", { message: "Order not found" }) },
+        { when: { input: { id: "A-1042" } }, reply: json({ status: "delivered", total: 48 }) },
+        { reply: toolError("Order not found") },
       ],
     },
   },
   resources: [
-    { uri: "docs://refund-policy", name: "Refund policy", text: "Refunds within 30 days." },
+    {
+      uri: "docs://refund-policy",
+      name: "refund-policy",
+      mimeType: "text/markdown",
+      text: "Refunds within 30 days.",
+    },
   ],
 });
 
-await server.stdio();
+await server.connect(new StdioServerTransport());
 ```
+
+`inputSchema` takes a Zod raw shape, as `registerTool` does, or a JSON Schema object.
 
 ## Transports
 
-| Method                    | Serves                                               |
-| ------------------------- | ---------------------------------------------------- |
-| `server.stdio()`          | stdio, for clients that spawn a command              |
-| `server.listen({ port })` | Streamable HTTP at `http://localhost:<port>/mcp`     |
-| `server.handler`          | A `(Request) => Response` function to mount anywhere |
-| `server.client()`         | An in-memory client transport, for tests             |
+| Transport                              | Use it for                                    |
+| -------------------------------------- | --------------------------------------------- |
+| `StdioServerTransport`                 | Clients that spawn a command                  |
+| `StreamableHTTPServerTransport`        | HTTP clients, mounted in your own server      |
+| `InMemoryTransport.createLinkedPair()` | Tests: connect a `Client` in the same process |
 
-## Assertions
+`server.listen({ port })` is a shortcut that serves Streamable HTTP at `http://localhost:<port>/mcp`.
+
+## In a test
 
 ```ts
-server.calls; // [{ tool: "lookupOrder", args: { id: "A-1042" }, result: { ... } }]
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+
+const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+await server.connect(serverTransport);
+
+const client = new Client({ name: "test", version: "1.0.0" });
+await client.connect(clientTransport);
+
+const result = await client.callTool({ name: "lookupOrder", arguments: { id: "A-1042" } });
+// result.structuredContent → { status: "delivered", total: 48 }
+```
+
+## Recorded calls
+
+```ts
+server.calls;
+// [{ name: "lookupOrder", arguments: { id: "A-1042" }, result: { structuredContent: { ... } } }]
 ```
 
 The same definition can be pushed to the hosted API as a mock's `mcp` block. See the [MCP endpoint](/docs/endpoints/mcp).

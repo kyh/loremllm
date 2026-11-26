@@ -24,6 +24,18 @@ export interface Capability {
 export const coreFeatures: Feature[] = [
   {
     description:
+      "Give one prompt many possible results. Smart routing matches by meaning, then picks by weight. Seeded, so the same request lands on the same result every run.",
+    facts: [
+      { label: "Matching", value: "Semantic, regex, exact" },
+      { label: "Results", value: "Weighted, sequenced, pinned" },
+      { label: "Runs", value: "Locally or hosted" },
+    ],
+    id: "routing",
+    motif: "branch",
+    title: "Smart routing",
+  },
+  {
+    description:
       "OpenAI, Anthropic and AI SDK compatible out of the box. Change one base URL and your client never knows the difference.",
     facts: [
       { label: "Formats", value: "OpenAI, Anthropic, AI SDK" },
@@ -48,18 +60,6 @@ export const coreFeatures: Feature[] = [
   },
   {
     description:
-      "Fixed text, templates or generated lorem. The same request gets the same answer, token for token, on every run.",
-    facts: [
-      { label: "Replies", value: "Text, template, lorem" },
-      { label: "Matching", value: "Exact, regex, semantic" },
-      { label: "Output", value: "Deterministic" },
-    ],
-    id: "scripted",
-    motif: "stack",
-    title: "Scripted replies",
-  },
-  {
-    description:
       "Canned arguments, tool results and the final answer, across as many turns as your agent loop needs.",
     facts: [
       { label: "Parts", value: "Call, result, answer" },
@@ -67,12 +67,17 @@ export const coreFeatures: Feature[] = [
       { label: "Protocols", value: "Function calling, MCP" },
     ],
     id: "tools",
-    motif: "branch",
+    motif: "loop",
     title: "Tool calls",
   },
 ];
 
 export const capabilities: Capability[] = [
+  {
+    description:
+      "Run your agent hundreds of times against weighted outcomes. Get pass rates per branch in seconds, for $0.",
+    title: "Cheap evals",
+  },
   {
     description:
       "Spin up a fake MCP server with tools, resources and prompts. Point any client at its URL.",
@@ -81,7 +86,7 @@ export const capabilities: Capability[] = [
   {
     description:
       "Match on prompt text, regex or turn number, then play replies in order per conversation.",
-    title: "Scenarios",
+    title: "Multi-turn scenarios",
   },
   {
     description:
@@ -110,10 +115,6 @@ export const capabilities: Capability[] = [
   {
     description: "Shared projects and mock URLs the whole team, and your CI, can point at.",
     title: "Team projects",
-  },
-  {
-    description: "Run any mock locally with one command. Same scenarios, zero network.",
-    title: "Local server",
   },
 ];
 
@@ -176,7 +177,7 @@ export const packages: Package[] = [
     href: "/docs/packages/record",
   },
   {
-    description: "Vitest and Jest helpers. Scenario setup and matchers like toHaveCalledTool.",
+    description: "Vitest and Jest helpers, matchers like toHaveRequestedTool, and pass-rate evals.",
     name: "@loremllm/test",
     href: "/docs/packages/test",
   },
@@ -211,27 +212,35 @@ export interface ScenarioRow {
 
 export const scenarioRows: ScenarioRow[] = [
   { reply: "Call lookupOrder, then refund", trigger: 'Prompt has "refund"' },
-  { reply: "Reply with the order summary", trigger: "Second turn" },
+  {
+    reply: "Steps 70%, retention offer 20%, escalate 10%",
+    trigger: '"cancel my plan", or anything like it',
+  },
   { reply: "Call getWeather with the city", trigger: "Matches /weather in (\\w+)/" },
-  { reply: "Return 429 after two chunks", trigger: "Header x-mock-fail: rate" },
+  { reply: "Return 429 after two chunks", trigger: "Header loremllm-scenario: rate-limit" },
   { reply: "Stream 40 words of lorem", trigger: "Anything else" },
 ];
 
-export const agentTestCode = `import { mockLLM } from "@loremllm/test";
+export const agentTestCode = `import { mockLLM, text, toolCall } from "@loremllm/test";
 
 test("refunds a delivered order", async () => {
-  const llm = await mockLLM("support-bot");
+  await using llm = await mockLLM("support-bot");
 
-  llm.on(/refund/i)
-    .toolCall("lookupOrder", { id: "A-1042" })
-    .toolCall("refund", { id: "A-1042", amount: 48 })
-    .reply("Done. $48 is on its way back.");
+  llm.on(/refund/i).replyOnce(
+    toolCall("lookupOrder", { id: "A-1042" }),
+  );
+  llm.on({ toolResult: "lookupOrder" }).replyOnce(
+    toolCall("refund", { id: "A-1042", amount: 48 }),
+  );
+  llm.on({ toolResult: "refund" }).reply(
+    text("Done. $48 is on its way back."),
+  );
 
   await agent.run("Refund order A-1042", {
-    baseURL: llm.url,
+    baseURL: \`\${llm.url}/v1\`,
   });
 
-  expect(llm).toHaveCalledTool("refund");
+  expect(llm).toHaveRequestedTool("refund", { amount: 48 });
   expect(payments.refunds).toHaveLength(1);
 });`;
 
@@ -241,6 +250,11 @@ export interface Question {
 }
 
 export const questions: Question[] = [
+  {
+    answer:
+      "A prompt can have several possible results. Smart routing matches by meaning and picks one by weight, on our servers for hosted mocks or in process for local ones. Each request is seeded, so tests stay deterministic, and you can pin any result. Run it many times instead and you get cheap evals: pass rates across every outcome, with no model spend.",
+    question: "How is this different from mocking an endpoint?",
+  },
   {
     answer:
       "Only when you record. Everything else is a reply you scripted, stored or asked to be generated. Nothing goes to a provider.",
@@ -258,7 +272,7 @@ export const questions: Question[] = [
   },
   {
     answer:
-      "Yes. Use the in-process packages or the local server and your tests run with no network, no key and the same result every time.",
+      "Yes. Use the in-process packages or the local server and your tests run with no network and no key. Routing is seeded, so a request gets the same result every time.",
     question: "Can I run it in CI?",
   },
   {

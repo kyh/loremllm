@@ -14,15 +14,20 @@ import { createStaticEveHandler } from "@loremllm/eve";
 
 const handler = createStaticEveHandler({
   chunkDelayMs: [20, 50],
-  async *mockResponse({ message }) {
-    yield { type: "text", text: `You said: ${message.text}` };
+  async *mockResponse({ messages }) {
+    const last = messages.at(-1);
+    const said = last?.parts.find((part) => part.type === "text")?.text;
+
+    yield { type: "text", text: `You said: ${said}` };
   },
 });
 
 export { handler as GET, handler as POST };
 ```
 
-`mockResponse` takes the same parts as [@loremllm/ai-sdk](/docs/packages/ai-sdk), so one generator can back both.
+`mockResponse` yields the same parts as [@loremllm/ai-sdk](/docs/packages/ai-sdk), so one generator can back both. Its context matches the AI SDK transport's, except `messages` is the eve session history.
+
+The handler serves `POST /eve/v1/session`, `POST /eve/v1/session/:id`, `GET /eve/v1/session/:id/stream` and `GET /eve/v1/health`. See the [eve endpoint](/docs/endpoints/eve) for the event list. Human-in-the-loop `inputResponses` turns aren't supported yet.
 
 ## Options
 

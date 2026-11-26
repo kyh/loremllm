@@ -16,32 +16,43 @@ const openai = new OpenAI({
 
 ## Routes
 
-| Route                       | Notes                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| `POST /v1/chat/completions` | Streaming and non-streaming, tools, `response_format`, `n`                    |
-| `POST /v1/responses`        | Streaming events, function tools, reasoning summaries, `previous_response_id` |
-| `POST /v1/embeddings`       | Deterministic vectors: the same input always gets the same embedding          |
-| `GET /v1/models`            | Lists the mock's model name                                                   |
+| Route                       | Notes                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------- |
+| `POST /v1/chat/completions` | Streaming and non-streaming, `tools`, `tool_choice`, `response_format`                       |
+| `POST /v1/responses`        | Streaming events, function tools, reasoning summaries, `previous_response_id`, `text.format` |
+| `POST /v1/embeddings`       | Deterministic vectors: the same input always gets the same embedding                         |
+| `GET /v1/models`            | Lists the mock's model name                                                                  |
 
 ## What maps to what
 
-| Request                         | Used for                                       |
-| ------------------------------- | ---------------------------------------------- |
-| last `user` message             | `prompt` matching                              |
-| `system` / `developer` messages | `system` matching                              |
-| `tools`                         | `tools` matching                               |
-| `tool` role messages            | `toolResult` matching                          |
-| `response_format.json_schema`   | `schema` matching and `json({ schema: true })` |
-| `model`                         | `model` matching, echoed back in the response  |
-| `metadata`, `user`              | `{{metadata.*}}` in templates                  |
+| Request                                         | Used for                                       |
+| ----------------------------------------------- | ---------------------------------------------- |
+| last `user` message or `input`                  | `prompt` matching                              |
+| `system` / `developer` messages, `instructions` | `system` matching                              |
+| `tools`                                         | `tools` matching                               |
+| `tool` messages, `function_call_output` items   | `toolResult` matching                          |
+| `response_format.json_schema`, `text.format`    | `schema` matching and `json({ schema: true })` |
+| `model`                                         | `model` matching, echoed back in the response  |
+| `metadata`                                      | `metadata` in function replies and templates   |
 
-## Responses
+## Streaming
 
-Chunks follow OpenAI's format exactly: `chat.completion.chunk` objects with `delta.content`, `delta.tool_calls` and a final chunk with `finish_reason` and, when `stream_options.include_usage` is set, `usage`. Reasoning streams as `reasoning` summary events on the Responses API.
+**Chat Completions** sends `chat.completion.chunk` objects: `delta.content`, `delta.tool_calls` with `function.arguments` split across chunks, a final chunk with `finish_reason`, then `data: [DONE]`. With `stream_options: { include_usage: true }` an extra chunk carries `usage`.
+
+**Responses** sends typed events: `response.created`, `response.output_item.added`, `response.output_text.delta`, `response.function_call_arguments.delta`, `response.reasoning_summary_text.delta`, `response.output_item.done`, and `response.completed` with `usage`. Reasoning only streams here, as it does on OpenAI. Chat Completions drops reasoning parts and reports their tokens in `usage.completion_tokens_details.reasoning_tokens`.
+
+| Reply part                 | Chat Completions                  | Responses                                   |
+| -------------------------- | --------------------------------- | ------------------------------------------- |
+| `text`                     | `delta.content`                   | `output_text` item                          |
+| `toolCall`                 | `delta.tool_calls[]`              | `function_call` item                        |
+| `finish("stop")`           | `finish_reason: "stop"`           | `status: "completed"`                       |
+| `finish("length")`         | `finish_reason: "length"`         | `status: "incomplete"`, `max_output_tokens` |
+| `finish("tool-calls")`     | `finish_reason: "tool_calls"`     | `status: "completed"`                       |
+| `finish("content-filter")` | `finish_reason: "content_filter"` | `status: "incomplete"`, `content_filter`    |
 
 ## Errors
 
-Errors use OpenAI's body, `{ "error": { "message", "type", "code" } }`, so the SDK raises its usual error classes.
+Errors use OpenAI's body, `{ "error": { "message", "type", "param", "code" } }`, so the SDK raises its usual classes: `error(429)` becomes `RateLimitError`, `error(400)` becomes `BadRequestError`.
 
 ## Without a server
 

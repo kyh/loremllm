@@ -18,45 +18,59 @@ For Jest, import `@loremllm/test/jest`.
 `mockLLM` starts an in-process mock server and returns its URL:
 
 ```ts
-import { mockLLM } from "@loremllm/test";
+import { mockLLM, toolCall, text } from "@loremllm/test";
 
 test("refunds a delivered order", async () => {
-  const llm = await mockLLM("support-bot");
+  await using llm = await mockLLM("support-bot");
 
-  llm
-    .on(/refund/i)
-    .toolCall("lookupOrder", { id: "A-1042" })
-    .toolCall("refund", { id: "A-1042", amount: 48 })
-    .reply("Done. $48 is on its way back.");
+  llm.on(/refund/i).replyOnce(toolCall("lookupOrder", { id: "A-1042" }));
+  llm.on({ toolResult: "lookupOrder" }).replyOnce(toolCall("refund", { id: "A-1042", amount: 48 }));
+  llm.on({ toolResult: "refund" }).reply(text("Done. $48 is on its way back."));
 
-  await agent.run("Refund order A-1042", { baseURL: llm.url });
+  await agent.run("Refund order A-1042", { baseURL: `${llm.url}/v1` });
 
-  expect(llm).toHaveCalledTool("refund", { amount: 48 });
+  expect(llm).toHaveRequestedTool("refund", { amount: 48 });
   expect(payments.refunds).toHaveLength(1);
 });
 ```
 
-`mockLLM` takes a hosted slug, a mock definition, or nothing for an empty mock. Scenarios added with `llm.on()` take priority over the mock's own and are cleared after each test.
+`mockLLM` takes a hosted slug, a mock definition, or nothing for an empty mock. `await using` closes the server at the end of the test; without it, the setup file closes it in `afterEach`. Scenarios added with `llm.on()` take priority over the mock's own. Pass `{ seed }` as a second argument to change which [routed result](/docs/mocks/routing) each request draws.
 
-| Property       | What it is                                                                             |
-| -------------- | -------------------------------------------------------------------------------------- |
-| `llm.url`      | Base URL. Add `/v1` for OpenAI clients                                                 |
-| `llm.fetch`    | A `fetch` for SDKs, if you'd rather not use a URL                                      |
-| `llm.on(when)` | Add a scenario. Chain `.reply()`, `.toolCall()`, `.reasoning()`, `.json()`, `.error()` |
-| `llm.requests` | Every request this test made                                                           |
-| `llm.reset()`  | Clear requests, scenarios and conversation state                                       |
+`llm.on(when)` takes the same [`when`](/docs/mocks/matching) as a scenario, or a string or RegExp as shorthand for `{ prompt }`. Replies use the same [builders](/docs/mocks/replies) as config files, re-exported from `@loremllm/test`:
+
+| Method                 | Behaves like                                                      |
+| ---------------------- | ----------------------------------------------------------------- |
+| `.reply(...parts)`     | `mockReturnValue`: answers every matching request                 |
+| `.replyOnce(...parts)` | `mockReturnValueOnce`: answers the next match, then falls through |
+
+| Property                    | What it is                                                              |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `llm.url`                   | Base URL. Add `/v1` for OpenAI and Anthropic clients                    |
+| `llm.fetch`                 | A `fetch` for SDKs, if you'd rather not use a URL                       |
+| `llm.model`                 | An AI SDK `LanguageModelV2` backed by the same mock                     |
+| `llm.requests`              | Every request this test made: `{ endpoint, messages, tools, scenario }` |
+| `llm.pin(scenario, result)` | Always pick this named result for that scenario                         |
+| `llm.reset()`               | Clear requests, scenarios and conversation state                        |
 
 ## Matchers
 
-| Matcher                                   | Passes when                                            |
-| ----------------------------------------- | ------------------------------------------------------ |
-| `toHaveBeenPrompted(match)`               | Some request's last user message matched               |
-| `toHaveCalledTool(name, args?)`           | The mock asked for this tool, with these args if given |
-| `toHaveReceivedToolResult(name, result?)` | Your code sent this tool result back                   |
-| `toHaveMatched(scenario)`                 | This named scenario answered a request                 |
-| `toHaveRequestCount(n)`                   | Exactly `n` requests were made                         |
+Names follow Vitest's `toHaveBeenCalledWith` family. Expected values are compared like `toMatchObject`, so a partial object passes, and asymmetric matchers such as `expect.any(String)` work.
+
+| Matcher                                   | Passes when                                             |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `toHaveBeenPrompted(match)`               | Some request's last user message contains or matches it |
+| `toHaveRequestedTool(name, input?)`       | The mock asked your code to call this tool              |
+| `toHaveReceivedToolResult(name, output?)` | Your code sent this tool's result back                  |
+| `toHaveMatchedScenario(name)`             | This named scenario answered a request                  |
+| `toHaveBeenRequestedTimes(n)`             | Exactly `n` model requests were made                    |
+
+All of them work with `.not`.
 
 Matchers print the full request log when they fail, so you can see what your agent actually did.
+
+## Evals
+
+`defineEval` and `runEval` run a task many times against routed results and report pass rates. See [Cheap evals](/docs/guides/evals).
 
 ## Timing
 

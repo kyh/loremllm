@@ -9,19 +9,35 @@ Every mock serves the eve protocol:
 https://api.loremllm.com/m/<mock>/eve
 ```
 
-## Starting a session
+## Routes
+
+| Route                            | Does                                                        |
+| -------------------------------- | ----------------------------------------------------------- |
+| `POST /eve/v1/session`           | Starts a session with the first message. Returns `202`      |
+| `POST /eve/v1/session/:id`       | Sends the next message. Returns `200`                       |
+| `GET /eve/v1/session/:id/stream` | NDJSON event stream. `?startIndex=n` replays from event `n` |
+| `GET /eve/v1/health`             | Liveness check                                              |
+
+## A session
+
+Starting a session queues the turn and answers with JSON. Events come from the stream route:
 
 ```bash
-curl -N -X POST https://api.loremllm.com/m/support-bot/eve/v1/session \
+curl -X POST https://api.loremllm.com/m/support-bot/eve/v1/session \
   -H "content-type: application/json" \
   -d '{"message":"Refund order A-1042"}'
+# 202 { "ok": true, "sessionId": "ses_…", "deliveryId": "…", "continuationToken": "…" }
+
+curl -N https://api.loremllm.com/m/support-bot/eve/v1/session/ses_…/stream
 ```
 
-The response streams eve events: `session.started`, `turn.started`, message and tool events, then `turn.completed`. Send follow-up turns to `POST /eve/v1/session/:id/turn`. Each turn is matched against the mock's scenarios, with the eve session id as the [conversation id](/docs/mocks/conversations).
+The id also comes back in the `x-eve-session-id` header. Each turn emits `turn.started`, then `message.received`, `reasoning.appended`, `message.appended` and `message.completed`, `actions.requested` and `action.result` for tools, `turn.completed`, and finally `session.waiting` until the next message. The first turn opens with `session.started`.
+
+Each turn is matched against the mock's scenarios, with the eve session id as the [conversation id](/docs/mocks/conversations).
 
 ## Failures
 
-`error(...)` replies map to `turn.failed`, and a mock that throws ends the session with `session.failed`, so you can test how your eve client recovers.
+`error(...)` and `fault(...)` replies emit `turn.failed` with a `code` and `message`. A tool part with `errorText` becomes an `action.result` with `TOOL_EXECUTION_FAILED`. A mock that throws ends the session with `session.failed`, so you can test how your eve client recovers.
 
 ## Self-hosting
 

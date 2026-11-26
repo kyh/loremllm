@@ -1,4 +1,11 @@
 {
   "title": "Guides",
-  "pages": ["testing-agents", "ci", "record-and-replay", "prototyping-ui", "testing-failures"]
+  "pages": [
+    "testing-agents",
+    "evals",
+    "ci",
+    "record-and-replay",
+    "prototyping-ui",
+    "testing-failures"
+  ]
 }

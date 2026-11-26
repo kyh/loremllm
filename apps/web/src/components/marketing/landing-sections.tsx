@@ -122,8 +122,8 @@ export const Hero = () => (
               Mock any LLM in seconds
             </h1>
             <p className="text-muted-foreground mt-4 max-w-md text-base text-pretty">
-              Streaming completions, tool calls and MCP servers behind one base URL. Build and test
-              AI features without a model, a key or a bill.
+              Give every prompt many possible answers. Smart routing picks the right one, locally or
+              on our servers, behind an OpenAI, Anthropic or AI SDK base URL.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-6">
@@ -140,7 +140,7 @@ export const Hero = () => (
             </div>
             <div className="flex flex-col text-sm">
               <span className="text-foreground font-medium">No model, no key</span>
-              <span className="text-muted-foreground">Same answer every run</span>
+              <span className="text-muted-foreground">Seeded, so tests never flake</span>
             </div>
           </div>
         </div>
@@ -154,8 +154,8 @@ export const Scenarios = () => (
     <div className={cn(wrapperClass, "pb-24")}>
       <div className="bg-muted flex flex-col overflow-hidden rounded-3xl">
         <div className="border-background flex items-baseline justify-between gap-4 border-b px-6 py-4">
-          <h2 className="text-foreground text-base font-medium">One endpoint, every scenario</h2>
-          <p className="text-muted-foreground text-xs">First match wins</p>
+          <h2 className="text-foreground text-base font-medium">Many answers per prompt</h2>
+          <p className="text-muted-foreground text-xs">Smart routing picks one</p>
         </div>
         <ul className="divide-background flex flex-col divide-y">
           {scenarioRows.map((row) => (

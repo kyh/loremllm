@@ -6,7 +6,7 @@ description: The ordered list of rules that decides what a mock answers.
 A mock is a list of scenarios. Each scenario has an optional `when` and a required `reply`.
 
 ```ts
-mock("support-bot", {
+defineMock("support-bot", {
   scenarios: [
     {
       name: "refund",
@@ -25,7 +25,7 @@ Scenarios are checked from top to bottom. The first one whose `when` matches is 
 
 ## Names
 
-`name` is optional. It shows up in the [inspector](/docs/platform/request-inspector), in the `x-loremllm-scenario` response header, and in test assertions like `expect(llm).toHaveMatched("refund")`.
+`name` is optional. It shows up in the [inspector](/docs/platform/request-inspector), in the `loremllm-scenario` response header, and in test assertions like `expect(llm).toHaveMatchedScenario("refund")`.
 
 ## Fallback
 
@@ -38,7 +38,7 @@ A scenario can override the mock's stream settings and model name:
 ```ts
 {
   when: { prompt: "slow" },
-  stream: { firstTokenMs: 4000 },
+  stream: { initialDelayMs: 4000 },
   model: "gpt-4.1-mini",
   reply: text("Sorry for the wait."),
 }

@@ -10,11 +10,11 @@ npm install -D loremllm
 ## Config
 
 ```ts title="loremllm.config.ts"
-import { defineConfig, mock, text } from "loremllm";
+import { defineConfig, defineMock, text } from "loremllm";
 
 export default defineConfig({
   project: "acme",
-  mocks: [mock("support-bot", { scenarios: [{ reply: text("Hello") }] })],
+  mocks: [defineMock("support-bot", { scenarios: [{ reply: text("Hello") }] })],
 });
 ```
 
@@ -22,19 +22,21 @@ The [config reference](/docs/reference/config) lists every option.
 
 ## Commands
 
-| Command                         | What it does                                                    |
-| ------------------------------- | --------------------------------------------------------------- |
-| `loremllm init`                 | Write a starter config                                          |
-| `loremllm dev`                  | Run the [local server](/docs/getting-started/local-development) |
-| `loremllm login`                | Authenticate this machine                                       |
-| `loremllm push`                 | Upload mocks from your config to the project                    |
-| `loremllm pull`                 | Download hosted mocks to `loremllm/mocks`                       |
-| `loremllm record`               | Proxy real traffic and save it as a mock                        |
-| `loremllm test <mock> "prompt"` | Send one prompt and print the matched scenario and stream       |
-| `loremllm logs <mock>`          | Tail the request inspector                                      |
+| Command                          | What it does                                                    |
+| -------------------------------- | --------------------------------------------------------------- |
+| `loremllm init`                  | Write a starter config                                          |
+| `loremllm dev`                   | Run the [local server](/docs/getting-started/local-development) |
+| `loremllm login`                 | Authenticate this machine                                       |
+| `loremllm push`                  | Upload mocks from your config to the project                    |
+| `loremllm pull`                  | Download hosted mocks to `loremllm/mocks`                       |
+| `loremllm record`                | Proxy real traffic and save it as a mock                        |
+| `loremllm test <mock> "prompt"`  | Send one prompt and print the matched scenario and stream       |
+| `loremllm route <mock> "prompt"` | Sample [smart routing](/docs/mocks/routing) and print the mix   |
+| `loremllm eval [file...]`        | Run [evals](/docs/guides/evals) and print pass rates            |
+| `loremllm logs <mock>`           | Tail the request inspector                                      |
 
 See the [CLI reference](/docs/reference/cli) for flags.
 
 ## Exports
 
-`loremllm` also exports the builders every other package uses: `defineConfig`, `mock`, `text`, `template`, `markdown`, `lorem`, `reasoning`, `toolCall`, `json`, `usage`, `delay`, `error`, `sequence` and `oneOf`.
+`loremllm` also exports the builders every other package uses: `defineConfig`, `defineMock`, `text`, `markdown`, `lorem`, `reasoning`, `toolCall`, `json`, `source`, `usage`, `delay`, `finish`, `error`, `fault`, `sequence` and `oneOf`, plus the MCP builders `image`, `resourceLink` and `toolError`.

@@ -1,0 +1,94 @@
+---
+title: Cheap evals
+description: Run your agent hundreds of times against weighted mock outcomes and get pass rates, with no model spend.
+---
+
+A unit test pins one result and checks one path. An eval asks a different question: across everything the model might say, how often does my agent do the right thing? With [smart routing](/docs/mocks/routing), a mock already knows everything the model might say and how often. Run your agent against it many times and you get a pass rate in seconds, for free.
+
+This measures your code, not a model: prompt handling, tool loops, guardrails, retries and fallbacks under realistic variety. Use real-model evals for answer quality, and these for everything around it.
+
+## Write an eval
+
+```ts title="evals/cancel.eval.ts"
+import { defineEval } from "@loremllm/test";
+import { supportBot } from "../mocks";
+import { createSupportAgent } from "../agent";
+
+export default defineEval({
+  name: "cancel flow",
+  mock: supportBot,
+  samples: 500,
+  async task({ llm }) {
+    const agent = createSupportAgent({ baseURL: `${llm.url}/v1` });
+    return agent.run("I want to cancel my plan");
+  },
+  scorers: {
+    "never cancels without confirming": ({ llm }) =>
+      !llm.requested("cancelSubscription") || llm.prompted(/are you sure/i),
+    "always answers": ({ output }) => output.length > 0,
+    "escalations reach a human": ({ llm, route }) =>
+      route.result !== "escalate" || llm.requested("escalateToHuman"),
+  },
+});
+```
+
+Each sample runs `task` against a fresh mock with its own seed, so routing draws a different mix of results across samples, the way production would. A scorer returns `true`, `false`, or a number from 0 to 1.
+
+## Run it
+
+```bash
+npx loremllm eval evals/cancel.eval.ts
+```
+
+```
+cancel flow  500 samples  2.1s  $0.00
+
+scorer                              pass
+never cancels without confirming   100.0%
+always answers                      100.0%
+escalations reach a human            91.8%   41 failed
+
+by result          samples   pass
+cancel/steps          351   100.0%
+cancel/retention       98   100.0%
+cancel/escalate        51    19.6%
+
+reproduce: npx loremllm eval evals/cancel.eval.ts --seed s_8f21c --samples 1
+```
+
+The breakdown by routed result points at the branch that fails. Here the agent mishandles the escalation result, and the seed replays one failing run exactly.
+
+## In code
+
+`runEval` returns the same report, so you can gate CI on it:
+
+```ts
+import { runEval } from "@loremllm/test";
+import cancelEval from "./evals/cancel.eval";
+
+test("cancel flow holds up", async () => {
+  const report = await runEval(cancelEval, { samples: 200, seed: "ci" });
+
+  expect(report.passRate).toBeGreaterThanOrEqual(0.99);
+  expect(report.scorers["never cancels without confirming"].passRate).toBe(1);
+});
+```
+
+| Report field      | What it is                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| `passRate`        | Share of samples where every scorer passed                 |
+| `scorers[name]`   | `{ passRate, mean, failures }` for one scorer              |
+| `byResult[route]` | Pass rate per routed scenario and result                   |
+| `failures`        | `{ seed, route, scores, requests }` for each failed sample |
+
+## Stable numbers
+
+An eval seeded with `seed: "ci"` draws the same samples on every run, so its pass rate only changes when your code or the mock does. Leave `seed` out to draw fresh samples each run, which is better for finding rare failures than for gating merges.
+
+## Realistic weights
+
+Weights decide how often each branch shows up, so they set what a pass rate means. Start with guesses, then replace them with what production actually does: [recordings](/docs/guides/record-and-replay) can set each `oneOf` weight from how often real traffic landed on each result.
+
+## Cost
+
+Samples run in process with no network, in parallel across CPU cores. 500 samples of a three-turn agent usually finish in a few seconds. Hosted mocks work too (`mock: "support-bot"`), and count against your plan's [request limits](/docs/platform/limits).

@@ -23,19 +23,31 @@ const anthropic = new Anthropic({
 
 ## What maps to what
 
-| Request                | Used for                                             |
-| ---------------------- | ---------------------------------------------------- |
-| last `user` text block | `prompt` matching                                    |
-| `system`               | `system` matching                                    |
-| `tools`                | `tools` matching                                     |
-| `tool_result` blocks   | `toolResult` matching                                |
-| `thinking` enabled     | `reasoning(...)` parts are sent as `thinking` blocks |
+| Request                           | Used for                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| last `user` text block            | `prompt` matching                                    |
+| `system`                          | `system` matching                                    |
+| `tools`                           | `tools` matching                                     |
+| `tool_result` blocks              | `toolResult` matching, including `is_error: true`    |
+| `thinking` enabled                | `reasoning(...)` parts are sent as `thinking` blocks |
+| `output_format`, or a forced tool | `schema` matching and `json(...)` replies            |
 
 ## Responses
 
 The stream uses Anthropic's events: `message_start`, `content_block_start`, `content_block_delta` (`text_delta`, `input_json_delta`, `thinking_delta`), `content_block_stop`, `message_delta` with `stop_reason` and usage, and `message_stop`.
 
-`error("overloaded")` returns a 529 `overloaded_error`, the error Anthropic clients most often need to handle.
+| Reply part                 | `stop_reason` |
+| -------------------------- | ------------- |
+| `finish("stop")`           | `end_turn`    |
+| `finish("length")`         | `max_tokens`  |
+| `finish("tool-calls")`     | `tool_use`    |
+| `finish("content-filter")` | `refusal`     |
+
+`usage` reports `input_tokens`, `output_tokens`, `cache_read_input_tokens` and `cache_creation_input_tokens`, filled from [`usage(...)`](/docs/mocks/reasoning-and-usage).
+
+## Errors
+
+Errors use Anthropic's body, `{ "type": "error", "error": { "type", "message" } }`. `error(529)` returns `overloaded_error`, the one Anthropic clients most often need to retry. Mid-stream errors arrive as an `error` event, as they do from the real API.
 
 ## Without a server
 

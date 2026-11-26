@@ -10,16 +10,16 @@ A chat UI has many states: waiting for the first token, streaming text, a tool c
 ```tsx
 import { useChat } from "@ai-sdk/react";
 import { mockTransport } from "@loremllm/ai-sdk";
-import { lorem, markdown, mock, reasoning, text, toolCall } from "loremllm";
+import { lorem, markdown, defineMock, reasoning, text, toolCall } from "loremllm";
 
-const demo = mock("demo", {
-  stream: { firstTokenMs: 600, chunkDelayMs: [20, 60] },
+const demo = defineMock("demo", {
+  stream: { initialDelayMs: 600, chunkDelayMs: [20, 60] },
   scenarios: [
     {
       when: { prompt: "weather" },
       reply: [
         reasoning("I should call the weather tool."),
-        toolCall("getWeather", { city: "Lisbon" }, { tempC: 21, sky: "clear" }),
+        toolCall("getWeather", { city: "Lisbon" }, { output: { tempC: 21, sky: "clear" } }),
         text("It's 21°C and clear in Lisbon."),
       ],
     },

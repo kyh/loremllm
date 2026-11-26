@@ -4,11 +4,11 @@ description: Every option in loremllm.config.ts.
 ---
 
 ```ts title="loremllm.config.ts"
-import { defineConfig, mock } from "loremllm";
+import { defineConfig, defineMock } from "loremllm";
 
 export default defineConfig({
   project: "acme",
-  mocks: [mock("support-bot", {/* options */})],
+  mocks: [defineMock("support-bot", {/* options */})],
 });
 ```
 
@@ -22,29 +22,29 @@ export default defineConfig({
 | `recordingsDir` | `string`            | Folder for recordings. Default `loremllm/recordings` |
 | `server`        | `{ port, latency }` | Defaults for `loremllm dev`                          |
 
-## mock(slug, options)
+## defineMock(slug, options)
 
-| Option        | Type                                    | Description                                              |
-| ------------- | --------------------------------------- | -------------------------------------------------------- |
-| `model`       | `string`                                | Model name reported in responses. Default `"loremllm-1"` |
-| `visibility`  | `"public" \| "private"`                 | Default `"private"`                                      |
-| `stream`      | `StreamSettings`                        | See [Streaming](/docs/mocks/streaming)                   |
-| `scenarios`   | `Scenario[]`                            | See [Scenarios](/docs/mocks/scenarios)                   |
-| `mcp`         | `McpDefinition`                         | See [MCP](/docs/endpoints/mcp)                           |
-| `seed`        | `string`                                | Seed for anything random                                 |
-| `pricing`     | `{ inputPerMillion, outputPerMillion }` | Rates for cost estimates                                 |
-| `description` | `string`                                | Shown in the dashboard                                   |
+| Option        | Type                                    | Description                                                                          |
+| ------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `model`       | `string`                                | Model name reported in responses. Default `"loremllm-1"`                             |
+| `visibility`  | `"public" \| "private"`                 | Default `"private"`                                                                  |
+| `stream`      | `StreamSettings`                        | `{ chunking, chunkDelayMs, initialDelayMs }`. See [Streaming](/docs/mocks/streaming) |
+| `scenarios`   | `Scenario[]`                            | See [Scenarios](/docs/mocks/scenarios)                                               |
+| `mcp`         | `McpDefinition`                         | See [MCP](/docs/endpoints/mcp)                                                       |
+| `seed`        | `string`                                | Seed for anything random                                                             |
+| `pricing`     | `{ inputPerMillion, outputPerMillion }` | Rates for cost estimates                                                             |
+| `description` | `string`                                | Shown in the dashboard                                                               |
 
 ## Scenario
 
-| Field    | Type               | Description                                                    |
-| -------- | ------------------ | -------------------------------------------------------------- |
-| `name`   | `string`           | Shown in the inspector and assertions                          |
-| `when`   | `When`             | See [Matching](/docs/mocks/matching). Omit to match everything |
-| `reply`  | `Reply \| Reply[]` | See [Replies](/docs/mocks/replies)                             |
-| `stream` | `StreamSettings`   | Overrides the mock's stream settings                           |
-| `model`  | `string`           | Overrides the reported model                                   |
+| Field    | Type                                 | Description                                                    |
+| -------- | ------------------------------------ | -------------------------------------------------------------- |
+| `name`   | `string`                             | Shown in the inspector and assertions                          |
+| `when`   | `When`                               | See [Matching](/docs/mocks/matching). Omit to match everything |
+| `reply`  | `Reply \| Reply[] \| (ctx) => Reply` | See [Replies](/docs/mocks/replies)                             |
+| `stream` | `StreamSettings`                     | Overrides the mock's stream settings                           |
+| `model`  | `string`                             | Overrides the reported model                                   |
 
 ## JSON mocks
 
-Pulled mocks are plain JSON with the same shape. RegExps are written as `{ "regex": "refund", "flags": "i" }` and builders as `{ "type": "toolCall", "name": "lookupOrder", "args": { "id": "A-1042" } }`.
+Pulled mocks are plain JSON with the same shape. RegExps are written as `{ "regex": "refund", "flags": "i" }` and builders as `{ "type": "tool-call", "toolName": "lookupOrder", "input": { "id": "A-1042" } }`, the same part names the AI SDK uses. Function replies become [templates](/docs/mocks/replies#templates).

@@ -3,7 +3,7 @@ title: Replies
 description: The parts a mock can stream back, from plain text to tool calls, and how to combine them.
 ---
 
-A reply is one part or an array of parts. Parts stream in order.
+A reply is one part, an array of parts, or a function that returns either. Parts stream in order.
 
 ```ts
 reply: [
@@ -12,22 +12,26 @@ reply: [
 ];
 ```
 
-## Parts
+Part names follow the Vercel AI SDK: text, reasoning, tool calls with `input` and `output`, and a finish reason. Each endpoint encodes them in its own wire format.
 
-| Builder                         | Streams                                                                    |
-| ------------------------------- | -------------------------------------------------------------------------- |
-| `text(string)`                  | Assistant text                                                             |
-| `template(string)`              | Text with `{{placeholders}}` filled from the request                       |
-| `markdown(string)`              | Text, chunked on markdown boundaries so lists and code blocks arrive whole |
-| `lorem(options)`                | Generated filler text                                                      |
-| `reasoning(string)`             | A thinking or reasoning block                                              |
-| `toolCall(name, args, result?)` | A tool call, and its result when given                                     |
-| `json(value \| { schema })`     | Structured output                                                          |
-| `usage(tokens)`                 | Token usage and cost for this response                                     |
-| `delay(ms)`                     | A pause in the stream                                                      |
-| `error(status, options?)`       | A provider-shaped failure                                                  |
-| `sequence(...replies)`          | A different reply on each turn                                             |
-| `oneOf(...replies)`             | A random reply, seeded so runs stay reproducible                           |
+## Builders
+
+| Builder                           | Streams                                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `text(string)`                    | Assistant text                                                                                  |
+| `markdown(string)`                | Text, chunked on markdown boundaries so lists and code blocks arrive whole                      |
+| `lorem(options)`                  | Generated filler text                                                                           |
+| `reasoning(string)`               | A reasoning (thinking) block                                                                    |
+| `toolCall(name, input, options?)` | A tool call. `options.output` or `options.error` resolves it                                    |
+| `json(value \| { schema })`       | Structured output                                                                               |
+| `source({ url, title })`          | A cited source (`source-url` in the AI SDK stream, a citation on Anthropic)                     |
+| `usage(usage)`                    | Token usage for this response                                                                   |
+| `finish(reason)`                  | End the response with a finish reason: `"stop"`, `"length"`, `"content-filter"`, `"tool-calls"` |
+| `delay(ms)`                       | A pause in the stream                                                                           |
+| `error(status, options?)`         | An HTTP error in the provider's error shape                                                     |
+| `fault(kind, options?)`           | A broken stream: `"abort"`, `"timeout"` or `"malformed"`                                        |
+| `sequence(...replies)`            | A different reply on each matching turn                                                         |
+| `oneOf(choices)`                  | A weighted random reply, seeded so runs stay reproducible                                       |
 
 ## Text
 
@@ -35,23 +39,39 @@ reply: [
 text("Your order shipped yesterday.");
 ```
 
-## Templates
+## Replies as functions
 
-Templates read from the request:
+In code, a reply can be a function of the request. It receives the parsed request and returns parts:
 
 ```ts
-template("Hi {{user.name}}, you asked: {{lastUserMessage}}");
+{
+  when: { prompt: /weather in (?<city>[a-z ]+)/i },
+  reply: ({ match }) => toolCall("getWeather", { city: match.groups.city }),
+}
 ```
 
-| Placeholder           | Value                                                                       |
-| --------------------- | --------------------------------------------------------------------------- |
-| `{{lastUserMessage}}` | Text of the last user message                                               |
-| `{{turn}}`            | Conversation turn number                                                    |
-| `{{model}}`           | Requested model name                                                        |
-| `{{match.<group>}}`   | A named group from a RegExp condition                                       |
-| `{{header.<name>}}`   | A request header                                                            |
-| `{{metadata.<key>}}`  | A request metadata field, like OpenAI `metadata` or AI SDK message metadata |
-| `{{faker.<path>}}`    | Fake data, like `{{faker.person.fullName}}`                                 |
+| Field             | Value                                          |
+| ----------------- | ---------------------------------------------- |
+| `messages`        | The conversation, as AI SDK `ModelMessage`s    |
+| `lastUserMessage` | Text of the last user message                  |
+| `toolResults`     | Tool results in the last message, by tool name |
+| `match`           | The `RegExpExecArray` from a RegExp condition  |
+| `turn`            | Conversation turn number                       |
+| `model`           | Requested model name                           |
+| `headers`         | Request headers                                |
+| `seed`            | This request's seed, for your own randomness   |
+
+Functions can be `async`.
+
+## Templates
+
+Mocks edited in the dashboard or stored as JSON can't hold functions. Their strings are templates instead:
+
+```json
+{ "type": "text", "text": "You asked: {{lastUserMessage}}" }
+```
+
+Templates read the same fields: `{{lastUserMessage}}`, `{{turn}}`, `{{model}}`, `{{match.groups.city}}`, `{{headers.x-user}}`, `{{toolResults.lookupOrder.total}}`, plus fake data like `{{faker.person.fullName}}`. A value that is a whole template, like `"{{toolResults.lookupOrder.total}}"`, keeps its type, so numbers stay numbers.
 
 ## Lorem
 
@@ -63,6 +83,17 @@ lorem({ paragraphs: 3, vocabulary: ["mock", "stream", "token"] });
 
 A range like `[2, 4]` picks a length between the two, seeded by the request so the same request gets the same text.
 
+## Weighted choices
+
+```ts
+reply: oneOf([
+  { name: "ok", weight: 9, reply: text("OK") },
+  { name: "outage", weight: 1, reply: error(503) },
+]);
+```
+
+`name` is optional. It shows up in the `loremllm-result` header and lets a test pin that result. See [Smart routing](/docs/mocks/routing).
+
 ## Seeds
 
-Anything random (lorem, `oneOf`, faker, jitter) uses a seed built from the mock, the scenario and the conversation. Set `seed` on a mock to change it, or send `x-loremllm-seed` to override it per request.
+Anything random (lorem, `oneOf`, faker, jitter) uses a seed built from the mock, the scenario and the conversation. Set `seed` on a mock to change it, or send `loremllm-seed` to override it per request. The same request always gets the same draw.

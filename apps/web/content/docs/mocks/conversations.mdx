@@ -9,9 +9,10 @@ Many agent bugs only show up on the second or third turn. Conversations let a mo
 
 LoremLLM groups requests into a conversation by, in order:
 
-1. the `x-loremllm-conversation` header
-2. the AI SDK chat `id`, or the eve session id
-3. a hash of the system prompt and first user message
+1. the `loremllm-conversation-id` header
+2. the OpenAI Responses `previous_response_id` chain
+3. the AI SDK chat `id`, or the eve session id
+4. a hash of the system prompt and first user message
 
 Send the header in tests when you want full control.
 
@@ -20,7 +21,10 @@ Send the header in tests when you want full control.
 ```ts
 scenarios: [
   { when: { turn: 1 }, reply: text("What's your order number?") },
-  { when: { turn: 2, prompt: /A-\d+/ }, reply: toolCall("lookupOrder", { id: "{{match.0}}" }) },
+  {
+    when: { turn: 2, prompt: /A-\d+/ },
+    reply: ({ match }) => toolCall("lookupOrder", { id: match[0] }),
+  },
 ];
 ```
 

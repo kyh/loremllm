@@ -1,9 +1,9 @@
 ---
 title: Tool calls
-description: Script tool calls, their arguments and results, across multi-turn agent loops.
+description: Script tool calls, their input and output, across multi-turn agent loops.
 ---
 
-`toolCall(name, args, result?)` streams a tool call with the arguments you give.
+`toolCall(name, input, options?)` streams a tool call with the input you give. Names follow the AI SDK: a tool call has an `input`, and a tool result has an `output`.
 
 ```ts
 reply: toolCall("lookupOrder", { id: "A-1042" });
@@ -11,14 +11,15 @@ reply: toolCall("lookupOrder", { id: "A-1042" });
 
 ## Two kinds of tool flows
 
-**Client-executed tools.** This is how the OpenAI and Anthropic APIs work. The mock ends its response with the tool call (`finish_reason: "tool_calls"`, `stop_reason: "tool_use"`). Your agent runs the tool and sends the result back in the next request. A second scenario matches that result:
+**Client-executed tools.** This is how the OpenAI and Anthropic APIs work, and how `streamText` runs tools. The mock ends its response with the tool call: `finish_reason: "tool_calls"` on Chat Completions, a `function_call` output item on Responses, `stop_reason: "tool_use"` on Anthropic. Your code runs the tool and sends the result back in the next request. A second scenario matches that result:
 
 ```ts
 scenarios: [
   { when: { prompt: /refund/i }, reply: toolCall("lookupOrder", { id: "A-1042" }) },
   {
     when: { toolResult: "lookupOrder" },
-    reply: toolCall("refund", { id: "A-1042", amount: "{{toolResult.total}}" }),
+    reply: ({ toolResults }) =>
+      toolCall("refund", { id: "A-1042", amount: toolResults.lookupOrder.total }),
   },
   { when: { toolResult: "refund" }, reply: text("Done. $48 is on its way back.") },
 ];
@@ -26,37 +27,37 @@ scenarios: [
 
 This tests your real tool code. The mock only decides what the model asks for.
 
-**Resolved tools.** Pass a `result` and the mock streams the call and its output together. Use this for UI work, where you want a tool card to render without running anything:
+**Resolved tools.** Pass an `output` and the mock streams the call and its result together. Use this for UI work, where you want a tool part to render without running anything:
 
 ```ts
 reply: [
-  toolCall("getWeather", { city: "Lisbon" }, { tempC: 21, sky: "clear" }),
+  toolCall("getWeather", { city: "Lisbon" }, { output: { tempC: 21, sky: "clear" } }),
   text("It's 21°C and clear in Lisbon."),
 ];
 ```
 
-Resolved results stream as AI SDK `tool-output-available` parts. On provider endpoints, which have no way to carry a result, `result` is ignored.
+On the AI SDK UI stream this sends `tool-input-available` then `tool-output-available`, so `useChat` renders a tool part in the `output-available` state. Provider endpoints have no way to carry a result from the model, so on those `output` is ignored and the flow is client-executed.
+
+## Tool errors
+
+```ts
+toolCall("lookupOrder", { id: "A-9999" }, { error: "Order not found" });
+```
+
+Streams `tool-output-error`, and the tool part ends in the `output-error` state.
 
 ## Parallel calls
 
-An array of tool calls in one reply streams them as parallel calls in one message:
+Several tool calls in one reply stream as parallel calls in one message:
 
 ```ts
 reply: [toolCall("getWeather", { city: "Lisbon" }), toolCall("getWeather", { city: "Porto" })];
 ```
 
-## Arguments from the request
+## Streaming input
 
-Arguments are templates, so they can read regex groups, earlier tool results and headers:
-
-```ts
-toolCall("getWeather", { city: "{{match.city}}" });
-```
-
-## Tool errors
-
-`toolCall(name, args, { error: "Order not found" })` streams a failed tool result for resolved flows.
+Tool input streams as partial JSON (`tool-input-delta` on the AI SDK, `function_call_arguments.delta` on OpenAI, `input_json_delta` on Anthropic), so UIs that render input while it arrives see it grow.
 
 ## MCP
 
-The same tool definitions can be served as a fake MCP server. See [MCP endpoint](/docs/endpoints/mcp) and [@loremllm/mcp](/docs/packages/mcp).
+The same tools can be served as a fake MCP server. See [MCP endpoint](/docs/endpoints/mcp) and [@loremllm/mcp](/docs/packages/mcp).

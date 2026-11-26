@@ -3,6 +3,7 @@
   "pages": [
     "scenarios",
     "matching",
+    "routing",
     "replies",
     "streaming",
     "tool-calls",
